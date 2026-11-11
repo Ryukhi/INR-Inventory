@@ -10,12 +10,23 @@ window.__INR_MAIN_PARSED = true;
     const API_URL = 'https://script.google.com/macros/s/AKfycby4WK84FCoGDUYFtQVIPE_EA538YteuhEX2qqMT2Gv2QtJEeuro2fvYutXDFnVjLpYS/exec';
     const API_TIMEOUT_MS = 30000;
 
+    function sanitizeApiUrl(rawUrl) {
+      if (!rawUrl) return '';
+      let clean = String(rawUrl).trim();
+      // Auto-correct /dev test URLs to /exec production Web App URL
+      if (clean.endsWith('/dev')) {
+        console.warn('API_URL ends with /dev (dev mode requires Google login). Auto-switching to /exec for production Web App access.');
+        clean = clean.slice(0, -4) + '/exec';
+      }
+      return clean;
+    }
+
     function getConfiguredApiUrl() {
       try {
         const customUrl = localStorage.getItem('inr_api_url');
-        if (customUrl && customUrl.trim()) return customUrl.trim();
+        if (customUrl && customUrl.trim()) return sanitizeApiUrl(customUrl);
       } catch (e) {}
-      return API_URL;
+      return sanitizeApiUrl(API_URL);
     }
 
     function isApiConfigured() {
@@ -23,10 +34,26 @@ window.__INR_MAIN_PARSED = true;
       return Boolean(url && url !== 'YOUR_APPS_SCRIPT_DEPLOYMENT_URL' && /^https?:\/\//i.test(url));
     }
 
+    function setApiUrl(newUrl) {
+      if (!newUrl) {
+        localStorage.removeItem('inr_api_url');
+        console.log('Reset API_URL to default:', API_URL);
+      } else {
+        const cleaned = sanitizeApiUrl(newUrl);
+        localStorage.setItem('inr_api_url', cleaned);
+        console.log('Saved custom API_URL:', cleaned);
+      }
+      location.reload();
+    }
+    window.setApiUrl = setApiUrl;
+
     async function callApi(action, payload = {}) {
       const url = getConfiguredApiUrl();
       if (!url || url === 'YOUR_APPS_SCRIPT_DEPLOYMENT_URL') {
         throw new Error('Backend API_URL is not configured in app.js.');
+      }
+      if (!url.endsWith('/exec')) {
+        console.warn('API_URL does not end with /exec. Google Apps Script Web Apps require /exec for external access:', url);
       }
 
       const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
@@ -37,8 +64,9 @@ window.__INR_MAIN_PARSED = true;
       try {
         const response = await fetch(url, {
           method: 'POST',
+          mode: 'cors',
           headers: {
-            // Use text/plain;charset=utf-8 to prevent browser CORS preflight (OPTIONS) blocking on Apps Script redirects
+            // Strictly use text/plain;charset=utf-8 to prevent browser CORS preflight (OPTIONS) blocking on Apps Script redirects
             'Content-Type': 'text/plain;charset=utf-8'
           },
           body: JSON.stringify({ action, payload }),
@@ -70,6 +98,18 @@ window.__INR_MAIN_PARSED = true;
       } catch (err) {
         if (err && err.name === 'AbortError') {
           throw new Error('Request timed out after ' + (API_TIMEOUT_MS / 1000) + 's.');
+        }
+        if (err && String(err.message || '').includes('Failed to fetch')) {
+          console.error(
+            'Failed to fetch Google Apps Script API.\n' +
+            'Troubleshooting Checklist:\n' +
+            '1. In Google Apps Script -> Deploy -> Manage deployments -> Edit:\n' +
+            '   - Ensure "Execute as" is "Me"\n' +
+            '   - Ensure "Who has access" is "Anyone" (NOT "Only myself" or "Anyone with a Google account")\n' +
+            '   - Create a "New version" if Code.gs was edited.\n' +
+            '2. Ensure the URL ends with /exec (not /dev).\n' +
+            '3. Check browser DevTools Network tab: if redirected to accounts.google.com, access is not set to Anyone.'
+          );
         }
         throw err;
       } finally {
@@ -5360,7 +5400,11 @@ function exportStatisticsCSV() {
             setSyncIndicator(false);
             console.error('Fetch failure:', err);
             const rawMsg = err && err.message ? String(err.message) : 'Unknown';
-            showToast('Server connection failed: ' + rawMsg);
+            if (rawMsg.includes('Failed to fetch')) {
+              showToast('Server connection failed: Failed to fetch. Check Apps Script deployment: Execute as: "Me", Access: "Anyone" & redeploy New Version.');
+            } else {
+              showToast('Server connection failed: ' + rawMsg);
+            }
             if (!hasExistingData && !loadedFromCache) loadOfflineMock();
           });
       } else {
