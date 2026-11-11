@@ -373,22 +373,9 @@
                     <svg viewBox="0 0 20 20"><path d="M5 4a1 1 0 00-2 0v7.268a2 2 0 000 3.464V16a1 1 0 102 0v-1.268a2 2 0 000-3.464V4zM11 4a1 1 0 10-2 0v1.268a2 2 0 000 3.464V16a1 1 0 102 0V8.732a2 2 0 000-3.464V4zM16 3a1 1 0 011 1v7.268a2 2 0 010 3.464V16a1 1 0 11-2 0v-1.268a2 2 0 010-3.464V4a1 1 0 011-1z"/></svg>
                     <span>Stock Adjustment</span>
                   </button>
-                  <button type="button" class="action-dropdown-item" id="btn-toggle-inv-cols" onclick="closeAllActionDropdowns(); toggleInvColsPanel()">
-                    <svg viewBox="0 0 20 20"><path fill-rule="evenodd" d="M3 3a1 1 0 011-1h12a1 1 0 011 1v3a1 1 0 01-.293.707L12 11.414V15a1 1 0 01-.293.707l-2 2A1 1 0 018 17v-5.586L3.293 6.707A1 1 0 013 6V3z" clip-rule="evenodd"/></svg>
-                    <span><span data-i18n="btn_filter">Columns Filter</span> (<span id="inv-cols-count">6</span>/17)</span>
-                  </button>
-                  <button type="button" class="action-dropdown-item" onclick="closeAllActionDropdowns(); resetInventoryDefault()" data-i18n="btn_default">
-                    <svg viewBox="0 0 20 20"><path fill-rule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1z" clip-rule="evenodd"/></svg>
-                    <span>Reset Default Sort</span>
-                  </button>
-                  <div class="action-dropdown-divider"></div>
                   <button type="button" class="action-dropdown-item" onclick="closeAllActionDropdowns(); exportInventoryCSV()" data-i18n="btn_export_csv">
                     <svg viewBox="0 0 20 20"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
                     <span>Export CSV</span>
-                  </button>
-                  <button type="button" class="action-dropdown-item" onclick="closeAllActionDropdowns(); exportInventoryPDF()" data-i18n="btn_export_pdf">
-                    <svg viewBox="0 0 20 20"><path fill-rule="evenodd" d="M6 2a2 2 0 00-2 2v12a2 2 0 002 2h8a2 2 0 002-2V7.414A2 2 0 0015.414 6L12 2.586A2 2 0 0010.586 2H6zm5 2l3 3h-3V4z" clip-rule="evenodd"/></svg>
-                    <span>Export PDF</span>
                   </button>
                   <button type="button" class="action-dropdown-item" onclick="closeAllActionDropdowns(); printInventoryTable()" data-i18n="btn_print">
                     <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5 4v3H4a2 2 0 00-2 2v3a2 2 0 002 2h1v2a1 1 0 001 1h8a1 1 0 001-1v-2h1a2 2 0 002-2V9a2 2 0 00-2-2h-1V4a1 1 0 00-1-1H6a1 1 0 00-1 1zm2 1h6v2H7V5zm8 6a1 1 0 11-2 0 1 1 0 012 0zM7 13h6v3H7v-3z" clip-rule="evenodd"/></svg>
@@ -405,16 +392,15 @@
                 <select id="inv-tab-cat-filter" class="form-select" style="max-width:200px;">
                   <option value="">All Categories</option>
                 </select>
-                <button class="btn btn-outline btn-sm no-print" onclick="resetInventoryDefault()" data-i18n="btn_default" title="Reset filter to default and sort by Category & Device Name (A-Z)">
-                  <svg class="btn-icon" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1z" clip-rule="evenodd"/></svg>
-                  <span>Default</span>
+                <button type="button" class="btn btn-outline btn-sm no-print" id="btn-toggle-inv-cols" onclick="toggleInvColsPanel()" title="Toggle column visibility">
+                  <svg class="btn-icon" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 3a1 1 0 011-1h12a1 1 0 011 1v3a1 1 0 01-.293.707L12 11.414V15a1 1 0 01-.293.707l-2 2A1 1 0 018 17v-5.586L3.293 6.707A1 1 0 013 6V3z" clip-rule="evenodd"/></svg>
+                  <span><span data-i18n="btn_filter">Filter</span> (<span id="inv-cols-count">8</span>)</span>
                 </button>
               </div>
               
               <!-- Expandable/Collapsible Columns Filter Panel -->
               <div id="inv-cols-panel" class="hidden no-print p-4 mt-2" style="background:var(--white); border:1px solid var(--gray-200); border-radius:6px;">
-                <div class="flex justify-between items-center mb-2 pb-2 flex-wrap gap-2" style="border-bottom:1px solid var(--gray-200);">
-                  <span class="font-bold text-xs text-gray-dark">Toggle Visible Columns (Buffer Stock is excluded from Total clinical stock):</span>
+                <div class="flex justify-end items-center mb-2 pb-2 flex-wrap gap-2" style="border-bottom:1px solid var(--gray-200);">
                   <div class="flex gap-2 text-xs">
                     <button class="btn-ghost" onclick="setAllInvCols(true)">Show All</button>
                     <button class="btn-ghost" onclick="setAllInvCols(false)">Hide All</button>
@@ -422,15 +408,15 @@
                   </div>
                 </div>
                 <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 8px; font-size: 12px;">
-                  <label style="cursor:pointer"><input type="checkbox" id="inv-col-itemid" checked onchange="renderInventoryTab()"> <span>Item ID</span></label>
-                  <label style="cursor:pointer"><input type="checkbox" id="inv-col-hoid" checked onchange="renderInventoryTab()"> <span>HO Item ID</span></label>
+                  <label style="display:none;"><input type="checkbox" id="inv-col-itemid" onchange="renderInventoryTab()"> <span>Item ID</span></label>
                   <label style="cursor:pointer"><input type="checkbox" id="inv-col-name" checked onchange="renderInventoryTab()"> <span>Device Name</span></label>
+                  <label style="cursor:pointer"><input type="checkbox" id="inv-col-hoid" checked onchange="renderInventoryTab()"> <span>HO Item ID</span></label>
                   <label style="cursor:pointer"><input type="checkbox" id="inv-col-cat" checked onchange="renderInventoryTab()"> <span>Category</span></label>
                   <label style="cursor:pointer"><input type="checkbox" id="inv-col-buyprice" checked onchange="renderInventoryTab()"> <span>Buy Price</span></label>
                   <label style="cursor:pointer"><input type="checkbox" id="inv-col-sellprice" checked onchange="renderInventoryTab()"> <span>Sell Price</span></label>
                   <label style="cursor:pointer"><input type="checkbox" id="inv-col-main" checked onchange="renderInventoryTab()"> <span data-i18n="stock_main">Main Stock</span></label>
                   <label style="cursor:pointer"><input type="checkbox" id="inv-col-retail" checked onchange="renderInventoryTab()"> <span data-i18n="stock_retail">Retail Stock</span></label>
-                  <label style="cursor:pointer" title="Consignment & Quarantine staging stock (Not included in Total Stock)"><input type="checkbox" id="inv-col-buffer" onchange="renderInventoryTab()"> <span data-i18n="stock_buffer">Buffer Stock</span></label>
+                  <label style="cursor:pointer" title="Consignment & Quarantine staging stock"><input type="checkbox" id="inv-col-buffer" checked onchange="renderInventoryTab()"> <span data-i18n="stock_buffer">Buffer Stock</span></label>
                   <label style="cursor:pointer"><input type="checkbox" id="inv-col-total" checked onchange="renderInventoryTab()"> <span data-i18n="stock_total">Total Stock</span></label>
                   <label style="cursor:pointer"><input type="checkbox" id="inv-col-ho" checked onchange="renderInventoryTab()"> <span>HO Stock</span></label>
                   <label style="cursor:pointer"><input type="checkbox" id="inv-col-diff" checked onchange="renderInventoryTab()"> <span>Stock Diff</span></label>
@@ -446,9 +432,8 @@
               <table class="data-table" id="inv-print-area">
                 <thead>
                   <tr>
-                    <th class="col-inv-itemid sortable" onclick="sortInventory('itemId')"><span>Item ID</span> <span class="sort-icon" id="sort-itemId">⇅</span></th>
-                    <th class="col-inv-hoid sortable" onclick="sortInventory('hoItemId')"><span>HO Item ID</span> <span class="sort-icon" id="sort-hoItemId">⇅</span></th>
                     <th class="col-inv-name sortable" onclick="sortInventory('deviceName')"><span>Device Name</span> <span class="sort-icon" id="sort-deviceName">⇅</span></th>
+                    <th class="col-inv-hoid sortable" onclick="sortInventory('hoItemId')"><span>HO Item ID</span> <span class="sort-icon" id="sort-hoItemId">⇅</span></th>
                     <th class="col-inv-cat sortable" onclick="sortInventory('category')"><span>Category</span> <span class="sort-icon" id="sort-category">⇅</span></th>
                     <th class="col-inv-buyprice num sortable" onclick="sortInventory('buyPrice')"><span>Buy Price</span> <span class="sort-icon" id="sort-buyPrice">⇅</span></th>
                     <th class="col-inv-sellprice num sortable" onclick="sortInventory('sellPrice')"><span>Sell Price</span> <span class="sort-icon" id="sort-sellPrice">⇅</span></th>
@@ -463,9 +448,6 @@
                     <th class="col-inv-orderest num sortable" onclick="sortInventory('orderEstimate')"><span>Order Est</span> <span class="sort-icon" id="sort-orderEstimate">⇅</span></th>
                     <th class="col-inv-buypoint num sortable" onclick="sortInventory('buyPoint')"><span>Buy Point</span> <span class="sort-icon" id="sort-buyPoint">⇅</span></th>
                     <th class="col-inv-safetystock num sortable" onclick="sortInventory('safetyStock')"><span>Safety Stock</span> <span class="sort-icon" id="sort-safetyStock">⇅</span></th>
-                    <th class="center no-print" data-i18n="tbl_action">Action</th>
-                  </tr>
-                </thead>
                   </tr>
                 </thead>
                 <tbody id="inv-tab-table-body">
@@ -636,7 +618,6 @@
                   <strong style="color:var(--brand-dark);" data-i18n="tr_lent">Lending list</strong>
                   <span class="text-xs text-gray" data-i18n="tr_pending">(Pending / Overdue)</span>
                 </div>
-                <strong style="color:var(--brand-dark);">Others Owe Us (Pending / Partial)</strong>
                 <span class="badge badge-ok" id="loan-they-owe-badge">0 active (0 pcs)</span>
               </div>
               <div class="table-wrap" style="max-height:320px;">
@@ -771,10 +752,6 @@
                       <svg viewBox="0 0 20 20"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
                       <span>Export CSV</span>
                     </button>
-                    <button type="button" class="action-dropdown-item" onclick="closeAllActionDropdowns(); exportStatisticsPDF()">
-                      <svg viewBox="0 0 20 20"><path fill-rule="evenodd" d="M6 2a2 2 0 00-2 2v12a2 2 0 002 2h8a2 2 0 002-2V7.414A2 2 0 0015.414 6L12 2.586A2 2 0 0010.586 2H6zm5 2l3 3h-3V4z" clip-rule="evenodd"/></svg>
-                      <span>Export PDF</span>
-                    </button>
                     <button type="button" class="action-dropdown-item" onclick="closeAllActionDropdowns(); printStatistics()">
                       <svg viewBox="0 0 20 20"><path fill-rule="evenodd" d="M5 4v3H4a2 2 0 00-2 2v3a2 2 0 002 2h1v2a1 1 0 001 1h8a1 1 0 001-1v-2h1a2 2 0 002-2V9a2 2 0 00-2-2h-1V4a1 1 0 00-1-1H6a1 1 0 00-1 1zm2 1h6v2H7V5zm8 6a1 1 0 11-2 0 1 1 0 012 0zM7 13h6v3H7v-3z" clip-rule="evenodd"/></svg>
                       <span>Print</span>
@@ -813,6 +790,15 @@
                   <span data-i18n="btn_more_actions">More Actions ▾</span>
                 </button>
                 <div class="action-dropdown-menu">
+                  <button type="button" class="action-dropdown-item" onclick="closeAllActionDropdowns(); exportAssetsCSV()" data-i18n="btn_export_csv">
+                    <svg viewBox="0 0 20 20"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
+                    <span>Export CSV</span>
+                  </button>
+                  <button type="button" class="action-dropdown-item" onclick="closeAllActionDropdowns(); printAssetsList()" data-i18n="btn_print">
+                    <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5 4v3H4a2 2 0 00-2 2v3a2 2 0 002 2h1v2a1 1 0 001 1h8a1 1 0 001-1v-2h1a2 2 0 002-2V9a2 2 0 00-2-2h-1V4a1 1 0 00-1-1H6a1 1 0 00-1 1zm2 1h6v2H7V5zm8 6a1 1 0 11-2 0 1 1 0 012 0zM7 13h6v3H7v-3z" clip-rule="evenodd"/></svg>
+                    <span>Print Asset List</span>
+                  </button>
+                  <div class="action-dropdown-divider"></div>
                   <button type="button" class="action-dropdown-item" onclick="closeAllActionDropdowns(); resetAssetFilters()" data-i18n="btn_default">
                     <svg viewBox="0 0 20 20"><path fill-rule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.047a1 1 0 011.885-.666A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.608-1.286z" clip-rule="evenodd"/></svg>
                     <span>Reset Filters</span>
@@ -947,6 +933,7 @@
             <button class="sub-tab" data-sec="users" onclick="switchSettingsSection('users')">User</button>
             <button class="sub-tab" data-sec="categories" onclick="switchSettingsSection('categories')">Category</button>
             <button class="sub-tab" data-sec="departments" onclick="switchSettingsSection('departments')">Departments (Loan/Transfer)</button>
+            <button class="sub-tab" data-sec="security" onclick="switchSettingsSection('security')">Security Passcode</button>
           </div>
 
           <!-- List section (Disease / Procedure Types / Shift / Category / Departments) -->
@@ -1011,6 +998,31 @@
                 </thead>
                 <tbody id="settings-users-body"></tbody>
               </table>
+            </div>
+          </div>
+
+          <!-- Security / Passcode section -->
+          <div class="card hidden" id="settings-security-card">
+            <div class="card-header">
+              <strong>Universal Deletion Passcode</strong>
+            </div>
+            <div class="card-body space-y" style="max-width:440px;">
+              <p class="text-sm text-gray">This passcode is required to authorize all delete operations across Inventory, Transactions, Loans, Consignment, Assets, and Settings. (Default: <code>1234</code>)</p>
+              <div class="form-group">
+                <label class="form-label">Current Passcode</label>
+                <input type="password" id="settings-cur-passcode" class="form-input" placeholder="Current passcode" maxlength="12">
+              </div>
+              <div class="form-group">
+                <label class="form-label">New Passcode</label>
+                <input type="password" id="settings-new-passcode" class="form-input" placeholder="New passcode" maxlength="12">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Confirm New Passcode</label>
+                <input type="password" id="settings-confirm-passcode" class="form-input" placeholder="Re-enter new passcode" maxlength="12">
+              </div>
+              <div class="flex justify-end pt-2">
+                <button type="button" class="btn btn-brand" onclick="saveNewPasscode()">Update Passcode</button>
+              </div>
             </div>
           </div>
         </div>
@@ -1422,6 +1434,7 @@
                   <th>Transaction ID</th>
                   <th>Patient HN</th>
                   <th>Procedure</th>
+                  <th class="center">Piece #</th>
                   <th class="center">Qty Used</th>
                 </tr>
               </thead>
@@ -1577,6 +1590,12 @@
               <label class="form-label">Recorded By (Staff / Tech)</label>
               <input type="text" id="loan-modal-tech" class="form-input" list="loan-user-datalist" placeholder="Staff name...">
               <datalist id="loan-user-datalist"></datalist>
+            </div>
+            <div class="form-group col-span-2" id="loan-register-inv-row">
+              <label class="flex items-center gap-2 text-sm" style="cursor:pointer; background:var(--gray-50); padding:8px 12px; border:1px solid var(--gray-200); border-radius:6px;">
+                <input type="checkbox" id="loan-register-inv-check">
+                <span>Also register received device into inventory with <strong>(Borrow) / (ยืม)</strong></span>
+              </label>
             </div>
             <div class="form-group col-span-2">
               <label class="form-label">Notes</label>
@@ -1903,6 +1922,72 @@
           </div>
           <div class="flex justify-end">
             <button type="button" class="btn btn-outline btn-sm" onclick="closeQrScannerModal()">Close Scanner</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Device Detail Modal (Clickable from Device Name) -->
+      <div id="modal-device-detail" class="modal hidden" style="max-width:680px;">
+        <div class="modal-header">
+          <div class="modal-title" id="dev-detail-title">Device Details</div>
+          <button class="modal-close" onclick="closeModal()">✕</button>
+        </div>
+        <div class="modal-body space-y">
+          <div id="dev-detail-content"></div>
+          <div class="flex justify-between items-center pt-4" style="border-top:1px solid var(--gray-200);">
+            <button type="button" class="btn btn-outline btn-sm" style="color:var(--red); border-color:var(--red);" id="dev-detail-btn-delete">
+              <svg class="btn-icon" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>
+              <span>Delete Device</span>
+            </button>
+            <div class="flex gap-2">
+              <button type="button" class="btn btn-outline btn-sm" onclick="closeModal()">Close</button>
+              <button type="button" class="btn btn-brand btn-sm" id="dev-detail-btn-edit">
+                <svg class="btn-icon" viewBox="0 0 20 20" fill="currentColor"><path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z"/></svg>
+                <span>Edit Device</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Universal Deletion Passcode Modal -->
+      <div id="modal-passcode-confirm" class="modal hidden" style="max-width:440px;">
+        <div class="modal-header">
+          <div class="modal-title" style="color:#b91c1c;">⚠️ Security Passcode Required</div>
+          <button class="modal-close" onclick="closePasscodeModal()">✕</button>
+        </div>
+        <div class="modal-body space-y text-center">
+          <p class="text-sm text-gray" id="passcode-action-desc">Please enter security passcode to confirm deletion.</p>
+          <div class="py-2">
+            <input type="password" id="passcode-input" class="form-input passcode-input" maxlength="12" placeholder="••••" autocomplete="off" onkeydown="if(event.key==='Enter')submitPasscodeConfirm()">
+          </div>
+          <div id="passcode-error" class="text-xs font-semibold hidden" style="color:var(--red);">Incorrect passcode. Please try again.</div>
+          <div class="flex justify-end gap-2 pt-2">
+            <button type="button" class="btn btn-outline btn-sm" onclick="closePasscodeModal()">Cancel</button>
+            <button type="button" class="btn btn-danger btn-sm" onclick="submitPasscodeConfirm()">Confirm Delete</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Asset QR Code Modal & Printable Label -->
+      <div id="modal-asset-qr" class="modal hidden" style="max-width:480px;">
+        <div class="modal-header">
+          <div class="modal-title">Asset QR Code Label</div>
+          <button class="modal-close" onclick="closeModal()">✕</button>
+        </div>
+        <div class="modal-body space-y">
+          <div class="qr-label-card" id="asset-qr-card-print">
+            <img id="asset-qr-img" src="" alt="Asset QR Code">
+            <div class="font-bold text-base text-black" id="asset-qr-name">Asset Name</div>
+            <div class="font-mono font-bold text-sm text-brand-dark" id="asset-qr-code" style="margin-top:2px;">CODE</div>
+            <div class="text-xs text-gray" id="asset-qr-meta" style="margin-top:4px;">S/N: - | Room: -</div>
+          </div>
+          <div class="flex justify-between items-center pt-2">
+            <button type="button" class="btn btn-outline btn-sm" onclick="closeModal()">Close</button>
+            <button type="button" class="btn btn-brand btn-sm" onclick="printAssetQrLabel()">
+              <svg class="btn-icon" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5 4v3H4a2 2 0 00-2 2v3a2 2 0 002 2h1v2a2 2 0 002 2h6a2 2 0 002-2v-2h1a2 2 0 002-2V9a2 2 0 00-2-2h-1V4a2 2 0 00-2-2H7a2 2 0 00-2 2zm8 0H7v3h6V4zm0 8H7v4h6v-4z" clip-rule="evenodd"/></svg>
+              <span>Print Label</span>
+            </button>
           </div>
         </div>
       </div>
