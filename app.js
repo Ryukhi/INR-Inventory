@@ -664,9 +664,9 @@ window.__INR_MAIN_PARSED = true;
 
     // --- Inventory Modals & Tab ---
     const invCols = [
-      { id: 'inv-col-itemid', cls: 'col-inv-itemid' },
-      { id: 'inv-col-hoid', cls: 'col-inv-hoid' },
       { id: 'inv-col-name', cls: 'col-inv-name' },
+      { id: 'inv-col-hoid', cls: 'col-inv-hoid' },
+      { id: 'inv-col-itemid', cls: 'col-inv-itemid' },
       { id: 'inv-col-cat', cls: 'col-inv-cat' },
       { id: 'inv-col-buyprice', cls: 'col-inv-buyprice' },
       { id: 'inv-col-sellprice', cls: 'col-inv-sellprice' },
@@ -693,6 +693,94 @@ window.__INR_MAIN_PARSED = true;
     function closeModal() {
       stopQrScannerInstance();
       document.getElementById('modal-overlay').classList.add('hidden');
+    }
+
+    // ===== UNIVERSAL DELETION PASSCODE =====
+    function getDeletePasscode() {
+      try {
+        return localStorage.getItem('inr_delete_passcode') || (state.settings && state.settings.deletePasscode) || '1234';
+      } catch (e) {
+        return '1234';
+      }
+    }
+    function setDeletePasscode(newCode) {
+      try {
+        localStorage.setItem('inr_delete_passcode', String(newCode).trim());
+      } catch (e) {}
+    }
+
+    let pendingPasscodeAction = null;
+
+    function verifyPasscodeThen(description, callback) {
+      pendingPasscodeAction = callback;
+      const descEl = document.getElementById('passcode-action-desc');
+      if (descEl) descEl.innerText = description || 'Security passcode required to confirm deletion.';
+      const inputEl = document.getElementById('passcode-input');
+      if (inputEl) {
+        inputEl.value = '';
+        setTimeout(() => inputEl.focus(), 150);
+      }
+      const errEl = document.getElementById('passcode-error');
+      if (errEl) errEl.classList.add('hidden');
+      openModal('modal-passcode-confirm');
+    }
+
+    function submitPasscodeConfirm() {
+      const inputEl = document.getElementById('passcode-input');
+      const val = inputEl ? inputEl.value.trim() : '';
+      const correctCode = getDeletePasscode();
+      if (val === correctCode) {
+        closePasscodeModal();
+        if (typeof pendingPasscodeAction === 'function') {
+          const act = pendingPasscodeAction;
+          pendingPasscodeAction = null;
+          act();
+        }
+      } else {
+        const errEl = document.getElementById('passcode-error');
+        if (errEl) {
+          errEl.innerText = state.currentLang === 'th' ? 'รหัสผ่านไม่ถูกต้อง กรุณาลองใหม่อีกครั้ง' : 'Incorrect passcode. Please try again.';
+          errEl.classList.remove('hidden');
+        }
+        if (inputEl) {
+          inputEl.value = '';
+          inputEl.focus();
+        }
+      }
+    }
+
+    function closePasscodeModal() {
+      pendingPasscodeAction = null;
+      document.getElementById('modal-passcode-confirm')?.classList.add('hidden');
+      document.getElementById('modal-overlay')?.classList.add('hidden');
+    }
+
+    function saveNewPasscode() {
+      const curInput = document.getElementById('settings-cur-passcode');
+      const newInput = document.getElementById('settings-new-passcode');
+      const confInput = document.getElementById('settings-confirm-passcode');
+      const cur = curInput ? curInput.value.trim() : '';
+      const nw = newInput ? newInput.value.trim() : '';
+      const cf = confInput ? confInput.value.trim() : '';
+
+      if (cur !== getDeletePasscode()) {
+        showToast(state.currentLang === 'th' ? 'รหัสผ่านปัจจุบันไม่ถูกต้อง' : 'Current passcode is incorrect');
+        return;
+      }
+      if (!nw || nw.length < 4) {
+        showToast(state.currentLang === 'th' ? 'รหัสผ่านใหม่ต้องมีอย่างน้อย 4 ตัวอักษร' : 'New passcode must be at least 4 characters');
+        return;
+      }
+      if (nw !== cf) {
+        showToast(state.currentLang === 'th' ? 'รหัสผ่านใหม่ไม่ตรงกัน' : 'New passcodes do not match');
+        return;
+      }
+
+      setDeletePasscode(nw);
+      if (curInput) curInput.value = '';
+      if (newInput) newInput.value = '';
+      if (confInput) confInput.value = '';
+      showToast(state.currentLang === 'th' ? 'บันทึกรหัสผ่านใหม่สำเร็จ' : 'Passcode updated successfully');
     }
 
     function setStockActionMode(mode) {
@@ -804,7 +892,7 @@ window.__INR_MAIN_PARSED = true;
       renderInventoryTab();
     }
 
-    const invDefaultCols = ['inv-col-hoid', 'inv-col-name', 'inv-col-main', 'inv-col-retail', 'inv-col-total', 'inv-col-ho'];
+    const invDefaultCols = ['inv-col-name', 'inv-col-hoid', 'inv-col-main', 'inv-col-retail', 'inv-col-buffer', 'inv-col-total', 'inv-col-ho', 'inv-col-diff'];
 
     function applyDefaultInvCols() {
       invCols.forEach(col => {
@@ -943,10 +1031,10 @@ window.__INR_MAIN_PARSED = true;
 
         return `
           <tr>
-            <td class="col-inv-itemid text-gray text-xs font-mono">${i.itemId || ''}</td>
-            <td class="col-inv-hoid text-gray text-xs font-mono">${i.hoItemId || ''}</td>
-            <td class="col-inv-name font-medium">${i.deviceName || ''}</td>
-            <td class="col-inv-cat text-gray">${i.category || ''}</td>
+            <td class="col-inv-name"><a href="javascript:void(0)" class="device-name-link font-medium" onclick="openDeviceDetailModal('${escapeHtml(String(i.itemId))}')">${escapeHtml(i.deviceName || '')}</a></td>
+            <td class="col-inv-hoid text-gray text-xs font-mono">${escapeHtml(i.hoItemId || '')}</td>
+            <td class="col-inv-itemid hidden text-gray text-xs font-mono">${escapeHtml(i.itemId || '')}</td>
+            <td class="col-inv-cat text-gray">${escapeHtml(i.category || '')}</td>
             <td class="col-inv-buyprice num">฿${(Number(i.buyPrice) || 0).toLocaleString()}</td>
             <td class="col-inv-sellprice num">฿${(Number(i.sellPrice) || 0).toLocaleString()}</td>
             <td class="col-inv-main num">${Number(i.mainStock) || 0}</td>
@@ -960,10 +1048,6 @@ window.__INR_MAIN_PARSED = true;
             <td class="col-inv-orderest num">${Number(i.orderEstimate) || 0}</td>
             <td class="col-inv-buypoint num">${Number(i.buyPoint) || 0}</td>
             <td class="col-inv-safetystock num">${Number(i.safetyStock) || 0}</td>
-            <td class="center no-print">
-              <button class="btn-ghost" onclick="openEditDeviceModal('${i.itemId}')" title="Edit">${ICONS.edit}</button>
-              <button class="btn-ghost" onclick="removeDevice('${i.itemId}')" style="color:var(--red);" title="Remove">${ICONS.trash}</button>
-            </td>
           </tr>
         `;
       }).join('');
@@ -1033,25 +1117,87 @@ window.__INR_MAIN_PARSED = true;
       openModal('modal-device');
     }
 
-    async function removeDevice(itemId) {
-      if (!confirm('Remove this device from inventory?')) return;
-      if (isApiConfigured()) {
-        appLoading.classList.remove('hidden');
-        appContent.classList.add('hidden');
-        try {
-          await callApi('deleteInventoryItem', { itemId });
-          showToast('Device removed');
-          fetchDataFromServer();
-        } catch (err) {
-          showToast('Failed: ' + (err.message || err));
-          appLoading.classList.add('hidden');
-          appContent.classList.remove('hidden');
-        }
-      } else {
-        state.inventory = state.inventory.filter(i => String(i.itemId) !== String(itemId));
-        showToast('Device removed (mock)');
-        renderInventoryTab();
+    function openDeviceDetailModal(itemId) {
+      const i = state.inventory.find(item => String(item.itemId) === String(itemId));
+      if (!i) return;
+      const titleEl = document.getElementById('dev-detail-title');
+      const contentEl = document.getElementById('dev-detail-content');
+      if (titleEl) titleEl.innerText = i.deviceName || 'Device Details';
+
+      const diffVal = i.stockDiff !== undefined ? Number(i.stockDiff) : (Number(i.totalStock || 0) - Number(i.hoStock || 0));
+      let diffDisplay = diffVal > 0 ? ('+' + diffVal) : String(diffVal);
+      let diffColor = diffVal < 0 ? 'var(--red)' : (diffVal > 0 ? 'var(--brand)' : 'inherit');
+      const exceedVal = i.exceedPercent !== undefined ? Number(i.exceedPercent) : 0;
+      const exceedDisplay = exceedVal > 0 ? ('+' + exceedVal + '%') : (exceedVal + '%');
+
+      if (contentEl) {
+        contentEl.innerHTML = `
+          <table class="device-detail-table">
+            <tbody>
+              <tr><th>Device Name</th><td><strong>${escapeHtml(i.deviceName || '')}</strong></td></tr>
+              <tr><th>HO Item ID</th><td><span class="font-mono">${escapeHtml(i.hoItemId || '—')}</span></td></tr>
+              <tr><th>Item ID</th><td><span class="font-mono text-gray">${escapeHtml(i.itemId || '—')}</span></td></tr>
+              <tr><th>Category</th><td><span class="badge badge-gray">${escapeHtml(i.category || '—')}</span></td></tr>
+              <tr><th>Pricing</th><td>Buy: <strong>฿${(Number(i.buyPrice)||0).toLocaleString()}</strong> &nbsp;|&nbsp; Sell: <strong>฿${(Number(i.sellPrice)||0).toLocaleString()}</strong></td></tr>
+              <tr style="background:#f0fdf4;">
+                <th>Stock Breakdown</th>
+                <td>
+                  <div>Main Stock: <strong>${Number(i.mainStock)||0}</strong></div>
+                  <div>Retail Stock: <strong>${Number(i.retailStock)||0}</strong></div>
+                  <div style="color:#6d28d9;">Buffer Stock: <strong>${Number(i.bufferStock)||0}</strong> <span class="text-xs text-gray">(Consignment/Quarantine)</span></div>
+                  <div>Total Clinical Stock: <strong style="color:var(--brand-dark);">${Number(i.totalStock)||0}</strong></div>
+                  <div>HO Stock: <strong>${Number(i.hoStock)||0}</strong></div>
+                  <div>Available / Stock Diff: <strong style="color:${diffColor};">${diffDisplay}</strong></div>
+                </td>
+              </tr>
+              <tr><th>Stock / Month</th><td>${Number(i.stockMonth)||0}</td></tr>
+              <tr><th>Exceed %</th><td>${exceedDisplay}</td></tr>
+              <tr><th>Order Estimate</th><td>${Number(i.orderEstimate)||0}</td></tr>
+              <tr><th>Buy Point / Safety</th><td>Buy Point: <strong>${Number(i.buyPoint)||0}</strong> &nbsp;|&nbsp; Safety: <strong>${Number(i.safetyStock)||0}</strong></td></tr>
+            </tbody>
+          </table>
+        `;
       }
+
+      const btnEdit = document.getElementById('dev-detail-btn-edit');
+      if (btnEdit) {
+        btnEdit.onclick = function() {
+          closeModal();
+          openEditDeviceModal(i.itemId);
+        };
+      }
+      const btnDelete = document.getElementById('dev-detail-btn-delete');
+      if (btnDelete) {
+        btnDelete.onclick = function() {
+          closeModal();
+          removeDevice(i.itemId);
+        };
+      }
+      openModal('modal-device-detail');
+    }
+
+    function removeDevice(itemId) {
+      const inv = state.inventory.find(i => String(i.itemId) === String(itemId));
+      const devName = inv ? inv.deviceName : itemId;
+      verifyPasscodeThen(state.currentLang === 'th' ? `ยืนยันการลบเวชภัณฑ์ "${devName}"?` : `Delete inventory device "${devName}"?`, async () => {
+        if (isApiConfigured()) {
+          appLoading.classList.remove('hidden');
+          appContent.classList.add('hidden');
+          try {
+            await callApi('deleteInventoryItem', { itemId });
+            showToast('Device removed');
+            fetchDataFromServer();
+          } catch (err) {
+            showToast('Failed: ' + (err.message || err));
+            appLoading.classList.add('hidden');
+            appContent.classList.remove('hidden');
+          }
+        } else {
+          state.inventory = state.inventory.filter(i => String(i.itemId) !== String(itemId));
+          showToast('Device removed (mock)');
+          renderInventoryTab();
+        }
+      });
     }
 
     function saveDevice() {
@@ -1520,28 +1666,29 @@ window.__INR_MAIN_PARSED = true;
       `).join('');
     }
 
-    async function handleDeleteTx(txId) {
-      if (!confirm('Delete this transaction?')) return;
-      appLoading.classList.remove('hidden');
-      appContent.classList.add('hidden');
-      
-      if (isApiConfigured()) {
-        try {
-          await callApi('deleteTransaction', { transactionId: txId });
-          showToast('Deleted!');
-          fetchDataFromServer();
-        } catch (err) {
-          showToast('Failed to delete: ' + (err.message || err));
+    function handleDeleteTx(txId) {
+      verifyPasscodeThen(state.currentLang === 'th' ? `ยืนยันการลบรายการ ${txId}?` : `Delete transaction ${txId}?`, async () => {
+        appLoading.classList.remove('hidden');
+        appContent.classList.add('hidden');
+        
+        if (isApiConfigured()) {
+          try {
+            await callApi('deleteTransaction', { transactionId: txId });
+            showToast('Deleted!');
+            fetchDataFromServer();
+          } catch (err) {
+            showToast('Failed to delete: ' + (err.message || err));
+            appLoading.classList.add('hidden');
+            appContent.classList.remove('hidden');
+          }
+        } else {
+          state.transactions = state.transactions.filter(t => t.id !== txId);
+          showToast('Deleted (mock)');
           appLoading.classList.add('hidden');
           appContent.classList.remove('hidden');
+          renderTransactions();
         }
-      } else {
-        state.transactions = state.transactions.filter(t => t.id !== txId);
-        showToast('Deleted (mock)');
-        appLoading.classList.add('hidden');
-        appContent.classList.remove('hidden');
-        renderTransactions();
-      }
+      });
     }
 
     // --- Tab 3: Procedure Use ---
@@ -1656,6 +1803,38 @@ window.__INR_MAIN_PARSED = true;
       ) || null;
     }
 
+    function getQuotaUsedPieces(q) {
+      if (!q) return [];
+      if (Array.isArray(q.usedPieces) && q.usedPieces.length > 0) {
+        return q.usedPieces.slice().map(Number).filter(n => !isNaN(n)).sort((a, b) => a - b);
+      }
+      const hist = Array.isArray(q.history) ? q.history : [];
+      const pieces = [];
+      hist.forEach(h => {
+        if (h && h.pieceNo !== undefined && h.pieceNo !== null && h.pieceNo !== '') {
+          const p = Number(h.pieceNo);
+          if (!isNaN(p) && !pieces.includes(p)) pieces.push(p);
+        }
+      });
+      return pieces.sort((a, b) => a - b);
+    }
+
+    function getQuotaAvailablePieces(q) {
+      if (!q) return [];
+      const total = Number(q.totalQuota) || 0;
+      const used = getQuotaUsedPieces(q);
+      const avail = [];
+      for (let k = 1; k <= total; k++) {
+        if (!used.includes(k)) avail.push(k);
+      }
+      return avail;
+    }
+
+    function formatPiecesList(pieces) {
+      if (!pieces || pieces.length === 0) return '—';
+      return pieces.map(p => '#' + p).join(', ');
+    }
+
     function isConsignmentOnlyItem(item) {
       if (!item) return false;
       const cat = String(item.category || '').trim().toLowerCase();
@@ -1723,12 +1902,39 @@ window.__INR_MAIN_PARSED = true;
       return String(str || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
     }
 
+    function setCartVolume(idx, val) {
+      if (!state.cart[idx]) return;
+      state.cart[idx].volumeMl = parseFloat(val) || '';
+    }
+
+    function setCartPieceNo(idx, val) {
+      if (!state.cart[idx]) return;
+      state.cart[idx].pieceNo = parseInt(val) || '';
+    }
+
     function addToCart(itemId, deviceName) {
+      const inv = state.inventory.find(i => String(i.itemId) === String(itemId));
+      const isContrast = inv && String(inv.category || '').toLowerCase().includes('contrast');
+      const exRule = getActiveExchangeRule(itemId);
+      let defaultPieceNo = '';
+      if (exRule) {
+        const avail = getQuotaAvailablePieces(exRule);
+        if (avail.length > 0) defaultPieceNo = avail[0];
+      }
+
       const exist = state.cart.find(c => String(c.itemId) === String(itemId));
       if (exist) {
         exist.qty++;
       } else {
-        state.cart.push({ itemId, deviceName, qty: 1, fromLoc: 'Retail' });
+        state.cart.push({
+          itemId,
+          deviceName,
+          qty: 1,
+          fromLoc: 'Retail',
+          isContrast: !!isContrast,
+          volumeMl: '',
+          pieceNo: defaultPieceNo
+        });
       }
       renderCart();
     }
@@ -1750,10 +1956,57 @@ window.__INR_MAIN_PARSED = true;
         const inv = state.inventory.find(i => String(i.itemId) === String(ci.itemId));
         const retail = inv ? (Number(inv.retailStock) || 0) : 0;
         const warn = retail - ci.qty < 0;
+        const isContrast = ci.isContrast || (inv && String(inv.category || '').toLowerCase().includes('contrast'));
         const exRule = getActiveExchangeRule(ci.itemId);
-        const exCartBadge = exRule
-          ? `<div class="mb-2"><span class="badge badge-purple" style="font-size:10.5px;">Substituted for ${getDeviceName(exRule.substitutedItemId)} [Quota: ${exRule.currentUsed}/${exRule.totalQuota}]</span></div>`
-          : '';
+
+        let exCartBadge = '';
+        let pieceSelectorHtml = '';
+        if (exRule) {
+          const usedPieces = getQuotaUsedPieces(exRule);
+          const availPieces = getQuotaAvailablePieces(exRule);
+          if (!ci.pieceNo && availPieces.length > 0) ci.pieceNo = availPieces[0];
+
+          exCartBadge = `
+            <div class="mb-2">
+              <span class="badge badge-purple" style="font-size:10.5px;">Substituted for ${getDeviceName(exRule.substitutedItemId)} [Quota: ${exRule.currentUsed}/${exRule.totalQuota}]</span>
+            </div>
+          `;
+
+          pieceSelectorHtml = `
+            <div class="mt-2 p-2" style="background:#f5f3ff; border:1px solid #ddd6fe; border-radius:6px; font-size:12px;">
+              <div class="flex justify-between items-center mb-1">
+                <span class="font-semibold" style="color:var(--purple-dark);">Piece # (Out-of-Order Picking):</span>
+                <span class="text-xs text-gray" title="Available pieces">Avail: ${formatPiecesList(availPieces)}</span>
+              </div>
+              <div class="flex items-center gap-2">
+                <label class="text-xs font-medium">Piece No:</label>
+                <select class="form-select form-input-sm" onchange="setCartPieceNo(${idx}, this.value)" style="width:auto; padding:3px 8px; font-size:12px; background:#fff;">
+                  ${availPieces.map(p => `<option value="${p}" ${String(ci.pieceNo) === String(p) ? 'selected' : ''}>Piece #${p} of ${exRule.totalQuota}</option>`).join('')}
+                </select>
+              </div>
+            </div>
+          `;
+        }
+
+        let contrastDualInputHtml = '';
+        if (isContrast) {
+          contrastDualInputHtml = `
+            <div class="mt-2 p-2" style="background:#eff6ff; border:1px solid #bfdbfe; border-radius:6px; font-size:12px;">
+              <div class="font-semibold mb-1" style="color:var(--brand-dark);">Contrast Media Input (Required):</div>
+              <div class="flex gap-2 items-center flex-wrap">
+                <div>
+                  <label class="text-xs text-gray block">Volume (ml) <span style="color:var(--red);">*</span></label>
+                  <input type="number" step="any" min="1" placeholder="e.g. 50" value="${ci.volumeMl || ''}" onchange="setCartVolume(${idx}, this.value)" style="width:100px; padding:4px 8px; font-size:12px; border:1px solid var(--gray-300); border-radius:4px;" required>
+                </div>
+                <div>
+                  <label class="text-xs text-gray block">Quantity (ขวด) <span style="color:var(--red);">*</span></label>
+                  <input type="number" min="1" value="${ci.qty}" onchange="setCartQty(${idx}, this.value)" style="width:70px; padding:4px 8px; font-size:12px; border:1px solid var(--gray-300); border-radius:4px;" required>
+                </div>
+              </div>
+            </div>
+          `;
+        }
+
         return `
         <div class="cart-item">
           <div class="flex justify-between items-center mb-2">
@@ -1763,12 +2016,16 @@ window.__INR_MAIN_PARSED = true;
           ${exCartBadge}
           <div class="flex justify-between items-center">
             <span class="badge ${warn ? 'badge-low' : 'badge-ok'}" title="Available Retail: ${retail}">Retail (${retail})</span>
+            ${!isContrast ? `
             <div class="qty-control">
               <button onclick="updateCartQty(${idx}, -1)">−</button>
               <input type="number" value="${ci.qty}" onchange="setCartQty(${idx}, this.value)">
               <button onclick="updateCartQty(${idx}, 1)">+</button>
             </div>
+            ` : `<span class="text-xs text-gray">${ci.qty} bottle(s)</span>`}
           </div>
+          ${contrastDualInputHtml}
+          ${pieceSelectorHtml}
         </div>
       `}).join('');
     }
@@ -3303,8 +3560,18 @@ function exportStatisticsCSV() {
       const sec = state.settingsSection || 'diseases';
       const listCard = document.getElementById('settings-list-card');
       const userCard = document.getElementById('settings-user-card');
+      const secCard  = document.getElementById('settings-security-card');
       const scopeSel = document.getElementById('settings-add-dept-scope');
       if (scopeSel) scopeSel.classList.toggle('hidden', sec !== 'departments');
+
+      if (sec === 'security') {
+        if (listCard) listCard.classList.add('hidden');
+        if (userCard) userCard.classList.add('hidden');
+        if (secCard) secCard.classList.remove('hidden');
+        return;
+      } else {
+        if (secCard) secCard.classList.add('hidden');
+      }
 
       if (sec === 'users') {
         if (listCard) listCard.classList.add('hidden');
@@ -3456,9 +3723,13 @@ function exportStatisticsCSV() {
 
     function removeSettingItem(idx) {
       const sec = state.settingsSection || 'diseases';
-      state.settings[sec].splice(idx, 1);
-      state.settingsDirty[sec] = true;
-      renderSettingsTab();
+      const item = (state.settings[sec] || [])[idx];
+      const name = (typeof item === 'object' ? item.name : item) || 'item';
+      verifyPasscodeThen(state.currentLang === 'th' ? `ยืนยันการลบ "${name}"?` : `Delete "${name}" from ${sec}?`, () => {
+        state.settings[sec].splice(idx, 1);
+        state.settingsDirty[sec] = true;
+        renderSettingsTab();
+      });
     }
 
     function moveSettingItem(idx, dir) {
@@ -3569,11 +3840,14 @@ function exportStatisticsCSV() {
     }
 
     function removeUser(idx) {
-      if (!confirm('Remove this user?')) return;
-      state.settings.users.splice(idx, 1);
-      state.settings.techs = state.settings.users;
-      state.settingsDirty.users = true;
-      renderSettingsTab();
+      const u = (state.settings.users || [])[idx];
+      const uName = u ? (u.name + ' ' + (u.surname || '')) : 'staff member';
+      verifyPasscodeThen(state.currentLang === 'th' ? `ยืนยันการลบผู้ใช้ "${uName}"?` : `Remove staff user "${uName}"?`, () => {
+        state.settings.users.splice(idx, 1);
+        state.settings.techs = state.settings.users;
+        state.settingsDirty.users = true;
+        renderSettingsTab();
+      });
     }
 
     function saveUsersList() {
@@ -3653,6 +3927,8 @@ function exportStatisticsCSV() {
             const histCount = Array.isArray(q.history) ? q.history.length : 0;
             const physInv = state.inventory.find(i => String(i.itemId) === String(q.physicalItemId));
             const retailNow = physInv ? (Number(physInv.retailStock) || 0) : 0;
+            const usedPieces = getQuotaUsedPieces(q);
+            const availPieces = getQuotaAvailablePieces(q);
 
             return `
               <tr>
@@ -3671,6 +3947,11 @@ function exportStatisticsCSV() {
                   </div>
                   <div class="progress-track">
                     <div class="progress-fill ${isDone ? 'done' : ''}" style="width:${pct}%;"></div>
+                  </div>
+                  <div class="text-xs text-gray mt-1" style="font-size:11px;">
+                    <span>Used: <strong>${formatPiecesList(usedPieces)}</strong></span>
+                    &nbsp;|&nbsp;
+                    <span style="color:var(--brand-dark);">Available: <strong>${formatPiecesList(availPieces)}</strong></span>
                   </div>
                 </td>
                 <td class="center font-bold" style="color:${rem === 0 ? 'var(--gray-400)' : 'var(--brand-dark)'};">${rem}</td>
@@ -3844,6 +4125,8 @@ function exportStatisticsCSV() {
     function openExchangeHistoryModal(quotaId) {
       const q = (state.exchangeQuotas || []).find(x => String(x.quotaId) === String(quotaId));
       if (!q) return;
+      const usedPieces = getQuotaUsedPieces(q);
+      const availPieces = getQuotaAvailablePieces(q);
       document.getElementById('modal-ex-hist-title').innerText = `Case History — ${q.quotaId}`;
       document.getElementById('modal-ex-hist-summary').innerHTML = `
         <div class="flex justify-between items-center flex-wrap gap-2">
@@ -3856,11 +4139,15 @@ function exportStatisticsCSV() {
             (<span class="badge ${q.status === 'Completed' ? 'badge-purple' : 'badge-ok'}">${q.status}</span>)
           </div>
         </div>
+        <div class="text-xs mt-2 pt-2" style="border-top:1px dashed var(--gray-200);">
+          <span>Used Pieces: <strong>${formatPiecesList(usedPieces)}</strong></span> &nbsp;|&nbsp;
+          <span style="color:var(--brand-dark);">Available Pieces: <strong>${formatPiecesList(availPieces)}</strong></span>
+        </div>
       `;
       const tbody = document.getElementById('modal-ex-hist-body');
       const hist = Array.isArray(q.history) ? q.history : [];
       if (hist.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" class="empty-state">No procedure cases recorded under this quota yet.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7" class="empty-state">No procedure cases recorded under this quota yet.</td></tr>';
       } else {
         tbody.innerHTML = hist.map((h, i) => `
           <tr>
@@ -3869,6 +4156,7 @@ function exportStatisticsCSV() {
             <td class="font-mono text-xs text-gray">${h.txnId || '—'}</td>
             <td class="font-semibold">${h.hn || '—'}</td>
             <td>${h.procedure || '—'}</td>
+            <td class="center font-mono font-bold" style="color:var(--purple-dark);">${h.pieceNo ? ('#' + h.pieceNo) : '—'}</td>
             <td class="center font-bold">${h.qty || 0}</td>
           </tr>
         `).join('');
@@ -3877,25 +4165,26 @@ function exportStatisticsCSV() {
     }
 
     function removeExchangeQuota(quotaId) {
-      if (!confirm('Remove this substitution quota rule?')) return;
-      if (isApiConfigured()) {
-        appLoading.classList.remove('hidden');
-        appContent.classList.add('hidden');
-        callApi('deleteExchangeQuota', { quotaId })
-          .then(() => {
-            showToast('Quota rule removed');
-            fetchDataFromServer();
-          })
-          .catch(err => {
-            showToast('Failed: ' + (err.message || err));
-            appLoading.classList.add('hidden');
-            appContent.classList.remove('hidden');
-          });
-      } else {
-        state.exchangeQuotas = (state.exchangeQuotas || []).filter(x => String(x.quotaId) !== String(quotaId));
-        showToast('Quota rule removed (mock)');
-        renderExchangeTab();
-      }
+      verifyPasscodeThen(state.currentLang === 'th' ? `ยืนยันการลบกฎโควตา ${quotaId}?` : `Remove substitution quota rule ${quotaId}?`, () => {
+        if (isApiConfigured()) {
+          appLoading.classList.remove('hidden');
+          appContent.classList.add('hidden');
+          callApi('deleteExchangeQuota', { quotaId })
+            .then(() => {
+              showToast('Quota rule removed');
+              fetchDataFromServer();
+            })
+            .catch(err => {
+              showToast('Failed: ' + (err.message || err));
+              appLoading.classList.add('hidden');
+              appContent.classList.remove('hidden');
+            });
+        } else {
+          state.exchangeQuotas = (state.exchangeQuotas || []).filter(x => String(x.quotaId) !== String(quotaId));
+          showToast('Quota rule removed (mock)');
+          renderExchangeTab();
+        }
+      });
     }
 
     function openConsignmentModal() {
@@ -4032,25 +4321,26 @@ function exportStatisticsCSV() {
     }
 
     function removeConsignmentHold(holdId) {
-      if (!confirm('Delete this consignment hold record?')) return;
-      if (isApiConfigured()) {
-        appLoading.classList.remove('hidden');
-        appContent.classList.add('hidden');
-        callApi('deleteConsignmentHold', { holdId })
-          .then(() => {
-            showToast('Consignment hold deleted');
-            fetchDataFromServer();
-          })
-          .catch(err => {
-            showToast('Failed: ' + (err.message || err));
-            appLoading.classList.add('hidden');
-            appContent.classList.remove('hidden');
-          });
-      } else {
-        state.consignments = (state.consignments || []).filter(x => String(x.holdId) !== String(holdId));
-        showToast('Consignment hold deleted (mock)');
-        renderExchangeTab();
-      }
+      verifyPasscodeThen(state.currentLang === 'th' ? `ต้องการลบรายการฝากของ ${holdId} หรือไม่?` : `Delete consignment hold record ${holdId}?`, () => {
+        if (isApiConfigured()) {
+          appLoading.classList.remove('hidden');
+          appContent.classList.add('hidden');
+          callApi('deleteConsignmentHold', { holdId })
+            .then(() => {
+              showToast('Consignment hold deleted');
+              fetchDataFromServer();
+            })
+            .catch(err => {
+              showToast('Failed: ' + (err.message || err));
+              appLoading.classList.add('hidden');
+              appContent.classList.remove('hidden');
+            });
+        } else {
+          state.consignments = (state.consignments || []).filter(x => String(x.holdId) !== String(holdId));
+          showToast('Consignment hold deleted (mock)');
+          renderExchangeTab();
+        }
+      });
     }
 
     // ════════════════════════════════════════════════════════════════
@@ -4131,7 +4421,8 @@ function exportStatisticsCSV() {
                 <span class="text-xs text-gray">/ ${tot}</span>
               </td>
               <td class="center"><span class="badge ${stBadge}">${formatLoanStatusText(l.status)}</span></td>
-              <td class="center">
+              <td class="center" style="white-space:nowrap;">
+                ${btnLabel === returnBtnTxt ? `<button class="btn btn-outline btn-sm" onclick="registerLoanItemAsInventory('${escapeHtml(l.loanId)}')" title="Register into Inventory with (Borrow) tag" style="margin-right:4px;">+ Inventory</button>` : ''}
                 <button class="btn btn-outline btn-sm" onclick="openLoanReturnModal('${escapeHtml(l.loanId)}')">${ICONS.check} ${btnLabel}</button>
               </td>
             </tr>
@@ -4239,6 +4530,36 @@ function exportStatisticsCSV() {
       // Optional hook when selecting device
     }
 
+    function registerLoanItemAsInventory(loanId) {
+      const l = (state.loans || []).find(x => String(x.loanId) === String(loanId));
+      if (!l) return;
+      const borrowSuffix = state.currentLang === 'th' ? '(ยืม)' : '(Borrow)';
+      let baseName = l.itemName || getDeviceName(l.itemId) || 'Borrowed Item';
+      if (!baseName.includes('(Borrow)') && !baseName.includes('(ยืม)')) {
+        baseName = `${baseName} ${borrowSuffix}`;
+      }
+      const remQty = Math.max(0, (Number(l.totalQty) || 0) - (Number(l.returnedQty) || 0));
+
+      openAddDeviceModal();
+      const modalTitleEl = document.getElementById('modal-device-title');
+      if (modalTitleEl) modalTitleEl.innerText = state.currentLang === 'th' ? 'ลงทะเบียนเวชภัณฑ์จากการยืม' : 'Register Borrowed Device to Inventory';
+      const nameEl = document.getElementById('inv-modal-name');
+      if (nameEl) nameEl.value = baseName;
+      const hoEl = document.getElementById('inv-modal-hoid');
+      if (hoEl) hoEl.value = l.docNo ? `BRW-${l.docNo}` : `BRW-${l.loanId}`;
+
+      const existingInv = state.inventory.find(i => String(i.itemId) === String(l.itemId));
+      const catEl = document.getElementById('inv-modal-cat');
+      if (catEl && existingInv && existingInv.category) {
+        catEl.value = existingInv.category;
+      }
+      const mainEl = document.getElementById('inv-modal-main');
+      if (mainEl) mainEl.value = String(remQty);
+      const totalEl = document.getElementById('inv-modal-total');
+      if (totalEl) totalEl.value = String(remQty);
+      showToast(state.currentLang === 'th' ? `กรอกข้อมูลเวชภัณฑ์จากการยืม "${baseName}" เรียบร้อยแล้ว` : `Pre-filled inventory registration for "${baseName}"`);
+    }
+
     function openLoanModal() {
       document.getElementById('loan-modal-scope').value     = 'Internal';
       document.getElementById('loan-modal-direction').value = 'We Borrowed (Inward)';
@@ -4248,6 +4569,8 @@ function exportStatisticsCSV() {
       document.getElementById('loan-modal-date').value      = getToday();
       document.getElementById('loan-modal-tech').value      = '';
       document.getElementById('loan-modal-notes').value     = '';
+      const regCheck = document.getElementById('loan-register-inv-check');
+      if (regCheck) regCheck.checked = false;
 
       onLoanScopeChange();
 
@@ -4288,6 +4611,40 @@ function exportStatisticsCSV() {
       }
 
       const itemName = getDeviceName(itemId);
+      const shouldRegisterInv = document.getElementById('loan-register-inv-check')?.checked;
+      if (shouldRegisterInv) {
+        const borrowSuffix = state.currentLang === 'th' ? '(ยืม)' : '(Borrow)';
+        let regName = itemName;
+        if (!regName.includes('(Borrow)') && !regName.includes('(ยืม)')) {
+          regName = `${regName} ${borrowSuffix}`;
+        }
+        const existingInv = state.inventory.find(i => String(i.itemId) === String(itemId));
+        const newDevPayload = {
+          deviceName: regName,
+          category: existingInv ? existingInv.category : 'Other',
+          hoItemId: docNo ? `BRW-${docNo}` : `BRW-${itemId}`,
+          buyPrice: existingInv ? existingInv.buyPrice : 0,
+          sellPrice: existingInv ? existingInv.sellPrice : 0,
+          mainStock: totalQty,
+          retailStock: 0,
+          bufferStock: 0,
+          totalStock: totalQty,
+          hoStock: 0,
+          stockDiff: totalQty,
+          stockMonth: 0,
+          exceedPercent: 0,
+          orderEstimate: 0,
+          buyPoint: 0,
+          safetyStock: 0
+        };
+        if (isApiConfigured()) {
+          callApi('addInventoryItem', newDevPayload).catch(e => console.error('Auto register borrowed item failed:', e));
+        } else {
+          newDevPayload.itemId = 'BRW-' + Date.now().toString().slice(-6);
+          state.inventory.push(newDevPayload);
+        }
+      }
+
       const payload = {
         scope, direction, department, docNo,
         itemId, itemName, totalQty, location, date, tech, notes
@@ -4417,25 +4774,26 @@ function exportStatisticsCSV() {
     }
 
     function removeLoanTransfer(loanId) {
-      if (!confirm('Delete this loan/transfer record?')) return;
-      if (isApiConfigured()) {
-        appLoading.classList.remove('hidden');
-        appContent.classList.add('hidden');
-        callApi('deleteLoanTransfer', { loanId })
-          .then(() => {
-            showToast('Loan record deleted');
-            fetchDataFromServer();
-          })
-          .catch(err => {
-            showToast('Failed: ' + (err.message || err));
-            appLoading.classList.add('hidden');
-            appContent.classList.remove('hidden');
-          });
-      } else {
-        state.loans = (state.loans || []).filter(x => String(x.loanId) !== String(loanId));
-        showToast('Loan record deleted (mock)');
-        renderLoanTab();
-      }
+      verifyPasscodeThen(state.currentLang === 'th' ? `ต้องการลบรายการยืม/โอนย้าย ${loanId} หรือไม่?` : `Delete loan/transfer record ${loanId}?`, () => {
+        if (isApiConfigured()) {
+          appLoading.classList.remove('hidden');
+          appContent.classList.add('hidden');
+          callApi('deleteLoanTransfer', { loanId })
+            .then(() => {
+              showToast('Loan record deleted');
+              fetchDataFromServer();
+            })
+            .catch(err => {
+              showToast('Failed: ' + (err.message || err));
+              appLoading.classList.add('hidden');
+              appContent.classList.remove('hidden');
+            });
+        } else {
+          state.loans = (state.loans || []).filter(x => String(x.loanId) !== String(loanId));
+          showToast('Loan record deleted (mock)');
+          renderLoanTab();
+        }
+      });
     }
 
     // ════════════════════════════════════════════════════════════════
@@ -4661,6 +5019,7 @@ function exportStatisticsCSV() {
             <td class="center">${getAssetStatusBadge(a.status)}</td>
             <td>${maintSummaryHtml}</td>
             <td class="center no-print" style="white-space:nowrap;" onclick="event.stopPropagation()">
+              <button class="btn-ghost" onclick="openAssetQrModal('${escapeHtml(a.assetId)}')" title="View & Print QR Code"><svg width="15" height="15" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 4a1 1 0 011-1h3a1 1 0 011 1v3a1 1 0 01-1 1H4a1 1 0 01-1-1V4zm2 2V5h1v1H5zM3 13a1 1 0 011-1h3a1 1 0 011 1v3a1 1 0 01-1 1H4a1 1 0 01-1-1v-3zm2 2v-1h1v1H5zM13 3a1 1 0 00-1 1v3a1 1 0 001 1h3a1 1 0 001-1V4a1 1 0 00-1-1h-3zm1 2v1h1V5h-1z" clip-rule="evenodd"/></svg><span>QR</span></button>
               <button class="btn-ghost" onclick="openAssetDetailModal('${escapeHtml(a.assetId)}')" title="View Profile & Maintenance History">${ICONS.eye}<span>Profile</span></button>
               <button class="btn-ghost" onclick="openAssetFormModal('${escapeHtml(a.assetId)}')" title="Edit Asset">${ICONS.edit}<span>Edit</span></button>
               ${condemnBtnHtml}
@@ -4841,12 +5200,12 @@ function exportStatisticsCSV() {
       document.getElementById('asset-detail-title').innerText = a.assetName + ' (' + a.assetId + ')';
       document.getElementById('asset-detail-status-badge').innerHTML = getAssetStatusBadge(a.status);
 
-      const qrData = a.assetId;
+      const qrData = a.hospitalCode || a.assetId;
       const qrImgUrl = buildQrCodeUrl(qrData, 150);
       const photoBoxHtml = a.photoUrl
         ? buildImgHtml(escapeHtml(a.photoUrl), '', 'width:100%; height:190px; object-fit:cover; border-radius:8px; border:1px solid var(--gray-200);', escapeHtml(a.assetName), false)
         : '<div style="width:100%; height:190px; border-radius:8px; border:1px dashed var(--gray-300); background:var(--gray-50); display:flex; flex-direction:column; align-items:center; justify-content:center; color:var(--gray-400); font-size:12px;">No Asset Photo</div>';
-      const qrBoxImgHtml = buildImgHtml(qrImgUrl, '', 'width:120px; height:120px; margin:0 auto; display:block;', 'QR ' + escapeHtml(a.assetId), false);
+      const qrBoxImgHtml = buildImgHtml(qrImgUrl, '', 'width:120px; height:120px; margin:0 auto; display:block;', 'QR ' + escapeHtml(qrData), false);
 
       document.getElementById('asset-detail-top-box').innerHTML = `
         <div>${photoBoxHtml}</div>
@@ -4866,7 +5225,7 @@ function exportStatisticsCSV() {
         </div>
         <div style="border:1px solid var(--gray-200); border-radius:8px; padding:10px; text-align:center; background:var(--white);">
           ${qrBoxImgHtml}
-          <div class="font-mono font-bold text-xs mt-1">${escapeHtml(a.assetId)}</div>
+          <div class="font-mono font-bold text-xs mt-1">${escapeHtml(a.hospitalCode || a.assetId)}</div>
           <button type="button" class="btn btn-outline btn-sm mt-2" style="width:100%; justify-content:center;" onclick="printAssetQrLabel('${escapeHtml(a.assetId)}')">
             ${ICONS.print}<span>Print QR</span>
           </button>
@@ -5025,34 +5384,35 @@ function exportStatisticsCSV() {
     }
 
     function removeAssetMaintenanceLog(assetId, logId) {
-      if (!confirm('Delete this maintenance log entry?')) return;
-      setSyncIndicator(true);
-      if (isApiConfigured()) {
-        callApi('deleteAssetMaintenanceLog', { assetId, logId })
-          .then(() => {
-            setSyncIndicator(false);
-            const a = (state.assets || []).find(x => String(x.assetId) === String(assetId));
-            if (a && Array.isArray(a.maintenanceHistory)) {
-              a.maintenanceHistory = a.maintenanceHistory.filter(h => String(h.logId) !== String(logId));
-              renderAssetMaintHistoryTable(a);
-            }
+      verifyPasscodeThen(state.currentLang === 'th' ? `ต้องการลบประวัติการบำรุงรักษา ${logId} หรือไม่?` : `Delete maintenance log entry ${logId}?`, () => {
+        setSyncIndicator(true);
+        if (isApiConfigured()) {
+          callApi('deleteAssetMaintenanceLog', { assetId, logId })
+            .then(() => {
+              setSyncIndicator(false);
+              const a = (state.assets || []).find(x => String(x.assetId) === String(assetId));
+              if (a && Array.isArray(a.maintenanceHistory)) {
+                a.maintenanceHistory = a.maintenanceHistory.filter(h => String(h.logId) !== String(logId));
+                renderAssetMaintHistoryTable(a);
+              }
+              renderAssetsTab();
+              showToast('Maintenance log deleted');
+            })
+            .catch(err => {
+              setSyncIndicator(false);
+              showToast('Failed: ' + (err.message || err));
+            });
+        } else {
+          setSyncIndicator(false);
+          const a = (state.assets || []).find(x => String(x.assetId) === String(assetId));
+          if (a && Array.isArray(a.maintenanceHistory)) {
+            a.maintenanceHistory = a.maintenanceHistory.filter(h => String(h.logId) !== String(logId));
+            renderAssetMaintHistoryTable(a);
             renderAssetsTab();
-            showToast('Maintenance log deleted');
-          })
-          .catch(err => {
-            setSyncIndicator(false);
-            showToast('Failed: ' + (err.message || err));
-          });
-      } else {
-        setSyncIndicator(false);
-        const a = (state.assets || []).find(x => String(x.assetId) === String(assetId));
-        if (a && Array.isArray(a.maintenanceHistory)) {
-          a.maintenanceHistory = a.maintenanceHistory.filter(h => String(h.logId) !== String(logId));
-          renderAssetMaintHistoryTable(a);
-          renderAssetsTab();
-          showToast('Maintenance log deleted (mock)');
+            showToast('Maintenance log deleted (mock)');
+          }
         }
-      }
+      });
     }
 
     function openAssetDamageModal(assetId) {
@@ -5134,32 +5494,52 @@ function exportStatisticsCSV() {
     }
 
     function removeAssetItem(assetId) {
-      if (!confirm(`Delete asset ${assetId} permanently from registry?`)) return;
-      closeModal();
-      setSyncIndicator(true);
-      if (isApiConfigured()) {
-        callApi('deleteAssetItem', { assetId })
-          .then(() => {
-            setSyncIndicator(false);
-            showToast('Asset deleted');
-            fetchDataFromServer();
-          })
-          .catch(err => {
-            setSyncIndicator(false);
-            showToast('Failed: ' + (err.message || err));
-          });
-      } else {
-        setSyncIndicator(false);
-        state.assets = (state.assets || []).filter(a => String(a.assetId) !== String(assetId));
-        showToast('Asset deleted (mock)');
-        renderAssetsTab();
-      }
+      verifyPasscodeThen(state.currentLang === 'th' ? `ต้องการลบครุภัณฑ์ ${assetId} ออกอย่างถาวรหรือไม่?` : `Delete asset ${assetId} permanently from registry?`, () => {
+        closeModal();
+        setSyncIndicator(true);
+        if (isApiConfigured()) {
+          callApi('deleteAssetItem', { assetId })
+            .then(() => {
+              setSyncIndicator(false);
+              showToast('Asset deleted');
+              fetchDataFromServer();
+            })
+            .catch(err => {
+              setSyncIndicator(false);
+              showToast('Failed: ' + (err.message || err));
+            });
+        } else {
+          setSyncIndicator(false);
+          state.assets = (state.assets || []).filter(a => String(a.assetId) !== String(assetId));
+          showToast('Asset deleted (mock)');
+          renderAssetsTab();
+        }
+      });
+    }
+
+    function openAssetQrModal(assetId) {
+      const a = (state.assets || []).find(x => String(x.assetId) === String(assetId));
+      if (!a) return;
+      state.selectedQrAssetId = a.assetId;
+      const qrData = a.hospitalCode || a.assetId;
+      const qrImgUrl = buildQrCodeUrl(qrData, 220);
+      const imgEl = document.getElementById('asset-qr-img');
+      if (imgEl) imgEl.src = qrImgUrl;
+      const nameEl = document.getElementById('asset-qr-name');
+      if (nameEl) nameEl.innerText = a.assetName;
+      const codeEl = document.getElementById('asset-qr-code');
+      if (codeEl) codeEl.innerText = qrData;
+      const metaEl = document.getElementById('asset-qr-meta');
+      if (metaEl) metaEl.innerText = `Asset ID: ${a.assetId} | S/N: ${a.serialNumber || '—'} | Room: ${a.room || '—'}`;
+      openModal('modal-asset-qr');
     }
 
     function printAssetQrLabel(assetId) {
-      const a = (state.assets || []).find(x => String(x.assetId) === String(assetId));
+      const targetId = assetId || state.selectedQrAssetId || state.activeAssetDetailId;
+      const a = (state.assets || []).find(x => String(x.assetId) === String(targetId));
       if (!a) return;
-      const qrImgUrl = buildQrCodeUrl(a.assetId, 180);
+      const qrData = a.hospitalCode || a.assetId;
+      const qrImgUrl = buildQrCodeUrl(qrData, 180);
       const qrPrintImgHtml = buildImgHtml(qrImgUrl, '', 'width:110px; height:110px; flex-shrink:0;', 'QR', false);
       const html = `
         <div style="padding:20px; font-family:'Noto Sans', 'Noto Sans Thai', sans-serif;">
@@ -5167,13 +5547,101 @@ function exportStatisticsCSV() {
             ${qrPrintImgHtml}
             <div style="font-size:12px; line-height:1.4;">
               <div style="font-weight:800; font-size:14px; color:#111827;">INR EQUIPMENT ASSET</div>
-              <div style="font-family:monospace; font-weight:700; font-size:15px; color:#059669; margin-top:2px;">${escapeHtml(a.assetId)}</div>
+              <div style="font-family:monospace; font-weight:700; font-size:15px; color:#059669; margin-top:2px;">${escapeHtml(a.hospitalCode || a.assetId)}</div>
               <div style="font-weight:700; margin-top:4px;">${escapeHtml(a.assetName)}</div>
-              <div style="color:#4b5563; font-size:11px; margin-top:2px;">Code: ${escapeHtml(a.hospitalCode || '—')}</div>
+              <div style="color:#4b5563; font-size:11px; margin-top:2px;">Asset ID: ${escapeHtml(a.assetId)}</div>
               <div style="color:#4b5563; font-size:11px;">S/N: ${escapeHtml(a.serialNumber || '—')}</div>
               <div style="color:#4b5563; font-size:11px;">Room: ${escapeHtml(a.room || '—')}</div>
             </div>
           </div>
+        </div>
+      `;
+      printStageHtml(html);
+    }
+
+    function exportAssetsCSV() {
+      const assets = Array.isArray(state.assets) ? state.assets : [];
+      if (assets.length === 0) {
+        showToast('No assets data to export');
+        return;
+      }
+      const headers = ['Asset ID', 'Hospital Asset Code', 'Asset Name', 'Category', 'Serial Number', 'Room / Location', 'Status', 'Acquisition Date', 'Warranty Date', 'Vendor', 'Cost', 'Notes'];
+      const csvLines = [
+        headers.map(h => '"' + h.replace(/"/g, '""') + '"').join(',')
+      ];
+      assets.forEach(a => {
+        const row = [
+          a.assetId || '',
+          a.hospitalCode || '',
+          a.assetName || '',
+          a.category || '',
+          a.serialNumber || '',
+          a.room || '',
+          a.status || '',
+          a.acquisitionDate || '',
+          a.warrantyDate || '',
+          a.vendor || '',
+          a.cost || '',
+          a.notes || ''
+        ];
+        csvLines.push(row.map(val => '"' + String(val).replace(/"/g, '""').replace(/[\r\n]+/g, ' ') + '"').join(','));
+      });
+      const filename = `INR_Assets_${getToday()}.csv`;
+      const blob = new Blob(['\uFEFF' + csvLines.join('\r\n')], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      showToast('Exported CSV: ' + filename);
+    }
+
+    function printAssetsList() {
+      const assets = Array.isArray(state.assets) ? state.assets : [];
+      if (assets.length === 0) {
+        showToast('No assets to print');
+        return;
+      }
+      const html = `
+        <div style="padding:20px; font-family:'Noto Sans', 'Noto Sans Thai', sans-serif;">
+          <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:2px solid #111827; padding-bottom:10px; margin-bottom:15px;">
+            <div>
+              <h2 style="margin:0; font-size:18px; font-weight:800; color:#111827;">Hospital Equipment & Fixed Assets Registry</h2>
+              <div style="font-size:12px; color:#4b5563;">Interventional Neuroradiology (INR) · Total: ${assets.length} items</div>
+            </div>
+            <div style="font-size:11px; text-align:right; color:#6b7280;">Printed: ${formatDate(getToday())}</div>
+          </div>
+          <table style="width:100%; border-collapse:collapse; font-size:11px;">
+            <thead>
+              <tr style="background:#f3f4f6; border-bottom:1.5px solid #d1d5db; text-align:left;">
+                <th style="padding:6px 8px;">Asset ID</th>
+                <th style="padding:6px 8px;">Hospital Code</th>
+                <th style="padding:6px 8px;">Asset Name</th>
+                <th style="padding:6px 8px;">Category</th>
+                <th style="padding:6px 8px;">S/N</th>
+                <th style="padding:6px 8px;">Room</th>
+                <th style="padding:6px 8px;">Status</th>
+                <th style="padding:6px 8px;">Acquisition</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${assets.map(a => `
+                <tr style="border-bottom:1px solid #e5e7eb; page-break-inside:avoid;">
+                  <td style="padding:5px 8px; font-family:monospace; font-weight:bold;">${escapeHtml(a.assetId)}</td>
+                  <td style="padding:5px 8px; font-family:monospace;">${escapeHtml(a.hospitalCode || '—')}</td>
+                  <td style="padding:5px 8px; font-weight:600;">${escapeHtml(a.assetName)}</td>
+                  <td style="padding:5px 8px;">${escapeHtml(a.category || '—')}</td>
+                  <td style="padding:5px 8px; font-family:monospace;">${escapeHtml(a.serialNumber || '—')}</td>
+                  <td style="padding:5px 8px;">${escapeHtml(a.room || '—')}</td>
+                  <td style="padding:5px 8px;">${escapeHtml(a.status || 'Active')}</td>
+                  <td style="padding:5px 8px;">${formatDate(a.acquisitionDate)}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
         </div>
       `;
       printStageHtml(html);
@@ -5672,6 +6140,31 @@ function exportStatisticsCSV() {
             }
           }
 
+          // Validate Contrast Media (both Volume (ml) and Quantity required)
+          for (const ci of state.cart) {
+            const inv = state.inventory.find(i => String(i.itemId) === String(ci.itemId));
+            const isContrast = ci.isContrast || (inv && String(inv.category || '').toLowerCase().includes('contrast'));
+            if (isContrast) {
+              const vol = Number(ci.volumeMl);
+              const btl = Number(ci.qty);
+              if (!vol || vol <= 0) {
+                showToast(`Please enter Volume (ml) for contrast media: "${ci.deviceName}"`);
+                return;
+              }
+              if (!btl || btl <= 0) {
+                showToast(`Please enter Quantity / Bottle count for contrast media: "${ci.deviceName}"`);
+                return;
+              }
+            }
+          }
+
+          // Format contrast media summary
+          const contrastItems = state.cart.filter(c => {
+            const inv = state.inventory.find(i => String(i.itemId) === String(c.itemId));
+            return c.isContrast || (inv && String(inv.category || '').toLowerCase().includes('contrast'));
+          });
+          const contrastSummary = contrastItems.map(c => `${c.deviceName} (${c.volumeMl} ml, ${c.qty} btl)`).join(', ');
+
           const selectedTechs = Array.from(document.querySelectorAll('#proc-techs input[type="checkbox"]:checked')).map(cb => cb.value);
 
           const payload = {
@@ -5683,8 +6176,13 @@ function exportStatisticsCSV() {
             shift: document.getElementById('proc-shift').value,
             tech: selectedTechs.join(', '),
             complication: document.getElementById('proc-complications').value,
-            contrast: '',
-            devices: state.cart.map(ci => ({ itemId: ci.itemId, quantity: ci.qty }))
+            contrast: contrastSummary,
+            devices: state.cart.map(ci => ({
+              itemId: ci.itemId,
+              quantity: ci.qty,
+              volumeMl: ci.volumeMl,
+              pieceNo: ci.pieceNo
+            }))
           };
 
           // Check negative retail stock warnings
@@ -5737,7 +6235,7 @@ function exportStatisticsCSV() {
                   shift: payload.shift,
                   tech: payload.tech,
                   complication: payload.complication,
-                  contrast: ''
+                  contrast: payload.contrast || ''
                 });
               } else {
                 payload.devices.forEach(d => {
@@ -5755,7 +6253,7 @@ function exportStatisticsCSV() {
                     shift: payload.shift,
                     tech: payload.tech,
                     complication: payload.complication,
-                    contrast: ''
+                    contrast: payload.contrast || ''
                   });
                   const inv = state.inventory.find(i => String(i.itemId) === String(d.itemId));
                   if (inv) {
@@ -5766,14 +6264,28 @@ function exportStatisticsCSV() {
                   // Module 2: Increment active Exchange Quota if physicalItemId matches
                   const exRule = getActiveExchangeRule(d.itemId);
                   if (exRule) {
-                    exRule.currentUsed = (Number(exRule.currentUsed) || 0) + (Number(d.quantity) || 0);
+                    if (!Array.isArray(exRule.usedPieces)) exRule.usedPieces = getQuotaUsedPieces(exRule);
+                    let pNo = d.pieceNo ? Number(d.pieceNo) : null;
+                    if (pNo && !isNaN(pNo)) {
+                      if (!exRule.usedPieces.includes(pNo)) exRule.usedPieces.push(pNo);
+                    } else {
+                      for (let k = 1; k <= (Number(exRule.totalQuota) || 0); k++) {
+                        if (!exRule.usedPieces.includes(k)) {
+                          pNo = k;
+                          exRule.usedPieces.push(k);
+                          break;
+                        }
+                      }
+                    }
+                    exRule.currentUsed = exRule.usedPieces.length;
                     if (!Array.isArray(exRule.history)) exRule.history = [];
                     exRule.history.push({
                       txnId: txGroupId,
                       date: payload.date,
                       hn: payload.patientHN,
                       qty: Number(d.quantity) || 0,
-                      procedure: payload.procedure
+                      procedure: payload.procedure,
+                      pieceNo: pNo
                     });
                     if (exRule.currentUsed >= exRule.totalQuota) {
                       exRule.status = 'Completed';
@@ -6007,6 +6519,36 @@ function exportStatisticsCSV() {
         console.error('Error binding main events:', err);
       }
     }
+
+    // Mobile Touch Gesture: Swipe right from left edge (< 40px) to open sidebar; swipe left to close
+    let _touchStartX = 0;
+    let _touchStartY = 0;
+    document.addEventListener('touchstart', (e) => {
+      if (e.touches && e.touches.length === 1) {
+        _touchStartX = e.touches[0].clientX;
+        _touchStartY = e.touches[0].clientY;
+      }
+    }, { passive: true });
+
+    document.addEventListener('touchend', (e) => {
+      if (window.innerWidth > 768) return;
+      if (!e.changedTouches || e.changedTouches.length === 0) return;
+      const deltaX = e.changedTouches[0].clientX - _touchStartX;
+      const deltaY = e.changedTouches[0].clientY - _touchStartY;
+
+      if (Math.abs(deltaX) > 50 && Math.abs(deltaX) > Math.abs(deltaY) * 1.4) {
+        if (deltaX > 0 && _touchStartX < 40) {
+          // Swipe right from screen edge (< 40px) -> open sidebar
+          setSidebarHidden(false);
+        } else if (deltaX < 0) {
+          // Swipe left -> close sidebar
+          const root = document.getElementById('app-root');
+          if (root && !root.classList.contains('sidebar-hidden')) {
+            setSidebarHidden(true);
+          }
+        }
+      }
+    }, { passive: true });
 
     if (document.readyState === 'loading') {
       document.addEventListener('DOMContentLoaded', bootstrapApp);
