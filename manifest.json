@@ -1,0 +1,20 @@
+{
+  "name": "INR Inventory — Interventional Neuroradiology",
+  "short_name": "INR Inventory",
+  "description": "Interventional Neuroradiology Inventory, Procedure Use, Exchange, Transfer & Asset Management System",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#f4f5f7",
+  "theme_color": "#10b981",
+  "lang": "en",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'%3E%3Crect width='180' height='180' rx='38' fill='%2310b981'/%3E%3Cpath d='M90 32L36 60v60l54 28 54-28V60L90 32zm0 18l36 18-36 18-36-18 36-18zm-40 30l34 17v41l-34-17V80zm80 41l-34 17V97l34-17v41z' fill='%23ffffff'/%3E%3C/svg%3E",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
