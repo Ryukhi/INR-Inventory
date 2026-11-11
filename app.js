@@ -7,7 +7,7 @@ window.__INR_MAIN_PARSED = true;
 
     // ===== BACKEND API CONFIGURATION =====
     // Replace with your deployed Google Apps Script Web App URL (/exec)
-    const API_URL = 'https://script.google.com/macros/s/AKfycbyScTX3sDbFb3n9tp1cFkz3ch95g_mcEHcM5o_9Guu4-58VRzxv-2IbvTLHw_CNkUSs/exec';
+    const API_URL = 'https://script.google.com/macros/s/AKfycby4WK84FCoGDUYFtQVIPE_EA538YteuhEX2qqMT2Gv2QtJEeuro2fvYutXDFnVjLpYS/exec';
     const API_TIMEOUT_MS = 30000;
 
     function getConfiguredApiUrl() {
