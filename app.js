@@ -2454,71 +2454,97 @@ window.__INR_MAIN_PARSED = true;
       container.innerHTML = state.cart.map((ci, idx) => {
         const inv = state.inventory.find(i => String(i.itemId) === String(ci.itemId));
         const retail = inv ? (Number(inv.retailStock) || 0) : 0;
-        const warn = retail - ci.qty < 0;
+        const warn = retail <= 0 || (retail - ci.qty < 0);
         const isContrast = ci.isContrast || (inv && String(inv.category || '').toLowerCase().includes('contrast'));
         const exRule = getActiveExchangeRule(ci.itemId);
+        const freeBadgeHtml = (inv && inv.isFreeItem) || ci.isFreeItem ? ' <span class="badge-free">FREE</span>' : '';
 
-        let exCartBadge = '';
-        let pieceSelectorHtml = '';
+        // 1. Substituted Item Layout
         if (exRule) {
-          const usedPieces = getQuotaUsedPieces(exRule);
           const availPieces = getQuotaAvailablePieces(exRule);
-          if (!ci.pieceNo && availPieces.length > 0) ci.pieceNo = availPieces[0];
+          if (!ci.pieceNo && availPieces.length > 0) {
+            ci.pieceNo = availPieces[0];
+          } else if (ci.pieceNo && !availPieces.includes(Number(ci.pieceNo)) && availPieces.length > 0) {
+            ci.pieceNo = availPieces[0];
+          }
 
-          exCartBadge = `
-            <div class="mb-2">
-              <span class="badge badge-purple" style="font-size:10.5px;">Substituted for ${getDeviceName(exRule.substitutedItemId)} [Quota: ${exRule.currentUsed}/${exRule.totalQuota}]</span>
-            </div>
-          `;
+          const targetName = getDeviceName(exRule.substitutedItemId);
+          const quotaText = `Substituted for ${escapeHtml(targetName)} [Quota: ${exRule.currentUsed}/${exRule.totalQuota}]`;
 
-          pieceSelectorHtml = `
-            <div class="mt-2 p-2 flex items-center justify-center gap-2" style="background:#f5f3ff; border:1px solid #ddd6fe; border-radius:6px; font-size:12px;">
-              <select class="form-select form-input-sm" onchange="setCartPieceNo(${idx}, this.value)" style="width:auto; min-width:72px; padding:3px 10px; font-size:12px; background:#fff; text-align:center;">
-                ${availPieces.map(p => `<option value="${p}" ${String(ci.pieceNo) === String(p) ? 'selected' : ''}>${p}</option>`).join('')}
-              </select>
-            </div>
-          `;
-        }
+          const pieceOptionsHtml = availPieces.length > 0
+            ? availPieces.map(p => `<option value="${p}" ${String(ci.pieceNo) === String(p) ? 'selected' : ''}>Piece #${p} of ${exRule.totalQuota}</option>`).join('')
+            : '<option value="">No quota available</option>';
 
-        let contrastDualInputHtml = '';
-        if (isContrast) {
-          contrastDualInputHtml = `
-            <div class="mt-2 p-2" style="background:#eff6ff; border:1px solid #bfdbfe; border-radius:6px; font-size:12px;">
-              <div class="flex gap-2 items-center justify-center flex-wrap" style="text-align:center;">
-                <div style="text-align:center;">
-                  <label class="text-xs text-gray block">Volume (ml) <span style="color:var(--red);">*</span></label>
-                  <input type="number" step="any" min="1" placeholder="e.g. 50" value="${ci.volumeMl || ''}" onchange="setCartVolume(${idx}, this.value)" style="width:100px; padding:4px 8px; font-size:12px; border:1px solid var(--gray-300); border-radius:4px; text-align:center;" required>
+          return `
+            <div class="cart-item">
+              <div class="cart-item-header">
+                <span class="cart-item-title truncate" title="${escapeHtml(ci.deviceName)}">${escapeHtml(ci.deviceName)}${freeBadgeHtml}</span>
+                <button class="btn-ghost cart-item-remove" onclick="removeFromCart(${idx})" title="Remove">✕</button>
+              </div>
+              <div class="cart-sub-notice">
+                ${quotaText}
+              </div>
+              <div class="cart-controls-row">
+                <span class="badge ${warn ? 'badge-low' : 'badge-ok'} cart-stock-badge ${warn ? 'stock-low' : 'stock-ok'}" title="Available Retail: ${retail}">Retail (${retail})</span>
+                <div class="cart-piece-control">
+                  <label class="cart-control-label">Piece No:</label>
+                  <select class="form-select cart-piece-select" onchange="setCartPieceNo(${idx}, this.value)">
+                    ${pieceOptionsHtml}
+                  </select>
                 </div>
-                <div style="text-align:center;">
-                  <label class="text-xs text-gray block">Quantity (ขวด) <span style="color:var(--red);">*</span></label>
-                  <input type="number" min="1" value="${ci.qty}" onchange="setCartQty(${idx}, this.value)" style="width:70px; padding:4px 8px; font-size:12px; border:1px solid var(--gray-300); border-radius:4px; text-align:center;" required>
+                <div class="qty-control">
+                  <button onclick="updateCartQty(${idx}, -1)">−</button>
+                  <input type="number" value="${ci.qty}" onchange="setCartQty(${idx}, this.value)">
+                  <button onclick="updateCartQty(${idx}, 1)">+</button>
                 </div>
               </div>
             </div>
           `;
         }
 
-        return `
-        <div class="cart-item">
-          <div class="flex justify-between items-center mb-2">
-            <span class="font-medium text-sm truncate" style="max-width:180px;" title="${ci.deviceName}">${ci.deviceName}</span>
-            <button class="btn-ghost" onclick="removeFromCart(${idx})" style="color:var(--red);">✕</button>
-          </div>
-          ${exCartBadge}
-          <div class="flex justify-between items-center">
-            <span class="badge ${warn ? 'badge-low' : 'badge-ok'}" title="Available Retail: ${retail}">Retail (${retail})</span>
-            ${!isContrast ? `
-            <div class="qty-control">
-              <button onclick="updateCartQty(${idx}, -1)">−</button>
-              <input type="number" value="${ci.qty}" onchange="setCartQty(${idx}, this.value)">
-              <button onclick="updateCartQty(${idx}, 1)">+</button>
+        // 2. Contrast Media Category Card Layout
+        if (isContrast) {
+          return `
+            <div class="cart-item">
+              <div class="cart-item-header">
+                <span class="cart-item-title truncate" title="${escapeHtml(ci.deviceName)}">${escapeHtml(ci.deviceName)}${freeBadgeHtml}</span>
+                <button class="btn-ghost cart-item-remove" onclick="removeFromCart(${idx})" title="Remove">✕</button>
+              </div>
+              <div class="cart-controls-row">
+                <span class="badge ${warn ? 'badge-low' : 'badge-ok'} cart-stock-badge ${warn ? 'stock-low' : 'stock-ok'}" title="Available Retail: ${retail}">Retail (${retail})</span>
+                <div class="cart-contrast-fields">
+                  <div class="cart-field-group">
+                    <label class="cart-control-label">Volume (ml) <span style="color:var(--red);">*</span></label>
+                    <input type="number" step="any" min="1" placeholder="e.g. 50" value="${ci.volumeMl || ''}" oninput="setCartVolume(${idx}, this.value)" class="form-input cart-vol-input" required>
+                  </div>
+                  <div class="cart-field-group">
+                    <label class="cart-control-label">Quantity (ขวด) <span style="color:var(--red);">*</span></label>
+                    <input type="number" min="1" value="${ci.qty || 1}" onchange="setCartQty(${idx}, this.value)" class="form-input cart-qty-input" required>
+                  </div>
+                </div>
+              </div>
             </div>
-            ` : `<span class="text-xs text-gray">${ci.qty} bottle(s)</span>`}
+          `;
+        }
+
+        // 3. Standard Item Layout
+        return `
+          <div class="cart-item">
+            <div class="cart-item-header">
+              <span class="cart-item-title truncate" title="${escapeHtml(ci.deviceName)}">${escapeHtml(ci.deviceName)}${freeBadgeHtml}</span>
+              <button class="btn-ghost cart-item-remove" onclick="removeFromCart(${idx})" title="Remove">✕</button>
+            </div>
+            <div class="cart-controls-row">
+              <span class="badge ${warn ? 'badge-low' : 'badge-ok'} cart-stock-badge ${warn ? 'stock-low' : 'stock-ok'}" title="Available Retail: ${retail}">Retail (${retail})</span>
+              <div class="qty-control">
+                <button onclick="updateCartQty(${idx}, -1)">−</button>
+                <input type="number" value="${ci.qty}" onchange="setCartQty(${idx}, this.value)">
+                <button onclick="updateCartQty(${idx}, 1)">+</button>
+              </div>
+            </div>
           </div>
-          ${contrastDualInputHtml}
-          ${pieceSelectorHtml}
-        </div>
-      `}).join('');
+        `;
+      }).join('');
     }
 
     function removeFromCart(idx) {
@@ -2861,7 +2887,7 @@ window.__INR_MAIN_PARSED = true;
           pieceWrap.classList.remove('hidden');
           const avail = getQuotaAvailablePieces(exRule);
           if (pieceSelect) {
-            pieceSelect.innerHTML = avail.map(p => `<option value="${p}">${p}</option>`).join('');
+            pieceSelect.innerHTML = avail.map(p => `<option value="${p}">Piece #${p} of ${exRule.totalQuota}</option>`).join('');
           }
         } else {
           pieceWrap.classList.add('hidden');
@@ -2913,7 +2939,7 @@ window.__INR_MAIN_PARSED = true;
               <div class="flex items-center gap-1">
                 <label class="text-xs text-gray font-medium">Piece No:</label>
                 <select class="form-select form-input-sm" onchange="setProcEditDevicePieceNo(${idx}, this.value)" style="width:auto; min-width:65px; text-align:center; padding:3px 8px; font-size:12px; font-weight:700; color:var(--purple-dark); background:#f5f3ff; border-color:#ddd6fe;">
-                  ${availPieces.map(p => `<option value="${p}" ${String(d.pieceNo) === String(p) ? 'selected' : ''}>${p}</option>`).join('')}
+                  ${availPieces.map(p => `<option value="${p}" ${String(d.pieceNo) === String(p) ? 'selected' : ''}>Piece #${p} of ${exRule.totalQuota}</option>`).join('')}
                 </select>
               </div>
               <div class="flex items-center gap-1">
@@ -5755,7 +5781,7 @@ function exportStatisticsCSV() {
     // ════════════════════════════════════════════════════════════════
     // MODULE 5: HOSPITAL FIXED ASSET & MEDICAL EQUIPMENT MANAGEMENT
     // ════════════════════════════════════════════════════════════════
-    let _qrScannerInstance = null;
+    // (QR scanner state is declared in the QR CODE & BARCODE CAMERA SCANNER section below)
 
     function getAssetStatusBadge(status) {
       const s = String(status || 'Active').trim();
@@ -7225,7 +7251,23 @@ function exportStatisticsCSV() {
                 return;
               }
               if (!btl || btl <= 0) {
-                showToast(`Please enter Quantity / Bottle count for contrast media: "${ci.deviceName}"`);
+                showToast(`Please enter Quantity (ขวด) for contrast media: "${ci.deviceName}"`);
+                return;
+              }
+            }
+          }
+
+          // Validate Substituted items (Piece No assignment)
+          for (const ci of state.cart) {
+            const exRule = getActiveExchangeRule(ci.itemId);
+            if (exRule) {
+              const avail = getQuotaAvailablePieces(exRule);
+              if (avail.length > 0) {
+                if (!ci.pieceNo || !avail.includes(Number(ci.pieceNo))) {
+                  ci.pieceNo = avail[0];
+                }
+              } else if (!ci.pieceNo) {
+                showToast(`No available quota pieces remaining for substituted item: "${ci.deviceName}"`);
                 return;
               }
             }
