@@ -16,7 +16,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@300;400;500;600;700&family=Noto+Sans+Thai:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=20261112b">
+  <link rel="stylesheet" href="styles.css?v=20261112c">
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 </head>
 <body>
@@ -2157,6 +2157,16 @@
     });
     setTimeout(function () {
       if (window.__INR_MAIN_READY) return;
+      /* Auto-recover once from stale browser cache if main script failed to parse */
+      if (!window.__INR_MAIN_PARSED) {
+        try {
+          if (!sessionStorage.getItem('inr_cache_bust_reload')) {
+            sessionStorage.setItem('inr_cache_bust_reload', '1');
+            window.location.replace(window.location.pathname + '?v=' + Date.now());
+            return;
+          }
+        } catch (e) {}
+      }
       var ld = document.getElementById('app-loading');
       if (!ld) return;
       ld.className = '';
@@ -2165,10 +2175,10 @@
       ld.innerHTML = '<strong>App failed to start.</strong><br>' +
         'Main script parsed: <b>' + (window.__INR_MAIN_PARSED ? 'Yes' : 'No') + '</b><br>' +
         'Errors:<br><code style="white-space:pre-wrap;">' + errs + '</code><br><br>' +
-        'Please send a screenshot of this box.';
-    }, 15000);
+        '<button onclick="window.location.replace(window.location.pathname + \'?v=\' + Date.now())" style="padding:6px 12px;background:#10b981;color:#fff;border:none;border-radius:6px;cursor:pointer;font-weight:600;">Reload Latest Version</button>';
+    }, 4000);
   </script>
 
-  <script src="app.js?v=20261112b"></script>
+  <script src="app.js?v=20261112c"></script>
 </body>
 </html>
