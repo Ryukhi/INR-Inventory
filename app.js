@@ -262,7 +262,9 @@ window.__INR_MAIN_PARSED = true;
         tbl_action: 'Action',
         tbl_status: 'Status',
         inv_all_cats: 'All Categories',
-        inv_all_status: 'All Status'
+        inv_all_status: 'All Status',
+        ann_board_title: 'Announcement Board / บันทึกสิ่งที่ควรทราบ',
+        ann_btn_add: 'New Announcement'
       },
       th: {
         // 1. Navigation Tabs (Sidebar)
@@ -354,7 +356,9 @@ window.__INR_MAIN_PARSED = true;
         tbl_action: 'การกระทำ',
         tbl_status: 'สถานะ',
         inv_all_cats: 'ทุกหมวดหมู่',
-        inv_all_status: 'ทุกสถานะ'
+        inv_all_status: 'ทุกสถานะ',
+        ann_board_title: 'บันทึกสิ่งที่ควรทราบ / ประกาศสำคัญ',
+        ann_btn_add: 'เพิ่มประกาศ'
       }
     };
 
@@ -404,7 +408,7 @@ window.__INR_MAIN_PARSED = true;
       });
       document.querySelectorAll('[data-i18n]').forEach(el => {
         const key = el.getAttribute('data-i18n');
-        const translated = t(key);
+        const translated = t(key, '');
         if (!translated) return;
         const target = el.querySelector('[data-i18n-text]') || (el.querySelector('svg') ? el.querySelector('span:not(.badge):not(.status-dot):not(.sync-dot)') : null);
         if (target) {
