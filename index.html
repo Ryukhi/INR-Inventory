@@ -17,6 +17,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@300;400;500;600;700&family=Noto+Sans+Thai:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 </head>
 <body>
   <div class="app" id="app-root">
@@ -84,6 +85,25 @@
           <div class="tab-header-stack">
             <h2 class="tab-section-title" id="tab-title-dashboard" data-i18n="nav_dashboard">Dashboard</h2>
           </div>
+
+          <!-- Top Row: Announcement Board (ระบบประกาศ / บันทึกสิ่งที่ควรทราบ) -->
+          <div class="card announcement-board-card" id="dash-announcements-card">
+            <div class="card-header flex justify-between items-center flex-wrap gap-2">
+              <div class="flex items-center gap-2">
+                <svg class="btn-icon" style="color:var(--brand);" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M18 3a1 1 0 00-1.447-.894L8.763 6H5a3 3 0 000 6h.28l1.771 5.316A1 1 0 008 18h1a1 1 0 001-1v-4.382l6.553 3.276A1 1 0 0018 15V3z" clip-rule="evenodd"/></svg>
+                <strong data-i18n="ann_board_title">Announcement Board / บันทึกสิ่งที่ควรทราบ</strong>
+                <span class="badge badge-blue" id="dash-ann-count-badge">0</span>
+              </div>
+              <button type="button" class="btn btn-brand btn-sm" onclick="openAnnouncementModal('')">
+                <svg class="btn-icon" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd"/></svg>
+                <span data-i18n="ann_btn_add">+ New Announcement</span>
+              </button>
+            </div>
+            <div class="card-body" style="padding:10px 14px;" id="dash-announcements-list">
+              <!-- Populated dynamically -->
+            </div>
+          </div>
+
           <!-- Priority Cards Tier 1: Priority 1 (Substitution Quotas) & Priority 2 (Loan & Transfer) -->
           <div class="grid-2">
             <!-- Priority 1: Substitution list with current used / total quota -->
@@ -364,25 +384,10 @@
                 <svg class="btn-icon" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 3a1 1 0 011 1v8.586l2.293-2.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L9 12.586V4a1 1 0 011-1z" clip-rule="evenodd"/></svg>
                 <span>Stock In / Out</span>
               </button>
-              <div class="action-dropdown">
-                <button type="button" class="btn btn-outline btn-sm" onclick="toggleActionDropdown(this, event)">
-                  <span data-i18n="btn_more_actions">More Actions ▾</span>
-                </button>
-                <div class="action-dropdown-menu">
-                  <button type="button" class="action-dropdown-item" onclick="closeAllActionDropdowns(); openModal('modal-adjust')" data-i18n="btn_adjustment">
-                    <svg viewBox="0 0 20 20"><path d="M5 4a1 1 0 00-2 0v7.268a2 2 0 000 3.464V16a1 1 0 102 0v-1.268a2 2 0 000-3.464V4zM11 4a1 1 0 10-2 0v1.268a2 2 0 000 3.464V16a1 1 0 102 0V8.732a2 2 0 000-3.464V4zM16 3a1 1 0 011 1v7.268a2 2 0 010 3.464V16a1 1 0 11-2 0v-1.268a2 2 0 010-3.464V4a1 1 0 011-1z"/></svg>
-                    <span>Stock Adjustment</span>
-                  </button>
-                  <button type="button" class="action-dropdown-item" onclick="closeAllActionDropdowns(); exportInventoryCSV()" data-i18n="btn_export_csv">
-                    <svg viewBox="0 0 20 20"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
-                    <span>Export CSV</span>
-                  </button>
-                  <button type="button" class="action-dropdown-item" onclick="closeAllActionDropdowns(); printInventoryTable()" data-i18n="btn_print">
-                    <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5 4v3H4a2 2 0 00-2 2v3a2 2 0 002 2h1v2a1 1 0 001 1h8a1 1 0 001-1v-2h1a2 2 0 002-2V9a2 2 0 00-2-2h-1V4a1 1 0 00-1-1H6a1 1 0 00-1 1zm2 1h6v2H7V5zm8 6a1 1 0 11-2 0 1 1 0 012 0zM7 13h6v3H7v-3z" clip-rule="evenodd"/></svg>
-                    <span>Print</span>
-                  </button>
-                </div>
-              </div>
+              <button type="button" class="btn btn-outline btn-sm" onclick="openModal('modal-adjust')" data-i18n="btn_adjustment">
+                <svg class="btn-icon" viewBox="0 0 20 20" fill="currentColor"><path d="M5 4a1 1 0 00-2 0v7.268a2 2 0 000 3.464V16a1 1 0 102 0v-1.268a2 2 0 000-3.464V4zM11 4a1 1 0 10-2 0v1.268a2 2 0 000 3.464V16a1 1 0 102 0V8.732a2 2 0 000-3.464V4zM16 3a1 1 0 011 1v7.268a2 2 0 010 3.464V16a1 1 0 11-2 0v-1.268a2 2 0 010-3.464V4a1 1 0 011-1z"/></svg>
+                <span>Adjustment</span>
+              </button>
             </div>
           </div>
           <div class="card">
@@ -394,8 +399,20 @@
                 </select>
                 <button type="button" class="btn btn-outline btn-sm no-print" id="btn-toggle-inv-cols" onclick="toggleInvColsPanel()" title="Toggle column visibility">
                   <svg class="btn-icon" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 3a1 1 0 011-1h12a1 1 0 011 1v3a1 1 0 01-.293.707L12 11.414V15a1 1 0 01-.293.707l-2 2A1 1 0 018 17v-5.586L3.293 6.707A1 1 0 013 6V3z" clip-rule="evenodd"/></svg>
-                  <span><span data-i18n="btn_filter">Filter</span> (<span id="inv-cols-count">8</span>)</span>
+                  <span><span data-i18n="btn_filter">Filter</span> (<span id="inv-cols-count">6</span>)</span>
                 </button>
+                <button type="button" class="btn btn-outline btn-sm no-print" id="btn-reset-inv-default" onclick="resetInventoryDefault()" title="Reset to default columns and category sort">
+                  <svg class="btn-icon" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clip-rule="evenodd"/></svg>
+                  <span data-i18n="btn_default">Default</span>
+                </button>
+                <div class="filter-actions-right no-print">
+                  <button type="button" class="btn btn-outline btn-icon-only btn-sm" onclick="exportInventoryCSV()" title="Export CSV" aria-label="Export CSV">
+                    <svg class="btn-icon" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
+                  </button>
+                  <button type="button" class="btn btn-outline btn-icon-only btn-sm" onclick="printInventoryTable()" title="Print Inventory" aria-label="Print Inventory">
+                    <svg class="btn-icon" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5 4v3H4a2 2 0 00-2 2v3a2 2 0 002 2h1v2a1 1 0 001 1h8a1 1 0 001-1v-2h1a2 2 0 002-2V9a2 2 0 00-2-2h-1V4a1 1 0 00-1-1H6a1 1 0 00-1 1zm2 1h6v2H7V5zm8 6a1 1 0 11-2 0 1 1 0 012 0zM7 13h6v3H7v-3z" clip-rule="evenodd"/></svg>
+                  </button>
+                </div>
               </div>
               
               <!-- Expandable/Collapsible Columns Filter Panel -->
@@ -410,21 +427,21 @@
                 <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 8px; font-size: 12px;">
                   <label style="display:none;"><input type="checkbox" id="inv-col-itemid" onchange="renderInventoryTab()"> <span>Item ID</span></label>
                   <label style="cursor:pointer"><input type="checkbox" id="inv-col-name" checked onchange="renderInventoryTab()"> <span>Device Name</span></label>
-                  <label style="cursor:pointer"><input type="checkbox" id="inv-col-hoid" checked onchange="renderInventoryTab()"> <span>HO Item ID</span></label>
-                  <label style="cursor:pointer"><input type="checkbox" id="inv-col-cat" checked onchange="renderInventoryTab()"> <span>Category</span></label>
-                  <label style="cursor:pointer"><input type="checkbox" id="inv-col-buyprice" checked onchange="renderInventoryTab()"> <span>Buy Price</span></label>
-                  <label style="cursor:pointer"><input type="checkbox" id="inv-col-sellprice" checked onchange="renderInventoryTab()"> <span>Sell Price</span></label>
+                  <label style="cursor:pointer"><input type="checkbox" id="inv-col-hoid" onchange="renderInventoryTab()"> <span>HO Item ID</span></label>
+                  <label style="cursor:pointer"><input type="checkbox" id="inv-col-cat" onchange="renderInventoryTab()"> <span>Category</span></label>
+                  <label style="cursor:pointer"><input type="checkbox" id="inv-col-buyprice" onchange="renderInventoryTab()"> <span>Buy Price</span></label>
+                  <label style="cursor:pointer"><input type="checkbox" id="inv-col-sellprice" onchange="renderInventoryTab()"> <span>Sell Price</span></label>
                   <label style="cursor:pointer"><input type="checkbox" id="inv-col-main" checked onchange="renderInventoryTab()"> <span data-i18n="stock_main">Main Stock</span></label>
                   <label style="cursor:pointer"><input type="checkbox" id="inv-col-retail" checked onchange="renderInventoryTab()"> <span data-i18n="stock_retail">Retail Stock</span></label>
                   <label style="cursor:pointer" title="Consignment & Quarantine staging stock"><input type="checkbox" id="inv-col-buffer" checked onchange="renderInventoryTab()"> <span data-i18n="stock_buffer">Buffer Stock</span></label>
                   <label style="cursor:pointer"><input type="checkbox" id="inv-col-total" checked onchange="renderInventoryTab()"> <span data-i18n="stock_total">Total Stock</span></label>
                   <label style="cursor:pointer"><input type="checkbox" id="inv-col-ho" checked onchange="renderInventoryTab()"> <span>HO Stock</span></label>
-                  <label style="cursor:pointer"><input type="checkbox" id="inv-col-diff" checked onchange="renderInventoryTab()"> <span>Stock Diff</span></label>
-                  <label style="cursor:pointer"><input type="checkbox" id="inv-col-stockmonth" checked onchange="renderInventoryTab()"> <span>Stock/Month</span></label>
-                  <label style="cursor:pointer"><input type="checkbox" id="inv-col-exceed" checked onchange="renderInventoryTab()"> <span>Exceed %</span></label>
-                  <label style="cursor:pointer"><input type="checkbox" id="inv-col-orderest" checked onchange="renderInventoryTab()"> <span>Order Estimate</span></label>
-                  <label style="cursor:pointer"><input type="checkbox" id="inv-col-buypoint" checked onchange="renderInventoryTab()"> <span>Buy Point</span></label>
-                  <label style="cursor:pointer"><input type="checkbox" id="inv-col-safetystock" checked onchange="renderInventoryTab()"> <span>Safety Stock</span></label>
+                  <label style="cursor:pointer"><input type="checkbox" id="inv-col-diff" onchange="renderInventoryTab()"> <span>Stock Diff</span></label>
+                  <label style="cursor:pointer"><input type="checkbox" id="inv-col-stockmonth" onchange="renderInventoryTab()"> <span>Stock/Month</span></label>
+                  <label style="cursor:pointer"><input type="checkbox" id="inv-col-exceed" onchange="renderInventoryTab()"> <span>Exceed %</span></label>
+                  <label style="cursor:pointer"><input type="checkbox" id="inv-col-orderest" onchange="renderInventoryTab()"> <span>Order Estimate</span></label>
+                  <label style="cursor:pointer"><input type="checkbox" id="inv-col-buypoint" onchange="renderInventoryTab()"> <span>Buy Point</span></label>
+                  <label style="cursor:pointer"><input type="checkbox" id="inv-col-safetystock" onchange="renderInventoryTab()"> <span>Safety Stock</span></label>
                 </div>
               </div>
             </div>
@@ -743,6 +760,10 @@
                 <span class="text-xs text-gray font-semibold" id="stat-range-label"></span>
               </div>
               <div class="flex gap-2 items-center flex-wrap no-print">
+                <button type="button" class="btn btn-outline btn-sm" onclick="printStatistics()" data-i18n="btn_print" title="Print Statistics">
+                  <svg class="btn-icon" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5 4v3H4a2 2 0 00-2 2v3a2 2 0 002 2h1v2a1 1 0 001 1h8a1 1 0 001-1v-2h1a2 2 0 002-2V9a2 2 0 00-2-2h-1V4a1 1 0 00-1-1H6a1 1 0 00-1 1zm2 1h6v2H7V5zm8 6a1 1 0 11-2 0 1 1 0 012 0zM7 13h6v3H7v-3z" clip-rule="evenodd"/></svg>
+                  <span>Print</span>
+                </button>
                 <div class="action-dropdown">
                   <button type="button" class="btn btn-outline btn-sm" onclick="toggleActionDropdown(this, event)">
                     More Actions ▾
@@ -784,6 +805,10 @@
               <button class="btn btn-dark btn-sm" onclick="openQrScannerModal()" data-i18n="ast_qr_scan">
                 <svg class="btn-icon" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 4a1 1 0 011-1h3a1 1 0 011 1v3a1 1 0 01-1 1H4a1 1 0 01-1-1V4zm2 2V5h1v1H5zM3 13a1 1 0 011-1h3a1 1 0 011 1v3a1 1 0 01-1 1H4a1 1 0 01-1-1v-3zm2 2v-1h1v1H5zM13 3a1 1 0 00-1 1v3a1 1 0 001 1h3a1 1 0 001-1V4a1 1 0 00-1-1h-3zm1 2v1h1V5h-1zM11 4a1 1 0 10-2 0v1a1 1 0 102 0V4zM9 8a1 1 0 011 1v1H8V9a1 1 0 011-1zm2 3a1 1 0 00-1 1v1H9a1 1 0 100 2h1v1a1 1 0 102 0v-1h1a1 1 0 100-2h-1v-1a1 1 0 00-1-1zm4 1a1 1 0 100 2h1a1 1 0 100-2h-1zm-1 4a1 1 0 011-1h2a1 1 0 110 2h-2a1 1 0 01-1-1z" clip-rule="evenodd"/></svg>
                 <span>Scan QR Code</span>
+              </button>
+              <button type="button" class="btn btn-outline btn-sm" onclick="printAssetsList()" data-i18n="btn_print" title="Print Asset List">
+                <svg class="btn-icon" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5 4v3H4a2 2 0 00-2 2v3a2 2 0 002 2h1v2a1 1 0 001 1h8a1 1 0 001-1v-2h1a2 2 0 002-2V9a2 2 0 00-2-2h-1V4a1 1 0 00-1-1H6a1 1 0 00-1 1zm2 1h6v2H7V5zm8 6a1 1 0 11-2 0 1 1 0 012 0zM7 13h6v3H7v-3z" clip-rule="evenodd"/></svg>
+                <span>Print</span>
               </button>
               <div class="action-dropdown">
                 <button type="button" class="btn btn-outline btn-sm" onclick="toggleActionDropdown(this, event)">
@@ -933,6 +958,7 @@
             <button class="sub-tab" data-sec="users" onclick="switchSettingsSection('users')">User</button>
             <button class="sub-tab" data-sec="categories" onclick="switchSettingsSection('categories')">Category</button>
             <button class="sub-tab" data-sec="departments" onclick="switchSettingsSection('departments')">Departments (Loan/Transfer)</button>
+            <button class="sub-tab" data-sec="hierarchy" onclick="switchSettingsSection('hierarchy')">Device Hierarchy (Parent / Child)</button>
             <button class="sub-tab" data-sec="security" onclick="switchSettingsSection('security')">Security Passcode</button>
           </div>
 
@@ -1001,6 +1027,48 @@
             </div>
           </div>
 
+          <!-- Device Hierarchy (Parent / Child) section -->
+          <div class="card hidden" id="settings-hierarchy-card">
+            <div class="card-header flex justify-between items-center flex-wrap gap-2">
+              <div>
+                <strong>Device &amp; Sub-Device Hierarchy Management</strong>
+                <div class="text-xs text-gray">Group sub-devices (sizes/free items) under a Parent Device Group for aggregated stock &amp; HO PO tracking.</div>
+              </div>
+              <button type="button" class="btn btn-brand btn-sm" onclick="openAddParentDeviceModal()">
+                <svg class="btn-icon" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd"/></svg>
+                <span>+ New Parent Device Group</span>
+              </button>
+            </div>
+            <div class="card-body space-y">
+              <!-- Quick Assign Child to Parent -->
+              <div class="p-3 rounded border" style="background:var(--gray-50); border-color:var(--gray-200);">
+                <div class="text-xs font-bold mb-2" style="color:var(--gray-700);">Quick Assign / Move Sub-Device to Parent Group</div>
+                <div class="grid-3" style="align-items:end;">
+                  <div class="form-group" style="margin-bottom:0;">
+                    <label class="form-label text-xs">Child Sub-Device (อุปกรณ์ย่อย / ขนาดจริง)</label>
+                    <select id="hier-assign-child-select" class="form-select form-input-sm">
+                      <option value="">-- Select Sub-Device --</option>
+                    </select>
+                  </div>
+                  <div class="form-group" style="margin-bottom:0;">
+                    <label class="form-label text-xs">Target Parent Group (Device หลัก)</label>
+                    <select id="hier-assign-parent-select" class="form-select form-input-sm">
+                      <option value="">-- Standalone (No Parent) --</option>
+                    </select>
+                  </div>
+                  <div>
+                    <button type="button" class="btn btn-brand btn-sm" onclick="submitQuickHierarchyAssign()">Assign / Update</button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Hierarchy Tree List -->
+              <div id="settings-hierarchy-tree">
+                <!-- Populated dynamically -->
+              </div>
+            </div>
+          </div>
+
           <!-- Security / Passcode section -->
           <div class="card hidden" id="settings-security-card">
             <div class="card-header">
@@ -1042,14 +1110,17 @@
         <div class="modal-body space-y">
           <input type="hidden" id="inv-modal-is-edit" value="false">
           <input type="hidden" id="inv-modal-orig-id" value="">
+          <input type="hidden" id="inv-modal-is-free" value="false">
+          <input type="hidden" id="inv-modal-is-parent" value="false">
+          <input type="hidden" id="inv-modal-parent-id" value="">
           
           <div class="device-modal-grid">
             <div class="form-group inv-edit-only">
-              <label class="form-label">Item ID</label>
-              <input type="text" id="inv-modal-itemid" class="form-input" placeholder="Auto-generate">
+              <label class="form-label">Item ID (Permanent)</label>
+              <input type="text" id="inv-modal-itemid" class="form-input" placeholder="Auto-generate" readonly style="background:var(--gray-100); cursor:not-allowed;">
             </div>
             <div class="form-group">
-              <label class="form-label">HO Item ID</label>
+              <label class="form-label">HO Item ID <span class="text-xs text-gray">(Optional for Free Item)</span></label>
               <input type="text" id="inv-modal-hoid" class="form-input" placeholder="e.g. 42203403INT00001">
             </div>
 
@@ -1071,6 +1142,11 @@
                 <option value="Accessory">
                 <option value="Other">
               </datalist>
+            </div>
+
+            <div class="form-group" style="grid-column: span 2;">
+              <label class="form-label">Note / Remarks</label>
+              <textarea id="inv-modal-notes" class="form-input" rows="2" placeholder="Clinical notes, storage location, vendor contact, or special instructions..."></textarea>
             </div>
 
             <div class="form-group">
@@ -1336,22 +1412,43 @@
           </div>
 
           <div style="border-top:1px solid var(--gray-200); padding-top:12px;">
-            <label class="form-label">Devices Used</label>
-            <div class="table-wrap" style="max-height:220px; margin-top:6px;">
+            <div class="flex justify-between items-center mb-1">
+              <label class="form-label font-bold" style="font-size:14px;">Devices &amp; Supplies Used</label>
+              <span class="text-xs text-gray" id="proc-edit-dev-count">0 items</span>
+            </div>
+            <div class="table-wrap" style="max-height:260px; margin-top:6px; border:1px solid var(--gray-200); border-radius:6px;">
               <table class="data-table">
-                <thead><tr><th>Device</th><th>Category</th><th class="center">Qty</th><th class="center"></th></tr></thead>
+                <thead>
+                  <tr>
+                    <th style="min-width:180px;">Device</th>
+                    <th>Category</th>
+                    <th class="center" style="min-width:210px;">Usage / Details</th>
+                    <th class="center" style="width:40px;"></th>
+                  </tr>
+                </thead>
                 <tbody id="proc-edit-devices"></tbody>
               </table>
             </div>
-            <div class="flex gap-2 mt-2 items-center flex-wrap">
-              <select id="proc-edit-add-cat" class="form-select form-input-sm" style="max-width:170px;" onchange="renderProcEditDeviceOptions()">
+            <div class="flex gap-2 mt-3 items-center flex-wrap" style="background:var(--gray-50); padding:10px; border-radius:6px; border:1px solid var(--gray-200);">
+              <select id="proc-edit-add-cat" class="form-select form-input-sm" style="max-width:160px;" onchange="renderProcEditDeviceOptions()">
                 <option value="">All Categories</option>
               </select>
-              <select id="proc-edit-add-item" class="form-select form-input-sm" style="flex:1; min-width:200px;"></select>
-              <input type="number" id="proc-edit-add-qty" class="form-input form-input-sm" value="1" min="1" style="width:70px;">
-              <button class="btn btn-outline btn-sm" onclick="addProcEditDevice()">
+              <select id="proc-edit-add-item" class="form-select form-input-sm" style="flex:1; min-width:180px;" onchange="onProcEditItemSelect()"></select>
+              <div id="proc-edit-add-contrast-fields" class="hidden flex items-center gap-1">
+                <input type="number" step="any" min="1" id="proc-edit-add-vol" class="form-input form-input-sm" placeholder="Vol (ml) *" style="width:85px; text-align:center;">
+                <span class="text-xs text-gray">ml</span>
+              </div>
+              <div id="proc-edit-add-piece-fields" class="hidden flex items-center gap-1">
+                <label class="text-xs text-gray font-medium">Piece No:</label>
+                <select id="proc-edit-add-piece" class="form-select form-input-sm" style="width:auto; min-width:65px; text-align:center; padding:3px 6px; font-weight:600; color:var(--purple-dark);"></select>
+              </div>
+              <div class="flex items-center gap-1">
+                <label class="text-xs text-gray font-medium">Qty:</label>
+                <input type="number" id="proc-edit-add-qty" class="form-input form-input-sm" value="1" min="1" style="width:65px; text-align:center;">
+              </div>
+              <button type="button" class="btn btn-brand btn-sm" onclick="addProcEditDevice()">
                 <svg class="btn-icon" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd"/></svg>
-                Add
+                <span>Add</span>
               </button>
             </div>
           </div>
@@ -1434,7 +1531,7 @@
                   <th>Transaction ID</th>
                   <th>Patient HN</th>
                   <th>Procedure</th>
-                  <th class="center">Piece #</th>
+                  <th class="center">Piece No.</th>
                   <th class="center">Qty Used</th>
                 </tr>
               </thead>
@@ -1903,15 +2000,24 @@
         </div>
       </div>
 
-      <!-- Module 5D: QR Code Camera Scanner Modal -->
+      <!-- Module 5D: QR Code & Barcode Camera Scanner Modal -->
       <div id="modal-qr-scanner" class="modal hidden" style="max-width:480px;">
         <div class="modal-header">
-          <div class="modal-title">Scan Asset QR Code</div>
+          <div class="modal-title flex items-center gap-2">
+            <svg class="btn-icon" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 4a1 1 0 011-1h3a1 1 0 011 1v3a1 1 0 01-1 1H4a1 1 0 01-1-1V4zm2 2V5h1v1H5zM3 13a1 1 0 011-1h3a1 1 0 011 1v3a1 1 0 01-1 1H4a1 1 0 01-1-1v-3zm2 2v-1h1v1H5zM13 3a1 1 0 00-1 1v3a1 1 0 001 1h3a1 1 0 001-1V4a1 1 0 00-1-1h-3zm1 2v1h1V5h-1zM11 4a1 1 0 10-2 0v1a1 1 0 102 0V4zM9 8a1 1 0 011 1v1H8V9a1 1 0 011-1zm2 3a1 1 0 00-1 1v1H9a1 1 0 100 2h1v1a1 1 0 102 0v-1h1a1 1 0 100-2h-1v-1a1 1 0 00-1-1zm4 1a1 1 0 100 2h1a1 1 0 100-2h-1zm-1 4a1 1 0 011-1h2a1 1 0 110 2h-2a1 1 0 01-1-1z" clip-rule="evenodd"/></svg>
+            <span>Scan Asset QR / Barcode</span>
+          </div>
           <button class="modal-close" onclick="closeQrScannerModal()">✕</button>
         </div>
         <div class="modal-body space-y">
-          <div class="text-xs text-gray">Point your smartphone, tablet, or webcam camera at an INR Asset QR Code label to jump directly to its equipment profile.</div>
-          <div id="qr-reader"></div>
+          <div class="text-xs text-gray">Point your camera at an Asset QR Code or 1D Barcode (Code 128 / EAN / UPC) to open the asset profile directly.</div>
+          <div style="position:relative; width:100%; border-radius:8px; overflow:hidden; background:#0f172a; min-height:220px; display:flex; align-items:center; justify-content:center;">
+            <div id="qr-reader" style="width:100%;"></div>
+            <button type="button" class="btn btn-outline btn-sm no-print" id="btn-flip-camera" onclick="toggleCameraFacing()" title="Flip Camera (Front/Back)" style="position:absolute; top:8px; right:8px; z-index:10; background:rgba(255,255,255,0.9); backdrop-filter:blur(4px); box-shadow:var(--shadow);">
+              <svg class="btn-icon" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clip-rule="evenodd"/></svg>
+              <span>Flip Camera</span>
+            </button>
+          </div>
           <div id="qr-scanner-status" class="text-xs center text-gray font-semibold">Initializing camera...</div>
           <div style="border-top:1px solid var(--gray-200); padding-top:10px;">
             <label class="form-label text-xs">Or enter Asset ID / Hospital Code manually:</label>
@@ -1988,6 +2094,43 @@
               <svg class="btn-icon" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5 4v3H4a2 2 0 00-2 2v3a2 2 0 002 2h1v2a2 2 0 002 2h6a2 2 0 002-2v-2h1a2 2 0 002-2V9a2 2 0 00-2-2h-1V4a2 2 0 00-2-2H7a2 2 0 00-2 2zm8 0H7v3h6V4zm0 8H7v4h6v-4z" clip-rule="evenodd"/></svg>
               <span>Print Label</span>
             </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Create / Edit Announcement Modal -->
+      <div id="modal-announcement" class="modal hidden" style="max-width:560px;">
+        <div class="modal-header">
+          <div class="modal-title" id="modal-ann-title">Add Announcement</div>
+          <button class="modal-close" onclick="closeModal()">✕</button>
+        </div>
+        <div class="modal-body space-y">
+          <input type="hidden" id="ann-modal-id" value="">
+          <div class="form-group">
+            <label class="form-label">Title (หัวข้อประกาศ) <span style="color:var(--red);">*</span></label>
+            <input type="text" id="ann-modal-title" class="form-input" placeholder="e.g. ข้อตกลงการตัดสต็อก Solitaire + Rebar Set">
+          </div>
+          <div class="grid-2">
+            <div class="form-group">
+              <label class="form-label">Badge / Tag (ประเภทประกาศ)</label>
+              <select id="ann-modal-badge" class="form-select">
+                <option value="Critical">สำคัญ / Critical</option>
+                <option value="Notice">แจ้งเตือน / Notice</option>
+                <option value="Info" selected>ทั่วไป / Info</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Priority / Order (ลำดับการแสดงผล)</label>
+              <input type="number" id="ann-modal-priority" class="form-input" value="1" min="1">
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Content (เนื้อหา / รายละเอียด)</label>
+            <textarea id="ann-modal-content" class="form-input" rows="4" placeholder="รายละเอียดประกาศ เช่น วิธีจับคู่ตัดของแถม หรือข้อตกลงการใช้งาน..."></textarea>
+          </div>
+          <div class="flex justify-end gap-2 pt-2">
+            <button type="button" class="btn btn-outline" onclick="closeModal()">Cancel</button>
+            <button type="button" class="btn btn-brand" id="btn-save-announcement" onclick="saveAnnouncementModal()">Save Announcement</button>
           </div>
         </div>
       </div>
