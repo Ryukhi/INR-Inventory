@@ -165,7 +165,9 @@ window.__INR_MAIN_PARSED = true;
       settingsDirty: { diseases: false, procedures: false, shifts: false, categories: false, departments: false, users: false },
       statSubTab: 'device',
       procEditId: null,
-      procEditDevices: []
+      procEditDevices: [],
+      announcements: [],
+      collapsedParents: {}
     };
 
     // ===== BILINGUAL TRANSLATION DICTIONARY (TH / EN) =====
@@ -549,6 +551,89 @@ window.__INR_MAIN_PARSED = true;
       return item ? item.category : '';
     }
 
+    function generateClientItemId(category) {
+      const prefixMap = {
+        'Sheath'         : 'SH',
+        'Guidewire'      : 'GW',
+        'Catheter'       : 'CATH',
+        'Stent'          : 'STENT',
+        'Coil'           : 'COIL',
+        'Microcatheter'  : 'MICRO',
+        'Balloon'        : 'BALL',
+        'Accessory'      : 'ACC',
+        'Contrast Media' : 'CM'
+      };
+      const prefix = prefixMap[category] || 'OTH';
+      const d = new Date();
+      const pad = n => String(n).padStart(2, '0');
+      const stamp = String(d.getFullYear()).slice(-2) +
+        pad(d.getMonth() + 1) +
+        pad(d.getDate()) +
+        pad(d.getHours()) +
+        pad(d.getMinutes()) +
+        pad(d.getSeconds());
+      return prefix + '-' + stamp;
+    }
+
+    function getTransactableInventory() {
+      return (state.inventory || []).filter(i => !i.isParent);
+    }
+
+    function recalculateInventoryHierarchy() {
+      if (!Array.isArray(state.inventory)) return;
+      // Pass 1: Normalize Free Items and standalone/child items
+      state.inventory.forEach(item => {
+        item.isFreeItem = Boolean(item.isFreeItem);
+        item.isParent   = Boolean(item.isParent);
+        item.parentId   = item.isParent ? '' : String(item.parentId || '').trim();
+        if (item.isFreeItem) {
+          item.buyPrice  = 0;
+          item.hoStock   = 0;
+          item.stockDiff = 0;
+        } else if (!item.isParent) {
+          const m = Number(item.mainStock) || 0;
+          const r = Number(item.retailStock) || 0;
+          item.totalStock = m + r;
+          item.stockDiff  = item.totalStock - (Number(item.hoStock) || 0);
+        }
+      });
+
+      // Pass 2: Aggregate Child Sub-Devices into Parent Device Groups
+      state.inventory.forEach(p => {
+        if (!p.isParent) return;
+        const children = state.inventory.filter(c => !c.isParent && String(c.parentId) === String(p.itemId));
+        let sumMain = 0, sumRetail = 0, sumBuffer = 0, sumTotal = 0;
+        let sumChildHo = 0, sumPoChildTotal = 0, sumFreeTotal = 0;
+        children.forEach(c => {
+          const m = Number(c.mainStock) || 0;
+          const r = Number(c.retailStock) || 0;
+          const b = Number(c.bufferStock) || 0;
+          const tot = m + r;
+          sumMain   += m;
+          sumRetail += r;
+          sumBuffer += b;
+          sumTotal  += tot;
+          if (c.isFreeItem) {
+            sumFreeTotal += tot;
+          } else {
+            sumPoChildTotal += tot;
+            sumChildHo += (Number(c.hoStock) || 0);
+          }
+        });
+        const ownHo = Number(p.ownHoStock !== undefined ? p.ownHoStock : p.hoStock) || 0;
+        const effectiveHo = ownHo > 0 ? ownHo : sumChildHo;
+        p.ownHoStock     = ownHo;
+        p.mainStock      = sumMain;
+        p.retailStock    = sumRetail;
+        p.bufferStock    = sumBuffer;
+        p.totalStock     = sumTotal;
+        p.hoStock        = effectiveHo;
+        p.stockDiff      = p.isFreeItem ? 0 : (sumPoChildTotal - effectiveHo);
+        p.freeStockCount = sumFreeTotal;
+        p.childCount     = children.length;
+      });
+    }
+
     function getAllCategories() {
       const fromSettings = (state.settings && Array.isArray(state.settings.categories))
         ? state.settings.categories.map(c => String(c).trim()).filter(Boolean)
@@ -814,7 +899,7 @@ window.__INR_MAIN_PARSED = true;
       applyDefaultInvCols();
       state.invSort = { key: 'category', dir: 'asc' };
       renderInventoryTab();
-      showToast('Inventory reset to default');
+      showToast(state.currentLang === 'th' ? 'รีเซ็ตตารางแสดงผลเป็น 6 คอลัมน์เริ่มต้นและเรียงตามหมวดหมู่แล้ว' : 'Reset table view to 6 default columns and category sort');
     }
 
     function exportInventoryCSV() {
@@ -852,6 +937,47 @@ window.__INR_MAIN_PARSED = true;
       document.title = `INR_Inventory_${getToday()}`;
       printInventory();
       setTimeout(() => { document.title = origTitle; }, 1500);
+    }
+
+    function printInventoryTable() {
+      printInventory();
+    }
+
+    function printCurrentView() {
+      const tab = state.currentTab || 'dashboard';
+      if (tab === 'inventory') {
+        printInventory();
+        return;
+      }
+      if (tab === 'statistic' && typeof printStatistics === 'function') {
+        printStatistics();
+        return;
+      }
+      if (tab === 'assets' && typeof printAssetsList === 'function') {
+        printAssetsList();
+        return;
+      }
+      const panel = document.getElementById('tab-' + tab);
+      if (panel) {
+        const clone = panel.cloneNode(true);
+        clone.querySelectorAll('.no-print, .hidden, .mobile-cart-bar').forEach(el => el.remove());
+        const html = `
+          <div style="padding:16px; font-family:'Noto Sans', 'Noto Sans Thai', sans-serif;">
+            <div style="display:flex; justify-content:space-between; align-items:flex-end; border-bottom:2px solid #111827; padding-bottom:8px; margin-bottom:12px;">
+              <div>
+                <h2 style="margin:0; font-size:18px; color:#111827;">INR Interventional Neuroradiology</h2>
+              </div>
+              <div style="text-align:right; font-size:11px; color:#6b7280;">
+                <div><strong>Printed:</strong> ${new Date().toLocaleString('en-GB')}</div>
+              </div>
+            </div>
+            ${clone.innerHTML}
+          </div>
+        `;
+        printStageHtml(html);
+      } else {
+        window.print();
+      }
     }
 
     function printInventory() {
@@ -892,7 +1018,7 @@ window.__INR_MAIN_PARSED = true;
       renderInventoryTab();
     }
 
-    const invDefaultCols = ['inv-col-name', 'inv-col-hoid', 'inv-col-main', 'inv-col-retail', 'inv-col-buffer', 'inv-col-total', 'inv-col-ho', 'inv-col-diff'];
+    const invDefaultCols = ['inv-col-name', 'inv-col-main', 'inv-col-retail', 'inv-col-buffer', 'inv-col-total', 'inv-col-ho'];
 
     function applyDefaultInvCols() {
       invCols.forEach(col => {
@@ -917,17 +1043,65 @@ window.__INR_MAIN_PARSED = true;
     }
 
     function calcModalStock() {
+      const isFree = Boolean(document.getElementById('inv-modal-is-free')?.checked);
       const m = Number(document.getElementById('inv-modal-main').value) || 0;
       const r = Number(document.getElementById('inv-modal-retail').value) || 0;
-      const ho = Number(document.getElementById('inv-modal-hostock').value) || 0;
+      const ho = isFree ? 0 : (Number(document.getElementById('inv-modal-hostock').value) || 0);
       const totInput = document.getElementById('inv-modal-total');
       const diffInput = document.getElementById('inv-modal-diff');
       const tot = m + r;
       if (totInput) totInput.value = tot;
-      if (diffInput) diffInput.value = tot - ho;
+      if (diffInput) diffInput.value = isFree ? 0 : (tot - ho);
+    }
+
+    function populateParentSelectOptions(selectEl, excludeItemId, selectedParentId) {
+      if (!selectEl) return;
+      const parents = (state.inventory || []).filter(i => i.isParent && String(i.itemId) !== String(excludeItemId || ''));
+      selectEl.innerHTML = `<option value="">-- Standalone (ไม่อยู่ภายใต้กลุ่มใด) --</option>` +
+        parents.map(p => `<option value="${escapeHtml(String(p.itemId))}" ${String(p.itemId) === String(selectedParentId || '') ? 'selected' : ''}>${escapeHtml(p.deviceName)} (${escapeHtml(p.category || '—')})</option>`).join('');
+    }
+
+    function onInvModalFreeOrParentChange() {
+      const isFreeEl   = document.getElementById('inv-modal-is-free');
+      const isParentEl = document.getElementById('inv-modal-is-parent');
+      const parentWrap = document.getElementById('inv-modal-parent-select-wrap');
+      const parentSel  = document.getElementById('inv-modal-parent-id');
+      const buyInput   = document.getElementById('inv-modal-buy');
+      const hoInput    = document.getElementById('inv-modal-hostock');
+      const mainInput  = document.getElementById('inv-modal-main');
+      const retInput   = document.getElementById('inv-modal-retail');
+
+      const isFree   = isFreeEl ? (isFreeEl.type === 'checkbox' ? isFreeEl.checked : isFreeEl.value === 'true') : false;
+      const isParent = isParentEl ? (isParentEl.type === 'checkbox' ? isParentEl.checked : isParentEl.value === 'true') : false;
+
+      if (isFree) {
+        if (buyInput) { buyInput.value = '0'; }
+        if (hoInput)  { hoInput.value = '0'; }
+      }
+      if (parentWrap) {
+        parentWrap.style.display = isParent ? 'none' : '';
+      }
+      if (isParent) {
+        if (parentSel) parentSel.value = '';
+        if (mainInput) { mainInput.value = '0'; mainInput.disabled = true; mainInput.title = 'Aggregated automatically from Child Sub-Devices'; }
+        if (retInput)  { retInput.value  = '0'; retInput.disabled  = true; retInput.title  = 'Aggregated automatically from Child Sub-Devices'; }
+      } else {
+        if (mainInput) { mainInput.disabled = false; mainInput.title = ''; }
+        if (retInput)  { retInput.disabled  = false; retInput.title  = ''; }
+      }
+      calcModalStock();
+    }
+
+    function toggleParentCollapse(parentId, event) {
+      if (event) event.stopPropagation();
+      if (!state.collapsedParents) state.collapsedParents = {};
+      state.collapsedParents[parentId] = !state.collapsedParents[parentId];
+      renderInventoryTab();
     }
 
     function renderInventoryTab() {
+      recalculateInventoryHierarchy();
+
       const searchInput = document.getElementById('inv-tab-search-input');
       const searchVal = searchInput ? searchInput.value.toLowerCase().trim() : '';
       const catSelect = document.getElementById('inv-tab-cat-filter');
@@ -947,8 +1121,7 @@ window.__INR_MAIN_PARSED = true;
         catDatalist.innerHTML = allCats.map(c => `<option value="${c}">`).join('');
       }
 
-      // Filter
-      let filtered = state.inventory.filter(i => {
+      function matchesFilter(i) {
         if (catVal && (i.category || '').toLowerCase() !== catVal) return false;
         if (!searchVal) return true;
         return (
@@ -956,28 +1129,17 @@ window.__INR_MAIN_PARSED = true;
           String(i.hoItemId || '').toLowerCase().includes(searchVal) ||
           String(i.deviceName || '').toLowerCase().includes(searchVal) ||
           String(i.category || '').toLowerCase().includes(searchVal) ||
-          String(i.buyPrice || '').toLowerCase().includes(searchVal) ||
-          String(i.sellPrice || '').toLowerCase().includes(searchVal) ||
-          String(i.mainStock || '').toLowerCase().includes(searchVal) ||
-          String(i.retailStock || '').toLowerCase().includes(searchVal) ||
-          String(i.bufferStock || '').toLowerCase().includes(searchVal) ||
-          String(i.totalStock || '').toLowerCase().includes(searchVal) ||
-          String(i.hoStock || '').toLowerCase().includes(searchVal) ||
-          String(i.stockDiff || '').toLowerCase().includes(searchVal) ||
-          String(i.stockMonth || '').toLowerCase().includes(searchVal) ||
-          String(i.exceedPercent || '').toLowerCase().includes(searchVal) ||
-          String(i.orderEstimate || '').toLowerCase().includes(searchVal) ||
-          String(i.buyPoint || '').toLowerCase().includes(searchVal) ||
-          String(i.safetyStock || '').toLowerCase().includes(searchVal)
+          (i.isFreeItem && 'free ของแถม'.includes(searchVal)) ||
+          (i.isParent && 'parent group'.includes(searchVal))
         );
-      });
+      }
 
-      // Sort
+      // Sort helper
       const numCols = ['buyPrice', 'sellPrice', 'mainStock', 'retailStock', 'bufferStock', 'totalStock', 'hoStock', 'stockDiff', 'stockMonth', 'exceedPercent', 'orderEstimate', 'buyPoint', 'safetyStock'];
       const sortKey = state.invSort.key || 'category';
       const sortDir = state.invSort.dir === 'desc' ? -1 : 1;
 
-      filtered.sort((a, b) => {
+      function compareItems(a, b) {
         if (sortKey === 'category') {
           const catOrder = getAllCategories().map(c => c.toLowerCase());
           const catA = String(a.category || '').trim().toLowerCase();
@@ -999,6 +1161,46 @@ window.__INR_MAIN_PARSED = true;
           const valB = String(b[sortKey] || '').toLowerCase();
           return valA.localeCompare(valB) * sortDir;
         }
+      }
+
+      // Organize Parent-Child tree for display
+      const parentMap = new Map();
+      state.inventory.forEach(i => {
+        if (i.isParent) parentMap.set(String(i.itemId), i);
+      });
+
+      const childrenByParent = new Map();
+      const topLevelItems = [];
+      state.inventory.forEach(i => {
+        const pid = String(i.parentId || '').trim();
+        if (!i.isParent && pid && parentMap.has(pid)) {
+          if (!childrenByParent.has(pid)) childrenByParent.set(pid, []);
+          childrenByParent.get(pid).push(i);
+        } else {
+          topLevelItems.push(i);
+        }
+      });
+
+      topLevelItems.sort(compareItems);
+      childrenByParent.forEach(list => list.sort(compareItems));
+
+      const displayRows = [];
+      topLevelItems.forEach(item => {
+        if (item.isParent) {
+          const kids = childrenByParent.get(String(item.itemId)) || [];
+          const matchingKids = kids.filter(matchesFilter);
+          const parentMatches = matchesFilter(item);
+          if (parentMatches || matchingKids.length > 0) {
+            displayRows.push({ item, isParentRow: true, isChildRow: false, childCount: kids.length });
+            const isCollapsed = Boolean(state.collapsedParents && state.collapsedParents[item.itemId]) && !searchVal;
+            if (!isCollapsed) {
+              const kidsToShow = searchVal ? matchingKids : kids;
+              kidsToShow.forEach(k => displayRows.push({ item: k, isParentRow: false, isChildRow: true }));
+            }
+          }
+        } else if (matchesFilter(item)) {
+          displayRows.push({ item, isParentRow: false, isChildRow: false });
+        }
       });
 
       // Update sort indicators in header
@@ -1019,20 +1221,43 @@ window.__INR_MAIN_PARSED = true;
       });
 
       // Render Rows
-      body.innerHTML = filtered.map(i => {
-        const diffVal = i.stockDiff !== undefined ? Number(i.stockDiff) : (Number(i.totalStock || 0) - Number(i.hoStock || 0));
+      body.innerHTML = displayRows.map(rowObj => {
+        const i = rowObj.item;
+        const isFree = Boolean(i.isFreeItem);
+        const isParent = Boolean(i.isParent);
+        const diffVal = isFree ? 0 : (i.stockDiff !== undefined ? Number(i.stockDiff) : (Number(i.totalStock || 0) - Number(i.hoStock || 0)));
         let diffColor = 'inherit';
         let diffDisplay = diffVal;
-        if (diffVal < 0) { diffColor = 'var(--red)'; }
-        else if (diffVal > 0) { diffColor = 'var(--brand)'; diffDisplay = '+' + diffVal; }
+        if (!isFree) {
+          if (diffVal < 0) { diffColor = 'var(--red)'; }
+          else if (diffVal > 0) { diffColor = 'var(--brand)'; diffDisplay = '+' + diffVal; }
+        } else {
+          diffColor = '#15803d';
+          diffDisplay = '0 (Free)';
+        }
 
         const exceedVal = i.exceedPercent !== undefined ? Number(i.exceedPercent) : 0;
         const exceedDisplay = exceedVal > 0 ? ('+' + exceedVal + '%') : (exceedVal + '%');
 
+        const isCollapsed = Boolean(state.collapsedParents && state.collapsedParents[i.itemId]);
+        const toggleBtnHtml = isParent
+          ? `<button type="button" class="inv-parent-toggle no-print" onclick="toggleParentCollapse('${escapeHtml(String(i.itemId))}', event)" title="${isCollapsed ? 'Expand Sub-Devices' : 'Collapse Sub-Devices'}">${isCollapsed ? '▶' : '▼'}</button>`
+          : '';
+        const badgesHtml = [
+          isParent ? `<span class="badge-parent" title="Parent Device Group (Aggregates stock from ${rowObj.childCount || 0} sub-devices)">GROUP (${rowObj.childCount || 0})</span>` : '',
+          isFree ? `<span class="badge-free" title="Free Item / ของแถม (Buy Price = 0, No HO Stock Error)">FREE</span>` : ''
+        ].filter(Boolean).join(' ');
+
+        const rowCls = isParent ? 'inv-parent-row' : (rowObj.isChildRow ? 'inv-child-row' : '');
+
         return `
-          <tr>
-            <td class="col-inv-name"><a href="javascript:void(0)" class="device-name-link font-medium" onclick="openDeviceDetailModal('${escapeHtml(String(i.itemId))}')">${escapeHtml(i.deviceName || '')}</a></td>
-            <td class="col-inv-hoid text-gray text-xs font-mono">${escapeHtml(i.hoItemId || '')}</td>
+          <tr class="${rowCls}">
+            <td class="col-inv-name">
+              ${toggleBtnHtml}
+              <a href="javascript:void(0)" class="device-name-link ${isParent ? 'font-bold' : 'font-medium'}" onclick="openDeviceDetailModal('${escapeHtml(String(i.itemId))}')">${escapeHtml(i.deviceName || '')}</a>
+              ${badgesHtml ? `<span style="margin-left:6px;">${badgesHtml}</span>` : ''}
+            </td>
+            <td class="col-inv-hoid text-gray text-xs font-mono">${escapeHtml(i.hoItemId || (isFree ? '— (Free)' : ''))}</td>
             <td class="col-inv-itemid hidden text-gray text-xs font-mono">${escapeHtml(i.itemId || '')}</td>
             <td class="col-inv-cat text-gray">${escapeHtml(i.category || '')}</td>
             <td class="col-inv-buyprice num">฿${(Number(i.buyPrice) || 0).toLocaleString()}</td>
@@ -1041,7 +1266,7 @@ window.__INR_MAIN_PARSED = true;
             <td class="col-inv-retail num font-bold">${Number(i.retailStock) || 0}</td>
             <td class="col-inv-buffer num" style="color:#6d28d9;" title="Consignment & Quarantine Hold (Excluded from Total Stock)">${Number(i.bufferStock) || 0}</td>
             <td class="col-inv-total num font-bold">${Number(i.totalStock) || 0}</td>
-            <td class="col-inv-ho num text-gray">${Number(i.hoStock) || 0}</td>
+            <td class="col-inv-ho num text-gray">${isFree ? '—' : (Number(i.hoStock) || 0)}</td>
             <td class="col-inv-diff num font-semibold" style="color:${diffColor}">${diffDisplay}</td>
             <td class="col-inv-stockmonth num">${Number(i.stockMonth) || 0}</td>
             <td class="col-inv-exceed num">${exceedDisplay}</td>
@@ -1087,8 +1312,28 @@ window.__INR_MAIN_PARSED = true;
       document.getElementById('inv-modal-orderest').value = '0';
       document.getElementById('inv-modal-buypoint').value = '0';
       document.getElementById('inv-modal-safety').value = '0';
+
+      const freeEl = document.getElementById('inv-modal-is-free');
+      const parEl  = document.getElementById('inv-modal-is-parent');
+      const parSel = document.getElementById('inv-modal-parent-id');
+      const noteEl = document.getElementById('inv-modal-notes');
+      if (freeEl) { if (freeEl.type === 'checkbox') freeEl.checked = false; else freeEl.value = 'false'; }
+      if (parEl)  { if (parEl.type === 'checkbox')  parEl.checked  = false; else parEl.value  = 'false'; }
+      if (parSel) { parSel.value = ''; }
+      if (noteEl) { noteEl.value = ''; }
+      populateParentSelectOptions(parSel, '', '');
+      onInvModalFreeOrParentChange();
+
       document.querySelectorAll('#modal-device .inv-edit-only').forEach(el => el.style.display = 'none');
       openModal('modal-device');
+    }
+
+    function openAddParentDeviceModal() {
+      openAddDeviceModal();
+      document.getElementById('modal-device-title').innerText = 'Add New Parent Device Group (Device หลัก)';
+      const parEl = document.getElementById('inv-modal-is-parent');
+      if (parEl) { if (parEl.type === 'checkbox') parEl.checked = true; else parEl.value = 'true'; }
+      onInvModalFreeOrParentChange();
     }
 
     function openEditDeviceModal(itemId) {
@@ -1106,47 +1351,91 @@ window.__INR_MAIN_PARSED = true;
       document.getElementById('inv-modal-main').value = item.mainStock !== undefined ? item.mainStock : 0;
       document.getElementById('inv-modal-retail').value = item.retailStock !== undefined ? item.retailStock : 0;
       document.getElementById('inv-modal-total').value = item.totalStock !== undefined ? item.totalStock : 0;
-      document.getElementById('inv-modal-hostock').value = item.hoStock !== undefined ? item.hoStock : 0;
+      document.getElementById('inv-modal-hostock').value = (item.ownHoStock !== undefined ? item.ownHoStock : item.hoStock) || 0;
       document.getElementById('inv-modal-diff').value = item.stockDiff !== undefined ? item.stockDiff : 0;
       document.getElementById('inv-modal-stockmonth').value = item.stockMonth !== undefined ? item.stockMonth : 0;
       document.getElementById('inv-modal-exceed').value = item.exceedPercent !== undefined ? item.exceedPercent : 0;
       document.getElementById('inv-modal-orderest').value = item.orderEstimate !== undefined ? item.orderEstimate : 0;
       document.getElementById('inv-modal-buypoint').value = item.buyPoint !== undefined ? item.buyPoint : 0;
       document.getElementById('inv-modal-safety').value = item.safetyStock !== undefined ? item.safetyStock : 0;
+
+      const freeEl = document.getElementById('inv-modal-is-free');
+      const parEl  = document.getElementById('inv-modal-is-parent');
+      const parSel = document.getElementById('inv-modal-parent-id');
+      const noteEl = document.getElementById('inv-modal-notes');
+      if (freeEl) { if (freeEl.type === 'checkbox') freeEl.checked = Boolean(item.isFreeItem); else freeEl.value = item.isFreeItem ? 'true' : 'false'; }
+      if (parEl)  { if (parEl.type === 'checkbox')  parEl.checked  = Boolean(item.isParent);   else parEl.value  = item.isParent ? 'true' : 'false'; }
+      if (parSel) { parSel.value = item.parentId || ''; }
+      if (noteEl) { noteEl.value = item.notes || ''; }
+      populateParentSelectOptions(parSel, item.itemId, item.parentId || '');
+      onInvModalFreeOrParentChange();
+
       document.querySelectorAll('#modal-device .inv-edit-only').forEach(el => el.style.display = '');
       openModal('modal-device');
     }
 
     function openDeviceDetailModal(itemId) {
+      recalculateInventoryHierarchy();
       const i = state.inventory.find(item => String(item.itemId) === String(itemId));
       if (!i) return;
       const titleEl = document.getElementById('dev-detail-title');
       const contentEl = document.getElementById('dev-detail-content');
       if (titleEl) titleEl.innerText = i.deviceName || 'Device Details';
 
-      const diffVal = i.stockDiff !== undefined ? Number(i.stockDiff) : (Number(i.totalStock || 0) - Number(i.hoStock || 0));
-      let diffDisplay = diffVal > 0 ? ('+' + diffVal) : String(diffVal);
-      let diffColor = diffVal < 0 ? 'var(--red)' : (diffVal > 0 ? 'var(--brand)' : 'inherit');
+      const isFree = Boolean(i.isFreeItem);
+      const isParent = Boolean(i.isParent);
+      const diffVal = isFree ? 0 : (i.stockDiff !== undefined ? Number(i.stockDiff) : (Number(i.totalStock || 0) - Number(i.hoStock || 0)));
+      let diffDisplay = isFree ? '0 (Free Item — No HO Stock Tracking)' : (diffVal > 0 ? ('+' + diffVal) : String(diffVal));
+      let diffColor = isFree ? '#15803d' : (diffVal < 0 ? 'var(--red)' : (diffVal > 0 ? 'var(--brand)' : 'inherit'));
       const exceedVal = i.exceedPercent !== undefined ? Number(i.exceedPercent) : 0;
       const exceedDisplay = exceedVal > 0 ? ('+' + exceedVal + '%') : (exceedVal + '%');
+
+      const parentObj = (!isParent && i.parentId) ? state.inventory.find(p => String(p.itemId) === String(i.parentId)) : null;
+      const children = isParent ? state.inventory.filter(c => !c.isParent && String(c.parentId) === String(i.itemId)) : [];
+
+      let hierarchyHtml = '';
+      if (isParent) {
+        hierarchyHtml = `
+          <tr>
+            <th>Hierarchy Role</th>
+            <td>
+              <span class="badge-parent">PARENT DEVICE GROUP</span>
+              <div class="text-xs text-gray mt-1">Aggregates live stock from <strong>${children.length}</strong> Child Sub-Device(s). Direct stock deduction on Parent is disabled.</div>
+              ${children.length > 0 ? `<div class="mt-2 space-y-sm">${children.map(c => `<div class="text-xs">• <strong>${escapeHtml(c.deviceName)}</strong> ${c.isFreeItem ? '<span class="badge-free">FREE</span>' : ''} — Main: ${c.mainStock || 0}, Retail: ${c.retailStock || 0}, Total: <strong>${c.totalStock || 0}</strong></div>`).join('')}</div>` : ''}
+            </td>
+          </tr>
+        `;
+      } else if (parentObj || isFree) {
+        hierarchyHtml = `
+          <tr>
+            <th>Item Classification</th>
+            <td>
+              ${isFree ? `<span class="badge-free">FREE ITEM (ของแถม / ใช้ได้ฟรี)</span> ` : `<span class="badge badge-blue">Standard PO Item</span> `}
+              ${parentObj ? `<div class="text-xs mt-1">Sub-Device under Parent Group: <strong>${escapeHtml(parentObj.deviceName)}</strong> (<code>${escapeHtml(parentObj.itemId)}</code>)</div>` : ''}
+            </td>
+          </tr>
+        `;
+      }
 
       if (contentEl) {
         contentEl.innerHTML = `
           <table class="device-detail-table">
             <tbody>
               <tr><th>Device Name</th><td><strong>${escapeHtml(i.deviceName || '')}</strong></td></tr>
-              <tr><th>HO Item ID</th><td><span class="font-mono">${escapeHtml(i.hoItemId || '—')}</span></td></tr>
-              <tr><th>Item ID</th><td><span class="font-mono text-gray">${escapeHtml(i.itemId || '—')}</span></td></tr>
+              ${hierarchyHtml}
+              <tr><th>HO Item ID</th><td><span class="font-mono">${escapeHtml(i.hoItemId || (isFree ? '— (Optional for Free Item)' : '—'))}</span></td></tr>
+              <tr><th>Permanent Item ID</th><td><span class="font-mono text-gray">${escapeHtml(i.itemId || '—')}</span></td></tr>
               <tr><th>Category</th><td><span class="badge badge-gray">${escapeHtml(i.category || '—')}</span></td></tr>
+              <tr><th>Note / Remarks</th><td style="white-space:pre-wrap;">${i.notes ? escapeHtml(i.notes) : '<span class="text-gray text-xs">No notes recorded</span>'}</td></tr>
               <tr><th>Pricing</th><td>Buy: <strong>฿${(Number(i.buyPrice)||0).toLocaleString()}</strong> &nbsp;|&nbsp; Sell: <strong>฿${(Number(i.sellPrice)||0).toLocaleString()}</strong></td></tr>
               <tr style="background:#f0fdf4;">
-                <th>Stock Breakdown</th>
+                <th>Stock Breakdown ${isParent ? '(Aggregated)' : ''}</th>
                 <td>
                   <div>Main Stock: <strong>${Number(i.mainStock)||0}</strong></div>
                   <div>Retail Stock: <strong>${Number(i.retailStock)||0}</strong></div>
                   <div style="color:#6d28d9;">Buffer Stock: <strong>${Number(i.bufferStock)||0}</strong> <span class="text-xs text-gray">(Consignment/Quarantine)</span></div>
                   <div>Total Clinical Stock: <strong style="color:var(--brand-dark);">${Number(i.totalStock)||0}</strong></div>
-                  <div>HO Stock: <strong>${Number(i.hoStock)||0}</strong></div>
+                  <div>HO Stock: <strong>${isFree ? '— (Free)' : (Number(i.hoStock)||0)}</strong></div>
                   <div>Available / Stock Diff: <strong style="color:${diffColor};">${diffDisplay}</strong></div>
                 </td>
               </tr>
@@ -1193,9 +1482,14 @@ window.__INR_MAIN_PARSED = true;
             appContent.classList.remove('hidden');
           }
         } else {
+          // Detach children if deleting a parent
+          state.inventory.forEach(c => {
+            if (String(c.parentId) === String(itemId)) c.parentId = '';
+          });
           state.inventory = state.inventory.filter(i => String(i.itemId) !== String(itemId));
+          recalculateInventoryHierarchy();
           showToast('Device removed (mock)');
-          renderInventoryTab();
+          renderCurrentTab();
         }
       });
     }
@@ -1212,44 +1506,52 @@ window.__INR_MAIN_PARSED = true;
         return;
       }
 
+      // Always enforce permanent [PREFIX]-[YYMMDDHHMMSS] Item ID on new items
       if (!customId) {
         if (isEdit && origId) {
           customId = origId;
         } else {
-          const prefix = {
-            'Catheter': 'CATH', 'Guidewire': 'GW', 'Sheath': 'SH',
-            'Stent': 'STENT', 'Coil': 'COIL', 'Microcatheter': 'MICRO',
-            'Balloon': 'BALL', 'Contrast Media': 'CM', 'Other': 'OTH'
-          }[cat] || 'OTH';
-          customId = prefix + '-' + Date.now().toString().slice(-8);
+          customId = generateClientItemId(cat);
         }
       }
 
-      const mainStock = Number(document.getElementById('inv-modal-main').value) || 0;
-      const retailStock = Number(document.getElementById('inv-modal-retail').value) || 0;
-      const hoStock = Number(document.getElementById('inv-modal-hostock').value) || 0;
+      const isFreeEl   = document.getElementById('inv-modal-is-free');
+      const isParentEl = document.getElementById('inv-modal-is-parent');
+      const isFreeItem = isFreeEl ? (isFreeEl.type === 'checkbox' ? isFreeEl.checked : isFreeEl.value === 'true') : false;
+      const isParent   = isParentEl ? (isParentEl.type === 'checkbox' ? isParentEl.checked : isParentEl.value === 'true') : false;
+      const parentId   = isParent ? '' : String(document.getElementById('inv-modal-parent-id')?.value || '').trim();
+      const notes      = String(document.getElementById('inv-modal-notes')?.value || '').trim();
+
+      const mainStock = isParent ? 0 : (Number(document.getElementById('inv-modal-main').value) || 0);
+      const retailStock = isParent ? 0 : (Number(document.getElementById('inv-modal-retail').value) || 0);
+      const hoStock = isFreeItem ? 0 : (Number(document.getElementById('inv-modal-hostock').value) || 0);
       let totalStock = Number(document.getElementById('inv-modal-total').value);
-      if (isNaN(totalStock)) totalStock = mainStock + retailStock;
-      let stockDiff = Number(document.getElementById('inv-modal-diff').value);
-      if (isNaN(stockDiff)) stockDiff = totalStock - hoStock;
+      if (isNaN(totalStock) || isParent) totalStock = mainStock + retailStock;
+      let stockDiff = isFreeItem ? 0 : Number(document.getElementById('inv-modal-diff').value);
+      if (isNaN(stockDiff) && !isFreeItem) stockDiff = totalStock - hoStock;
 
       const data = {
         itemId: isEdit ? (origId || customId) : customId,
         hoItemId: document.getElementById('inv-modal-hoid').value.trim(),
         deviceName: name,
         category: cat,
-        buyPrice: Number(document.getElementById('inv-modal-buy').value) || 0,
+        buyPrice: isFreeItem ? 0 : (Number(document.getElementById('inv-modal-buy').value) || 0),
         sellPrice: Number(document.getElementById('inv-modal-sell').value) || 0,
         mainStock: mainStock,
         retailStock: retailStock,
         totalStock: totalStock,
         hoStock: hoStock,
+        ownHoStock: hoStock,
         stockDiff: stockDiff,
         stockMonth: Number(document.getElementById('inv-modal-stockmonth').value) || 0,
         exceedPercent: Number(document.getElementById('inv-modal-exceed').value) || 0,
         orderEstimate: Number(document.getElementById('inv-modal-orderest').value) || 0,
         buyPoint: Number(document.getElementById('inv-modal-buypoint').value) || 0,
-        safetyStock: Number(document.getElementById('inv-modal-safety').value) || 0
+        safetyStock: Number(document.getElementById('inv-modal-safety').value) || 0,
+        isFreeItem: isFreeItem,
+        isParent: isParent,
+        parentId: parentId,
+        notes: notes
       };
 
       if (isEdit) {
@@ -1282,14 +1584,170 @@ window.__INR_MAIN_PARSED = true;
         } else {
           state.inventory.push(data);
         }
+        recalculateInventoryHierarchy();
         showToast(isEdit ? 'Device updated (mock)' : 'Device added (mock)');
         closeModal();
-        renderInventoryTab();
+        renderCurrentTab();
+      }
+    }
+
+    // ════════════════════════════════════════════════════════════════
+    // ANNOUNCEMENT BOARD (Dashboard Top Row)
+    // ════════════════════════════════════════════════════════════════
+    function renderAnnouncementsBoard() {
+      const container = document.getElementById('dash-announcements-list');
+      const countBadge = document.getElementById('dash-ann-count-badge');
+      if (!container) return;
+
+      const list = Array.isArray(state.announcements) ? state.announcements.slice() : [];
+      list.sort((a, b) => (Number(a.priority) || 99) - (Number(b.priority) || 99));
+
+      if (countBadge) countBadge.innerText = String(list.length);
+
+      if (list.length === 0) {
+        container.innerHTML = `<div class="empty-state text-sm" style="padding:12px;">${state.currentLang === 'th' ? 'ยังไม่มีประกาศสำคัญ คลิก "+ New Announcement" เพื่อเพิ่มบันทึกข้อตกลงหรือวิธีตัดของแถม' : 'No active announcements. Click "+ New Announcement" to post clinical or stock notes.'}</div>`;
+        return;
+      }
+
+      container.innerHTML = `<div class="ann-list">` + list.map((ann, idx) => {
+        const badgeType = String(ann.badge || 'Info').trim();
+        const isCrit = badgeType.toLowerCase().includes('critical') || badgeType.includes('สำคัญ');
+        const isWarn = badgeType.toLowerCase().includes('notice') || badgeType.includes('แจ้งเตือน');
+        const itemCls = isCrit ? 'ann-item-critical' : (isWarn ? 'ann-item-notice' : 'ann-item-info');
+        const badgeCls = isCrit ? 'ann-badge-critical' : (isWarn ? 'ann-badge-notice' : 'ann-badge-info');
+        const badgeLabel = isCrit ? 'สำคัญ / Critical' : (isWarn ? 'แจ้งเตือน / Notice' : 'ทั่วไป / Info');
+
+        return `
+          <div class="ann-item ${itemCls}">
+            <div style="flex:1; min-width:0;">
+              <div class="flex items-center gap-2 flex-wrap mb-1">
+                <span class="badge ${badgeCls}" style="font-size:10.5px;">#${idx + 1} · ${escapeHtml(badgeLabel)}</span>
+                <strong class="text-sm" style="color:var(--gray-900);">${escapeHtml(ann.title || '')}</strong>
+                ${ann.updatedAt ? `<span class="text-xs text-gray">(${escapeHtml(String(ann.updatedAt))})</span>` : ''}
+              </div>
+              <div class="text-xs" style="color:var(--gray-700); white-space:pre-wrap; line-height:1.5;">${escapeHtml(ann.content || '')}</div>
+            </div>
+            <div class="flex items-center gap-1" style="flex-shrink:0;">
+              <button type="button" class="ann-reorder-btn" onclick="moveAnnouncement('${escapeHtml(ann.id)}', -1)" ${idx === 0 ? 'disabled' : ''} title="Move Up">▲</button>
+              <button type="button" class="ann-reorder-btn" onclick="moveAnnouncement('${escapeHtml(ann.id)}', 1)" ${idx === list.length - 1 ? 'disabled' : ''} title="Move Down">▼</button>
+              <button type="button" class="btn-ghost" onclick="openAnnouncementModal('${escapeHtml(ann.id)}')" title="Edit">${ICONS.edit}</button>
+              <button type="button" class="btn-ghost" style="color:var(--red);" onclick="removeAnnouncement('${escapeHtml(ann.id)}')" title="Delete">${ICONS.trash}</button>
+            </div>
+          </div>
+        `;
+      }).join('') + `</div>`;
+    }
+
+    function openAnnouncementModal(annId) {
+      const isEdit = Boolean(annId);
+      const ann = isEdit ? (state.announcements || []).find(a => String(a.id) === String(annId)) : null;
+      const titleEl = document.getElementById('modal-ann-title');
+      if (titleEl) titleEl.innerText = isEdit ? 'Edit Announcement' : 'New Announcement';
+
+      document.getElementById('ann-modal-id').value = ann ? ann.id : '';
+      document.getElementById('ann-modal-title').value = ann ? (ann.title || '') : '';
+      document.getElementById('ann-modal-badge').value = ann ? (ann.badge || 'Info') : 'Info';
+      document.getElementById('ann-modal-priority').value = ann ? (ann.priority || 1) : ((state.announcements || []).length + 1);
+      document.getElementById('ann-modal-content').value = ann ? (ann.content || '') : '';
+      openModal('modal-announcement');
+    }
+
+    function saveAnnouncementModal() {
+      const id = document.getElementById('ann-modal-id').value.trim();
+      const title = document.getElementById('ann-modal-title').value.trim();
+      const badge = document.getElementById('ann-modal-badge').value || 'Info';
+      const priority = parseInt(document.getElementById('ann-modal-priority').value) || 1;
+      const content = document.getElementById('ann-modal-content').value.trim();
+
+      if (!title) {
+        showToast('Please enter an Announcement Title');
+        return;
+      }
+
+      const payload = { id, title, badge, priority, content };
+      closeModal();
+
+      if (isApiConfigured()) {
+        setSyncIndicator(true);
+        callApi('saveAnnouncement', payload)
+          .then(() => {
+            setSyncIndicator(false);
+            showToast(id ? 'Announcement updated!' : 'Announcement created!');
+            fetchDataFromServer();
+          })
+          .catch(err => {
+            setSyncIndicator(false);
+            showToast('Failed: ' + (err.message || err));
+          });
+      } else {
+        if (!Array.isArray(state.announcements)) state.announcements = [];
+        const nowStr = getToday();
+        if (id) {
+          const idx = state.announcements.findIndex(a => String(a.id) === String(id));
+          if (idx >= 0) state.announcements[idx] = Object.assign({}, state.announcements[idx], payload, { updatedAt: nowStr });
+        } else {
+          state.announcements.push({
+            id: 'ANN-' + Date.now().toString().slice(-6),
+            title, badge, priority, content, updatedAt: nowStr
+          });
+        }
+        renderAnnouncementsBoard();
+        showToast(id ? 'Announcement updated (mock)' : 'Announcement created (mock)');
+      }
+    }
+
+    function removeAnnouncement(annId) {
+      const ann = (state.announcements || []).find(a => String(a.id) === String(annId));
+      const label = ann ? ann.title : annId;
+      verifyPasscodeThen(state.currentLang === 'th' ? `ยืนยันการลบประกาศ "${label}"?` : `Delete announcement "${label}"?`, () => {
+        if (isApiConfigured()) {
+          setSyncIndicator(true);
+          callApi('deleteAnnouncement', { id: annId })
+            .then(() => {
+              setSyncIndicator(false);
+              showToast('Announcement deleted');
+              fetchDataFromServer();
+            })
+            .catch(err => {
+              setSyncIndicator(false);
+              showToast('Failed: ' + (err.message || err));
+            });
+        } else {
+          state.announcements = (state.announcements || []).filter(a => String(a.id) !== String(annId));
+          renderAnnouncementsBoard();
+          showToast('Announcement deleted (mock)');
+        }
+      });
+    }
+
+    function moveAnnouncement(annId, dir) {
+      if (!Array.isArray(state.announcements) || state.announcements.length < 2) return;
+      state.announcements.sort((a, b) => (Number(a.priority) || 99) - (Number(b.priority) || 99));
+      const idx = state.announcements.findIndex(a => String(a.id) === String(annId));
+      if (idx === -1) return;
+      const targetIdx = idx + dir;
+      if (targetIdx < 0 || targetIdx >= state.announcements.length) return;
+
+      const tmp = state.announcements[idx];
+      state.announcements[idx] = state.announcements[targetIdx];
+      state.announcements[targetIdx] = tmp;
+
+      const reorderItems = state.announcements.map((a, i) => {
+        a.priority = i + 1;
+        return { id: a.id, priority: a.priority };
+      });
+
+      renderAnnouncementsBoard();
+      if (isApiConfigured()) {
+        callApi('reorderAnnouncements', { items: reorderItems }).catch(err => console.error('Reorder failed:', err));
       }
     }
 
     // --- Tab 1: Dashboard ---
     function renderDashboard() {
+      // 0. Top Row: Announcement Board
+      renderAnnouncementsBoard();
+
       // 1. Priority 1: Substitution Quotas (Active items showing currentUsed / totalQuota)
       const quotaContainer = document.getElementById('dash-quota-list');
       const quotas = state.exchangeQuotas || [];
@@ -1683,6 +2141,16 @@ window.__INR_MAIN_PARSED = true;
           }
         } else {
           state.transactions = state.transactions.filter(t => t.id !== txId);
+          (state.exchangeQuotas || []).forEach(q => {
+            if (Array.isArray(q.history)) {
+              q.history = q.history.filter(h => String(h.txnId) !== String(txId));
+              q.usedPieces = getQuotaUsedPieces(q);
+              q.currentUsed = q.usedPieces.length;
+              if (q.currentUsed < (Number(q.totalQuota) || 0) && q.status === 'Completed') {
+                q.status = 'Active';
+              }
+            }
+          });
           showToast('Deleted (mock)');
           appLoading.classList.add('hidden');
           appContent.classList.remove('hidden');
@@ -1830,9 +2298,33 @@ window.__INR_MAIN_PARSED = true;
       return avail;
     }
 
+    function getExchangeRuleForEdit(itemId) {
+      if (!state.exchangeQuotas || !Array.isArray(state.exchangeQuotas)) return null;
+      const active = state.exchangeQuotas.find(q =>
+        String(q.physicalItemId) === String(itemId) &&
+        String(q.status || 'Active') === 'Active'
+      );
+      if (active) return active;
+      return state.exchangeQuotas.find(q => String(q.physicalItemId) === String(itemId)) || null;
+    }
+
+    function getQuotaAvailablePiecesForEdit(q, currentPieceNo) {
+      if (!q) return [];
+      const total = Number(q.totalQuota) || 0;
+      const used = getQuotaUsedPieces(q);
+      const avail = [];
+      const curP = (currentPieceNo !== undefined && currentPieceNo !== null && currentPieceNo !== '') ? Number(currentPieceNo) : null;
+      for (let k = 1; k <= total; k++) {
+        if (!used.includes(k) || (curP && k === curP)) {
+          avail.push(k);
+        }
+      }
+      return avail.sort((a, b) => a - b);
+    }
+
     function formatPiecesList(pieces) {
       if (!pieces || pieces.length === 0) return '—';
-      return pieces.map(p => '#' + p).join(', ');
+      return pieces.join(', ');
     }
 
     function isConsignmentOnlyItem(item) {
@@ -1859,6 +2351,8 @@ window.__INR_MAIN_PARSED = true;
       if (!resultsContainer) return;
 
       const filtered = state.inventory.filter(i => {
+        // Strict Hierarchy Rule: Parent Device Groups cannot be deducted directly in Procedure Use
+        if (i.isParent) return false;
         // Module 3 Rule: Consignment & Vendor Quarantine Hold items in Buffer are locked/hidden from Procedure Use
         if (isConsignmentOnlyItem(i)) return false;
         if (catVal && String(i.category || '').toLowerCase() !== catVal) return false;
@@ -1878,6 +2372,7 @@ window.__INR_MAIN_PARSED = true;
         const retailBadge = retail <= 0
           ? `<span style="color:var(--red); font-weight:600;">${retailLabel}: ${retail} (${oosText})</span>`
           : `${retailLabel}: <strong>${retail}</strong>`;
+        const freeBadgeHtml = i.isFreeItem ? ` <span class="badge-free">FREE</span>` : '';
         const exRule = getActiveExchangeRule(i.itemId);
         const exBadgeHtml = exRule
           ? `<div style="margin-top:4px;"><span class="badge badge-purple">${t('ex_substituted_item', 'Substituted for')} ${getDeviceName(exRule.substitutedItemId)} [Quota: ${exRule.currentUsed}/${exRule.totalQuota}]</span></div>`
@@ -1885,7 +2380,7 @@ window.__INR_MAIN_PARSED = true;
         return `
           <div class="flex justify-between items-center" style="padding:8px 12px; border-bottom:1px solid var(--gray-100);">
             <div>
-              <div class="font-medium text-sm">${i.deviceName}</div>
+              <div class="font-medium text-sm">${i.deviceName}${freeBadgeHtml}</div>
               <div class="text-xs text-gray">${i.category || 'Uncategorized'} · ${mainLabel}: ${main} · ${retailBadge}</div>
               ${exBadgeHtml}
             </div>
@@ -1914,6 +2409,10 @@ window.__INR_MAIN_PARSED = true;
 
     function addToCart(itemId, deviceName) {
       const inv = state.inventory.find(i => String(i.itemId) === String(itemId));
+      if (inv && inv.isParent) {
+        showToast('Cannot deduct stock directly from a Parent Device Group. Please select a Child Sub-Device.');
+        return;
+      }
       const isContrast = inv && String(inv.category || '').toLowerCase().includes('contrast');
       const exRule = getActiveExchangeRule(itemId);
       let defaultPieceNo = '';
@@ -1973,17 +2472,10 @@ window.__INR_MAIN_PARSED = true;
           `;
 
           pieceSelectorHtml = `
-            <div class="mt-2 p-2" style="background:#f5f3ff; border:1px solid #ddd6fe; border-radius:6px; font-size:12px;">
-              <div class="flex justify-between items-center mb-1">
-                <span class="font-semibold" style="color:var(--purple-dark);">Piece # (Out-of-Order Picking):</span>
-                <span class="text-xs text-gray" title="Available pieces">Avail: ${formatPiecesList(availPieces)}</span>
-              </div>
-              <div class="flex items-center gap-2">
-                <label class="text-xs font-medium">Piece No:</label>
-                <select class="form-select form-input-sm" onchange="setCartPieceNo(${idx}, this.value)" style="width:auto; padding:3px 8px; font-size:12px; background:#fff;">
-                  ${availPieces.map(p => `<option value="${p}" ${String(ci.pieceNo) === String(p) ? 'selected' : ''}>Piece #${p} of ${exRule.totalQuota}</option>`).join('')}
-                </select>
-              </div>
+            <div class="mt-2 p-2 flex items-center justify-center gap-2" style="background:#f5f3ff; border:1px solid #ddd6fe; border-radius:6px; font-size:12px;">
+              <select class="form-select form-input-sm" onchange="setCartPieceNo(${idx}, this.value)" style="width:auto; min-width:72px; padding:3px 10px; font-size:12px; background:#fff; text-align:center;">
+                ${availPieces.map(p => `<option value="${p}" ${String(ci.pieceNo) === String(p) ? 'selected' : ''}>${p}</option>`).join('')}
+              </select>
             </div>
           `;
         }
@@ -1992,15 +2484,14 @@ window.__INR_MAIN_PARSED = true;
         if (isContrast) {
           contrastDualInputHtml = `
             <div class="mt-2 p-2" style="background:#eff6ff; border:1px solid #bfdbfe; border-radius:6px; font-size:12px;">
-              <div class="font-semibold mb-1" style="color:var(--brand-dark);">Contrast Media Input (Required):</div>
-              <div class="flex gap-2 items-center flex-wrap">
-                <div>
+              <div class="flex gap-2 items-center justify-center flex-wrap" style="text-align:center;">
+                <div style="text-align:center;">
                   <label class="text-xs text-gray block">Volume (ml) <span style="color:var(--red);">*</span></label>
-                  <input type="number" step="any" min="1" placeholder="e.g. 50" value="${ci.volumeMl || ''}" onchange="setCartVolume(${idx}, this.value)" style="width:100px; padding:4px 8px; font-size:12px; border:1px solid var(--gray-300); border-radius:4px;" required>
+                  <input type="number" step="any" min="1" placeholder="e.g. 50" value="${ci.volumeMl || ''}" onchange="setCartVolume(${idx}, this.value)" style="width:100px; padding:4px 8px; font-size:12px; border:1px solid var(--gray-300); border-radius:4px; text-align:center;" required>
                 </div>
-                <div>
+                <div style="text-align:center;">
                   <label class="text-xs text-gray block">Quantity (ขวด) <span style="color:var(--red);">*</span></label>
-                  <input type="number" min="1" value="${ci.qty}" onchange="setCartQty(${idx}, this.value)" style="width:70px; padding:4px 8px; font-size:12px; border:1px solid var(--gray-300); border-radius:4px;" required>
+                  <input type="number" min="1" value="${ci.qty}" onchange="setCartQty(${idx}, this.value)" style="width:70px; padding:4px 8px; font-size:12px; border:1px solid var(--gray-300); border-radius:4px; text-align:center;" required>
                 </div>
               </div>
             </div>
@@ -2071,12 +2562,49 @@ window.__INR_MAIN_PARSED = true;
           const existingItem = g.items.find(it => String(it.itemId) === String(t.itemId));
           if (existingItem) {
             existingItem.qty += Number(t.qty) || 0;
+            if (!existingItem.pieceNo && t.pieceNo) existingItem.pieceNo = t.pieceNo;
+            if (!existingItem.volumeMl && t.volumeMl) existingItem.volumeMl = t.volumeMl;
           } else {
+            const devName = getDeviceName(t.itemId);
+            const devCat = getDeviceCategory(t.itemId);
+            const isContrast = String(devCat || '').toLowerCase().includes('contrast');
+
+            // Find pieceNo if recorded in exchangeQuotas
+            let pNo = t.pieceNo || '';
+            if (!pNo) {
+              for (const q of (state.exchangeQuotas || [])) {
+                if (String(q.physicalItemId) === String(t.itemId)) {
+                  const hist = Array.isArray(q.history) ? q.history : [];
+                  const match = hist.find(h => String(h.txnId) === String(t.id));
+                  if (match && match.pieceNo !== undefined && match.pieceNo !== null && match.pieceNo !== '') {
+                    pNo = match.pieceNo;
+                    break;
+                  }
+                }
+              }
+            }
+
+            // Find volumeMl from contrast string or t.volumeMl
+            let vol = t.volumeMl || '';
+            if (!vol && t.contrast && isContrast) {
+              const safeName = devName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+              const nameMatch = String(t.contrast).match(new RegExp(safeName + '\\s*\\((\\d+(?:\\.\\d+)?)\\s*ml', 'i'));
+              if (nameMatch) {
+                vol = nameMatch[1];
+              } else {
+                const genericMatch = String(t.contrast).match(/(\d+(?:\.\d+)?)\s*ml/i);
+                if (genericMatch) vol = genericMatch[1];
+              }
+            }
+
             g.items.push({
               itemId: t.itemId,
-              deviceName: getDeviceName(t.itemId),
-              category: getDeviceCategory(t.itemId),
-              qty: Number(t.qty) || 0
+              deviceName: devName,
+              category: devCat,
+              qty: Number(t.qty) || 0,
+              pieceNo: pNo,
+              volumeMl: vol,
+              isContrast: isContrast
             });
           }
         }
@@ -2089,7 +2617,10 @@ window.__INR_MAIN_PARSED = true;
       const btn = document.getElementById('btn-toggle-proc-history');
       if (!card) return;
       const isHidden = card.classList.toggle('hidden');
-      if (btn) btn.innerText = isHidden ? 'Procedure Case History ▼' : 'Hide Case History ▲';
+      if (btn) {
+        const spanEl = btn.querySelector('span') || btn;
+        spanEl.innerText = isHidden ? `${t('proc_case_history', 'Procedure Case History ▾')}` : 'Hide Case History ▲';
+      }
       if (!isHidden) renderProcHistory();
     }
 
@@ -2151,11 +2682,18 @@ window.__INR_MAIN_PARSED = true;
         const sellPrice = inv ? (Number(inv.sellPrice) || 0) : 0;
         const lineTotal = sellPrice * it.qty;
         totalCost += lineTotal;
+        let metaHtml = '';
+        if (it.pieceNo) {
+          metaHtml += ` <span class="badge badge-purple" style="font-size:10px; margin-left:4px;">Piece ${it.pieceNo}</span>`;
+        }
+        if (it.volumeMl) {
+          metaHtml += ` <span class="badge badge-blue" style="font-size:10px; margin-left:4px;">${it.volumeMl} ml</span>`;
+        }
         return `
           <tr>
             <td class="center">${idx + 1}</td>
             <td class="font-mono text-xs text-gray">${it.itemId}</td>
-            <td class="font-medium">${it.deviceName}</td>
+            <td class="font-medium">${it.deviceName}${metaHtml}</td>
             <td class="text-gray">${it.category || ''}</td>
             <td class="center font-bold">${it.qty}</td>
             <td class="num">฿${sellPrice.toLocaleString()}</td>
@@ -2174,6 +2712,7 @@ window.__INR_MAIN_PARSED = true;
             <div><span class="text-gray">Disease:</span> <strong>${g.disease || '—'}</strong></div>
             <div><span class="text-gray">Procedure:</span> <strong>${g.procedure || '—'}</strong></div>
             <div style="grid-column: span 2;"><span class="text-gray">Techs / Staff:</span> <strong>${g.tech || '—'}</strong></div>
+            ${g.contrast ? `<div style="grid-column: span 2;"><span class="text-gray">Contrast Media:</span> <strong style="color:var(--brand-dark);">${escapeHtml(g.contrast)}</strong></div>` : ''}
             ${g.complication ? `<div style="grid-column: span 2;"><span class="text-gray">Complications / Notes:</span> <strong>${g.complication}</strong></div>` : ''}
           </div>
           <div class="table-wrap" style="max-height:none;">
@@ -2233,12 +2772,20 @@ window.__INR_MAIN_PARSED = true;
       const g = getProcedureGroups().find(x => String(x.id) === String(txId));
       if (!g) return;
       state.procEditId = g.id;
-      state.procEditDevices = g.items.map(it => ({
-        itemId: it.itemId,
-        deviceName: it.deviceName,
-        category: it.category,
-        qty: it.qty
-      }));
+      state.procEditDevices = g.items.map(it => {
+        const inv = state.inventory.find(i => String(i.itemId) === String(it.itemId));
+        const isContrast = (inv && String(inv.category || '').toLowerCase().includes('contrast')) || String(it.category || '').toLowerCase().includes('contrast');
+        return {
+          itemId: it.itemId,
+          deviceName: it.deviceName,
+          category: it.category,
+          qty: it.qty,
+          isContrast: !!isContrast,
+          volumeMl: it.volumeMl || '',
+          pieceNo: it.pieceNo || '',
+          isFreeItem: !!(inv && inv.isFreeItem)
+        };
+      });
 
       document.getElementById('proc-edit-txid').innerText = `(${g.id})`;
       document.getElementById('proc-edit-date').value = String(g.date || '').slice(0, 10);
@@ -2292,40 +2839,139 @@ window.__INR_MAIN_PARSED = true;
         allCats.map(c => `<option value="${c}">${c}</option>`).join('');
 
       renderProcEditDeviceOptions();
+      onProcEditItemSelect();
       renderProcEditDevicesTable();
       openModal('modal-proc-edit');
+    }
+
+    function onProcEditItemSelect() {
+      const itemSelect = document.getElementById('proc-edit-add-item');
+      const contrastWrap = document.getElementById('proc-edit-add-contrast-fields');
+      const pieceWrap = document.getElementById('proc-edit-add-piece-fields');
+      const pieceSelect = document.getElementById('proc-edit-add-piece');
+      if (!itemSelect) return;
+      const itemId = itemSelect.value;
+      const inv = state.inventory.find(i => String(i.itemId) === String(itemId));
+      const isContrast = inv && String(inv.category || '').toLowerCase().includes('contrast');
+      const exRule = getExchangeRuleForEdit(itemId);
+
+      if (contrastWrap) contrastWrap.classList.toggle('hidden', !isContrast);
+      if (pieceWrap) {
+        if (exRule) {
+          pieceWrap.classList.remove('hidden');
+          const avail = getQuotaAvailablePieces(exRule);
+          if (pieceSelect) {
+            pieceSelect.innerHTML = avail.map(p => `<option value="${p}">${p}</option>`).join('');
+          }
+        } else {
+          pieceWrap.classList.add('hidden');
+        }
+      }
     }
 
     function renderProcEditDeviceOptions() {
       const cat = (document.getElementById('proc-edit-add-cat')?.value || '').toLowerCase().trim();
       const itemSelect = document.getElementById('proc-edit-add-item');
       if (!itemSelect) return;
-      const items = state.inventory.filter(i => !isConsignmentOnlyItem(i) && (!cat || String(i.category || '').toLowerCase() === cat));
+      const items = state.inventory.filter(i => !i.isParent && !isConsignmentOnlyItem(i) && (!cat || String(i.category || '').toLowerCase() === cat));
       itemSelect.innerHTML = items.map(i => {
         const r = Number(i.retailStock) || 0;
-        return `<option value="${escapeHtml(String(i.itemId))}">${i.deviceName} (${i.category || '—'} · Retail: ${r})</option>`;
+        const freeTag = i.isFreeItem ? ' [FREE]' : '';
+        return `<option value="${escapeHtml(String(i.itemId))}">${i.deviceName}${freeTag} (${i.category || '—'} · Retail: ${r})</option>`;
       }).join('');
+      onProcEditItemSelect();
     }
 
     function renderProcEditDevicesTable() {
       const tbody = document.getElementById('proc-edit-devices');
+      const countEl = document.getElementById('proc-edit-dev-count');
+      if (countEl) countEl.innerText = `${state.procEditDevices.length} items`;
       if (!tbody) return;
       if (state.procEditDevices.length === 0) {
         tbody.innerHTML = '<tr><td colspan="4" class="empty-state text-sm">No supply items logged in this procedure (e.g. Activate INR Code / Off case).</td></tr>';
         return;
       }
-      tbody.innerHTML = state.procEditDevices.map((d, idx) => `
-        <tr>
-          <td class="font-medium">${d.deviceName}</td>
-          <td class="text-gray text-sm">${d.category || ''}</td>
-          <td class="center">
-            <input type="number" min="1" value="${d.qty}" class="form-input form-input-sm" style="width:70px; text-align:center;" onchange="updateProcEditDeviceQty(${idx}, this.value)">
-          </td>
-          <td class="center">
-            <button class="btn-ghost" style="color:var(--red);" onclick="removeProcEditDevice(${idx})">✕</button>
-          </td>
-        </tr>
-      `).join('');
+
+      tbody.innerHTML = state.procEditDevices.map((d, idx) => {
+        const inv = state.inventory.find(i => String(i.itemId) === String(d.itemId));
+        const isContrast = d.isContrast || (inv && String(inv.category || '').toLowerCase().includes('contrast'));
+        const exRule = getExchangeRuleForEdit(d.itemId);
+
+        let exBadgeHtml = '';
+        let detailHtml = '';
+
+        if (exRule) {
+          const availPieces = getQuotaAvailablePiecesForEdit(exRule, d.pieceNo);
+          if (!d.pieceNo && availPieces.length > 0) d.pieceNo = availPieces[0];
+          exBadgeHtml = `
+            <div style="margin-top:2px;">
+              <span class="badge badge-purple" style="font-size:10px;">Substituted for ${getDeviceName(exRule.substitutedItemId)} [Quota: ${exRule.currentUsed}/${exRule.totalQuota}]</span>
+            </div>
+          `;
+          detailHtml = `
+            <div class="flex items-center justify-center gap-2 flex-wrap">
+              <div class="flex items-center gap-1">
+                <label class="text-xs text-gray font-medium">Piece No:</label>
+                <select class="form-select form-input-sm" onchange="setProcEditDevicePieceNo(${idx}, this.value)" style="width:auto; min-width:65px; text-align:center; padding:3px 8px; font-size:12px; font-weight:700; color:var(--purple-dark); background:#f5f3ff; border-color:#ddd6fe;">
+                  ${availPieces.map(p => `<option value="${p}" ${String(d.pieceNo) === String(p) ? 'selected' : ''}>${p}</option>`).join('')}
+                </select>
+              </div>
+              <div class="flex items-center gap-1">
+                <label class="text-xs text-gray font-medium">Qty:</label>
+                <input type="number" min="1" value="${d.qty}" class="form-input form-input-sm" style="width:58px; text-align:center; padding:3px 6px;" onchange="updateProcEditDeviceQty(${idx}, this.value)">
+              </div>
+            </div>
+          `;
+        } else if (isContrast) {
+          detailHtml = `
+            <div class="flex items-center justify-center gap-2 flex-wrap">
+              <div class="flex items-center gap-1">
+                <label class="text-xs text-gray font-medium">Vol:</label>
+                <input type="number" step="any" min="1" value="${d.volumeMl || ''}" placeholder="ml *" class="form-input form-input-sm" style="width:80px; text-align:center; padding:3px 6px;" onchange="setProcEditDeviceVolume(${idx}, this.value)" required>
+                <span class="text-xs text-gray">ml</span>
+              </div>
+              <div class="flex items-center gap-1">
+                <label class="text-xs text-gray font-medium">Qty:</label>
+                <input type="number" min="1" value="${d.qty}" class="form-input form-input-sm" style="width:58px; text-align:center; padding:3px 6px;" onchange="updateProcEditDeviceQty(${idx}, this.value)" required>
+                <span class="text-xs text-gray">ขวด</span>
+              </div>
+            </div>
+          `;
+        } else {
+          detailHtml = `
+            <div class="flex items-center justify-center gap-2">
+              <label class="text-xs text-gray font-medium">Qty:</label>
+              <input type="number" min="1" value="${d.qty}" class="form-input form-input-sm" style="width:65px; text-align:center; padding:3px 6px;" onchange="updateProcEditDeviceQty(${idx}, this.value)">
+            </div>
+          `;
+        }
+
+        const freeBadgeHtml = (inv && inv.isFreeItem) || d.isFreeItem ? ' <span class="badge-free">FREE</span>' : '';
+
+        return `
+          <tr>
+            <td>
+              <div class="font-medium text-sm">${d.deviceName}${freeBadgeHtml}</div>
+              ${exBadgeHtml}
+            </td>
+            <td class="text-gray text-xs">${d.category || ''}</td>
+            <td class="center">${detailHtml}</td>
+            <td class="center">
+              <button class="btn-ghost" style="color:var(--red);" onclick="removeProcEditDevice(${idx})" title="Remove">✕</button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function setProcEditDeviceVolume(idx, val) {
+      if (!state.procEditDevices[idx]) return;
+      state.procEditDevices[idx].volumeMl = parseFloat(val) || '';
+    }
+
+    function setProcEditDevicePieceNo(idx, val) {
+      if (!state.procEditDevices[idx]) return;
+      state.procEditDevices[idx].pieceNo = parseInt(val) || '';
     }
 
     function updateProcEditDeviceQty(idx, val) {
@@ -2342,18 +2988,55 @@ window.__INR_MAIN_PARSED = true;
       const itemId = document.getElementById('proc-edit-add-item')?.value;
       const qty = Math.max(1, parseInt(document.getElementById('proc-edit-add-qty')?.value) || 1);
       if (!itemId) return;
+
+      const inv = state.inventory.find(i => String(i.itemId) === String(itemId));
+      const isContrast = inv && String(inv.category || '').toLowerCase().includes('contrast');
+      const exRule = getExchangeRuleForEdit(itemId);
+
+      let vol = '';
+      if (isContrast) {
+        const volInput = document.getElementById('proc-edit-add-vol');
+        vol = volInput ? (parseFloat(volInput.value) || '') : '';
+        if (!vol) {
+          showToast('Please enter Volume (ml) for contrast media');
+          if (volInput) volInput.focus();
+          return;
+        }
+      }
+
+      let pieceNo = '';
+      if (exRule) {
+        const pieceSel = document.getElementById('proc-edit-add-piece');
+        pieceNo = pieceSel ? (parseInt(pieceSel.value) || '') : '';
+        if (!pieceNo) {
+          const avail = getQuotaAvailablePieces(exRule);
+          if (avail.length > 0) pieceNo = avail[0];
+        }
+      }
+
       const exist = state.procEditDevices.find(d => String(d.itemId) === String(itemId));
       if (exist) {
         exist.qty += qty;
+        if (vol) exist.volumeMl = vol;
+        if (pieceNo) exist.pieceNo = pieceNo;
       } else {
         state.procEditDevices.push({
           itemId,
           deviceName: getDeviceName(itemId),
           category: getDeviceCategory(itemId),
-          qty
+          qty,
+          isContrast: !!isContrast,
+          volumeMl: vol,
+          pieceNo: pieceNo,
+          isFreeItem: !!(inv && inv.isFreeItem)
         });
       }
-      document.getElementById('proc-edit-add-qty').value = '1';
+
+      const qtyEl = document.getElementById('proc-edit-add-qty');
+      if (qtyEl) qtyEl.value = '1';
+      const volEl = document.getElementById('proc-edit-add-vol');
+      if (volEl) volEl.value = '';
+
       renderProcEditDevicesTable();
     }
 
@@ -2373,6 +3056,31 @@ window.__INR_MAIN_PARSED = true;
       const checkedTechs = Array.from(document.querySelectorAll('#proc-edit-techs input[type="checkbox"]:checked')).map(cb => cb.value);
       const origGroup = getProcedureGroups().find(g => String(g.id) === String(txId));
 
+      // Validate Contrast Media (Volume and Quantity required)
+      for (const d of state.procEditDevices) {
+        const inv = state.inventory.find(i => String(i.itemId) === String(d.itemId));
+        const isContrast = d.isContrast || (inv && String(inv.category || '').toLowerCase().includes('contrast'));
+        if (isContrast) {
+          const vol = Number(d.volumeMl);
+          const btl = Number(d.qty);
+          if (!vol || vol <= 0) {
+            showToast(`Please enter Volume (ml) for contrast media: "${d.deviceName}"`);
+            return;
+          }
+          if (!btl || btl <= 0) {
+            showToast(`Please enter Quantity / Bottle count for contrast media: "${d.deviceName}"`);
+            return;
+          }
+        }
+      }
+
+      // Format Contrast Media summary string
+      const contrastItems = state.procEditDevices.filter(d => {
+        const inv = state.inventory.find(i => String(i.itemId) === String(d.itemId));
+        return d.isContrast || (inv && String(inv.category || '').toLowerCase().includes('contrast'));
+      });
+      const contrastSummary = contrastItems.map(c => `${c.deviceName} (${c.volumeMl} ml, ${c.qty} btl)`).join(', ');
+
       const payload = {
         date: document.getElementById('proc-edit-date').value || getToday(),
         patientHN: hn,
@@ -2381,8 +3089,13 @@ window.__INR_MAIN_PARSED = true;
         shift: document.getElementById('proc-edit-shift').value,
         tech: checkedTechs.join(', '),
         complication: document.getElementById('proc-edit-complications').value,
-        contrast: origGroup ? (origGroup.contrast || '') : '',
-        devices: state.procEditDevices.map(d => ({ itemId: d.itemId, quantity: d.qty }))
+        contrast: contrastSummary,
+        devices: state.procEditDevices.map(d => ({
+          itemId: d.itemId,
+          quantity: d.qty,
+          volumeMl: d.volumeMl || '',
+          pieceNo: d.pieceNo || ''
+        }))
       };
 
       closeModal();
@@ -2401,13 +3114,29 @@ window.__INR_MAIN_PARSED = true;
             appContent.classList.remove('hidden');
           });
       } else {
-        // Offline mock: revert old items, remove old tx rows, push new tx rows
+        // Offline mock: revert old items, clean old quota history, push new tx rows
         if (origGroup && origGroup.items) {
           origGroup.items.forEach(oldIt => {
             const inv = state.inventory.find(i => String(i.itemId) === String(oldIt.itemId));
             if (inv) inv.retailStock += oldIt.qty;
           });
         }
+
+        // Clean up quota history for old txId
+        (state.exchangeQuotas || []).forEach(q => {
+          if (Array.isArray(q.history)) {
+            const beforeLen = q.history.length;
+            q.history = q.history.filter(h => String(h.txnId) !== String(txId));
+            if (q.history.length !== beforeLen) {
+              q.usedPieces = getQuotaUsedPieces(q);
+              q.currentUsed = q.usedPieces.length;
+              if (q.currentUsed < (Number(q.totalQuota) || 0) && q.status === 'Completed') {
+                q.status = 'Active';
+              }
+            }
+          }
+        });
+
         state.transactions = state.transactions.filter(t => String(t.id) !== String(txId));
         const newId = 'TXN-' + Date.now();
         if (payload.devices.length === 0) {
@@ -2443,7 +3172,9 @@ window.__INR_MAIN_PARSED = true;
               shift: payload.shift,
               tech: payload.tech,
               complication: payload.complication,
-              contrast: payload.contrast
+              contrast: payload.contrast,
+              volumeMl: d.volumeMl,
+              pieceNo: d.pieceNo
             });
             const inv = state.inventory.find(i => String(i.itemId) === String(d.itemId));
             if (inv) {
@@ -2451,8 +3182,40 @@ window.__INR_MAIN_PARSED = true;
               inv.totalStock = (Number(inv.mainStock) || 0) + inv.retailStock;
               inv.stockDiff = inv.totalStock - (Number(inv.hoStock) || 0);
             }
+
+            // Assign piece to exchange quota
+            const exRule = getExchangeRuleForEdit(d.itemId);
+            if (exRule) {
+              if (!Array.isArray(exRule.usedPieces)) exRule.usedPieces = getQuotaUsedPieces(exRule);
+              let pNo = d.pieceNo ? Number(d.pieceNo) : null;
+              if (pNo && !isNaN(pNo)) {
+                if (!exRule.usedPieces.includes(pNo)) exRule.usedPieces.push(pNo);
+              } else {
+                for (let k = 1; k <= (Number(exRule.totalQuota) || 0); k++) {
+                  if (!exRule.usedPieces.includes(k)) {
+                    pNo = k;
+                    exRule.usedPieces.push(k);
+                    break;
+                  }
+                }
+              }
+              exRule.currentUsed = exRule.usedPieces.length;
+              if (!Array.isArray(exRule.history)) exRule.history = [];
+              exRule.history.push({
+                txnId: newId,
+                date: payload.date,
+                hn: payload.patientHN,
+                qty: Number(d.quantity) || 0,
+                procedure: payload.procedure,
+                pieceNo: pNo
+              });
+              if (exRule.currentUsed >= exRule.totalQuota) {
+                exRule.status = 'Completed';
+              }
+            }
           });
         }
+        recalculateInventoryHierarchy();
         showToast('Procedure updated (mock)');
         appLoading.classList.add('hidden');
         appContent.classList.remove('hidden');
@@ -2506,10 +3269,10 @@ window.__INR_MAIN_PARSED = true;
           ` : ''}
           <div class="device-modal-grid">
             <div class="form-group col-span-2">
-              <label class="form-label"><span>Device Name</span> <span style="color:var(--red);">*</span></label>
+              <label class="form-label"><span>Device Name (Sub-Device / Standalone Only)</span> <span style="color:var(--red);">*</span></label>
               <select class="form-select" onchange="updateStockItem(${idx}, this.value)">
                 <option value="">Select Device...</option>
-                ${state.inventory.map(item => `<option value="${item.itemId}" ${line.itemId === item.itemId ? 'selected' : ''}>${item.deviceName}</option>`).join('')}
+                ${getTransactableInventory().map(item => `<option value="${item.itemId}" ${line.itemId === item.itemId ? 'selected' : ''}>${item.deviceName}${item.isFreeItem ? ' [FREE]' : ''}</option>`).join('')}
               </select>
             </div>
 
@@ -2568,16 +3331,17 @@ window.__INR_MAIN_PARSED = true;
       const searchVal = document.getElementById('adj-search-input').value.toLowerCase();
       const body = document.getElementById('adj-table-body');
       
-      const filtered = state.inventory.filter(i => !searchVal || i.deviceName.toLowerCase().includes(searchVal));
+      const filtered = getTransactableInventory().filter(i => !searchVal || i.deviceName.toLowerCase().includes(searchVal));
 
       body.innerHTML = filtered.map(i => {
         const valMain = getAdjValue(i.itemId, 'Main');
         const valRetail = getAdjValue(i.itemId, 'Retail');
         const valBuffer = getAdjValue(i.itemId, 'Buffer');
         const bufStock = Number(i.bufferStock) || 0;
+        const freeBadge = i.isFreeItem ? ` <span class="badge-free">FREE</span>` : '';
         return `
           <tr>
-            <td class="font-medium">${i.deviceName}</td>
+            <td class="font-medium">${i.deviceName}${freeBadge}</td>
             <td class="center text-gray">${i.mainStock}</td>
             <td class="center">
               <input type="number" class="adj-input" value="${valMain}" oninput="handleSetAdj('${i.itemId}', 'Main', this.value, ${i.mainStock})" placeholder="—">
@@ -3561,8 +4325,20 @@ function exportStatisticsCSV() {
       const listCard = document.getElementById('settings-list-card');
       const userCard = document.getElementById('settings-user-card');
       const secCard  = document.getElementById('settings-security-card');
+      const hierCard = document.getElementById('settings-hierarchy-card');
       const scopeSel = document.getElementById('settings-add-dept-scope');
       if (scopeSel) scopeSel.classList.toggle('hidden', sec !== 'departments');
+
+      if (sec === 'hierarchy') {
+        if (listCard) listCard.classList.add('hidden');
+        if (userCard) userCard.classList.add('hidden');
+        if (secCard)  secCard.classList.add('hidden');
+        if (hierCard) hierCard.classList.remove('hidden');
+        renderHierarchySettings();
+        return;
+      } else {
+        if (hierCard) hierCard.classList.add('hidden');
+      }
 
       if (sec === 'security') {
         if (listCard) listCard.classList.add('hidden');
@@ -3875,6 +4651,186 @@ function exportStatisticsCSV() {
     }
 
     // ════════════════════════════════════════════════════════════════
+    // SETTINGS: DEVICE & SUB-DEVICE HIERARCHY MANAGEMENT
+    // ════════════════════════════════════════════════════════════════
+    function renderHierarchySettings() {
+      recalculateInventoryHierarchy();
+      const childSel  = document.getElementById('hier-assign-child-select');
+      const parentSel = document.getElementById('hier-assign-parent-select');
+      const treeEl    = document.getElementById('settings-hierarchy-tree');
+
+      const parents  = (state.inventory || []).filter(i => i.isParent);
+      const children = (state.inventory || []).filter(i => !i.isParent);
+
+      if (childSel) {
+        const curChild = childSel.value;
+        childSel.innerHTML = `<option value="">-- Select Sub-Device --</option>` +
+          children.map(c => {
+            const pObj = c.parentId ? parents.find(p => String(p.itemId) === String(c.parentId)) : null;
+            const pTag = pObj ? ` [in ${pObj.deviceName}]` : ' [Standalone]';
+            const fTag = c.isFreeItem ? ' [FREE]' : '';
+            return `<option value="${escapeHtml(String(c.itemId))}" ${String(c.itemId) === String(curChild) ? 'selected' : ''}>${escapeHtml(c.deviceName)}${fTag}${escapeHtml(pTag)}</option>`;
+          }).join('');
+      }
+
+      if (parentSel) {
+        const curParent = parentSel.value;
+        parentSel.innerHTML = `<option value="">-- Standalone (No Parent Group) --</option>` +
+          parents.map(p => `<option value="${escapeHtml(String(p.itemId))}" ${String(p.itemId) === String(curParent) ? 'selected' : ''}>${escapeHtml(p.deviceName)} (${escapeHtml(p.category || '—')})</option>`).join('');
+      }
+
+      if (!treeEl) return;
+
+      if (parents.length === 0) {
+        treeEl.innerHTML = `<div class="empty-state text-sm">No Parent Device Groups created yet. Click "+ New Parent Device Group" above to create a group (e.g., Solitaire Platinum, Rebar Microcatheter).</div>`;
+        return;
+      }
+
+      treeEl.innerHTML = parents.map(p => {
+        const groupKids = children.filter(c => String(c.parentId) === String(p.itemId));
+        return `
+          <div class="hierarchy-group-card">
+            <div class="hierarchy-group-header">
+              <div>
+                <div class="flex items-center gap-2 flex-wrap">
+                  <span class="badge-parent">PARENT GROUP</span>
+                  <strong class="text-sm">${escapeHtml(p.deviceName)}</strong>
+                  <span class="badge badge-gray">${escapeHtml(p.category || '—')}</span>
+                  <span class="text-xs font-mono text-gray">ID: ${escapeHtml(p.itemId)}</span>
+                  ${p.hoItemId ? `<span class="text-xs font-mono text-gray">· HO ID: ${escapeHtml(p.hoItemId)}</span>` : ''}
+                </div>
+                <div class="text-xs text-gray mt-1">
+                  Aggregated Stock — Main: <strong>${p.mainStock || 0}</strong> · Retail: <strong>${p.retailStock || 0}</strong> · Total: <strong style="color:var(--brand-dark);">${p.totalStock || 0}</strong> · HO Stock: <strong>${p.hoStock || 0}</strong> · Diff: <strong>${p.stockDiff > 0 ? ('+' + p.stockDiff) : (p.stockDiff || 0)}</strong>
+                </div>
+              </div>
+              <div class="flex gap-1">
+                <button type="button" class="btn btn-outline btn-sm" onclick="openEditDeviceModal('${escapeHtml(p.itemId)}')">${ICONS.edit} Edit Group</button>
+                <button type="button" class="btn-ghost" style="color:var(--red);" onclick="removeDevice('${escapeHtml(p.itemId)}')" title="Delete Parent Group">${ICONS.trash}</button>
+              </div>
+            </div>
+            <div class="hierarchy-children-list">
+              ${groupKids.length === 0
+                ? `<div class="text-xs text-gray" style="padding:4px 8px;">No Sub-Devices assigned to this group yet. Use the Quick Assign box above to attach sizes or free items.</div>`
+                : groupKids.map(c => `
+                  <div class="hierarchy-child-item">
+                    <div>
+                      <span style="color:#64748b; font-family:monospace; margin-right:4px;">└</span>
+                      <strong>${escapeHtml(c.deviceName)}</strong>
+                      ${c.isFreeItem ? `<span class="badge-free" style="margin-left:4px;">FREE</span>` : ''}
+                      <span class="text-xs font-mono text-gray" style="margin-left:6px;">(${escapeHtml(c.itemId)})</span>
+                      <span class="text-xs text-gray" style="margin-left:8px;">Main: ${c.mainStock || 0} · Retail: <strong>${c.retailStock || 0}</strong> · Total: <strong>${c.totalStock || 0}</strong></span>
+                    </div>
+                    <div class="flex gap-1 items-center">
+                      <button type="button" class="btn btn-outline btn-sm" style="padding:2px 8px; font-size:11px;" onclick="toggleItemFreeStatus('${escapeHtml(c.itemId)}')" title="Toggle Free Item status">${c.isFreeItem ? 'Set Paid' : 'Set Free'}</button>
+                      <button type="button" class="btn-ghost text-xs" onclick="openEditDeviceModal('${escapeHtml(c.itemId)}')" title="Edit Sub-Device">${ICONS.edit}</button>
+                      <button type="button" class="btn btn-outline btn-sm" style="padding:2px 8px; font-size:11px;" onclick="quickAssignChildParent('${escapeHtml(c.itemId)}', '')">Unassign</button>
+                    </div>
+                  </div>
+                `).join('')
+              }
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      const standaloneKids = children.filter(c => !c.parentId);
+      if (standaloneKids.length > 0) {
+        treeEl.innerHTML += `
+          <div class="hierarchy-group-card" style="margin-top:16px; border-color:var(--gray-300);">
+            <div class="hierarchy-group-header" style="background:var(--gray-100);">
+              <div>
+                <strong class="text-sm">Standalone Sub-Devices (${standaloneKids.length})</strong>
+                <div class="text-xs text-gray">Devices currently not assigned to any Parent Group. Manage Free Item status or assign to a Parent Group above.</div>
+              </div>
+            </div>
+            <div class="hierarchy-children-list">
+              ${standaloneKids.map(c => `
+                <div class="hierarchy-child-item">
+                  <div>
+                    <span style="color:#94a3b8; font-family:monospace; margin-right:4px;">•</span>
+                    <strong>${escapeHtml(c.deviceName)}</strong>
+                    ${c.isFreeItem ? `<span class="badge-free" style="margin-left:4px;">FREE</span>` : `<span class="badge badge-blue" style="margin-left:4px;">PO</span>`}
+                    <span class="badge badge-gray" style="margin-left:4px;">${escapeHtml(c.category || '—')}</span>
+                    <span class="text-xs font-mono text-gray" style="margin-left:6px;">(${escapeHtml(c.itemId)})</span>
+                    <span class="text-xs text-gray" style="margin-left:8px;">Main: ${c.mainStock || 0} · Retail: <strong>${c.retailStock || 0}</strong> · Total: <strong>${c.totalStock || 0}</strong></span>
+                  </div>
+                  <div class="flex gap-1 items-center">
+                    <button type="button" class="btn btn-outline btn-sm" style="padding:2px 8px; font-size:11px;" onclick="toggleItemFreeStatus('${escapeHtml(c.itemId)}')" title="Toggle Free Item status">${c.isFreeItem ? 'Set Paid' : 'Set Free'}</button>
+                    <button type="button" class="btn-ghost text-xs" onclick="openEditDeviceModal('${escapeHtml(c.itemId)}')" title="Edit Device">${ICONS.edit}</button>
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        `;
+      }
+    }
+
+    function toggleItemFreeStatus(itemId) {
+      const item = state.inventory.find(i => String(i.itemId) === String(itemId));
+      if (!item) return;
+      const newFree = !item.isFreeItem;
+      const confirmMsg = newFree
+        ? (state.currentLang === 'th' ? `กำหนด "${item.deviceName}" เป็นของแถม (Free Item: Buy Price = 0, ไม่ตรวจ HO Stock)?` : `Mark "${item.deviceName}" as Free item (Buy Price = 0, no HO tracking)?`)
+        : (state.currentLang === 'th' ? `เปลี่ยน "${item.deviceName}" กลับเป็นอุปกรณ์ซื้อขาดปกติ (PO Item)?` : `Set "${item.deviceName}" as standard PO item?`);
+      if (!confirm(confirmMsg)) return;
+
+      if (isApiConfigured()) {
+        setSyncIndicator(true);
+        callApi('setItemFreeStatus', { itemId: item.itemId, isFreeItem: newFree })
+          .then(() => {
+            setSyncIndicator(false);
+            showToast(newFree ? `Marked "${item.deviceName}" as Free item` : `Set "${item.deviceName}" as PO item`);
+            fetchDataFromServer();
+          })
+          .catch(err => {
+            setSyncIndicator(false);
+            showToast('Failed: ' + (err.message || err));
+          });
+      } else {
+        item.isFreeItem = newFree;
+        if (newFree) item.buyPrice = 0;
+        recalculateInventoryHierarchy();
+        renderHierarchySettings();
+        showToast(newFree ? `Marked "${item.deviceName}" as Free item (mock)` : `Set "${item.deviceName}" as PO item (mock)`);
+      }
+    }
+
+    function submitQuickHierarchyAssign() {
+      const childId  = document.getElementById('hier-assign-child-select')?.value || '';
+      const parentId = document.getElementById('hier-assign-parent-select')?.value || '';
+      if (!childId) {
+        showToast('Please select a Child Sub-Device first');
+        return;
+      }
+      quickAssignChildParent(childId, parentId);
+    }
+
+    function quickAssignChildParent(childItemId, parentId) {
+      if (isApiConfigured()) {
+        setSyncIndicator(true);
+        callApi('assignChildParent', { childItemId, parentId })
+          .then(() => {
+            setSyncIndicator(false);
+            showToast(parentId ? 'Assigned Sub-Device to Parent Group!' : 'Unassigned Sub-Device (now Standalone)');
+            fetchDataFromServer();
+          })
+          .catch(err => {
+            setSyncIndicator(false);
+            showToast('Failed: ' + (err.message || err));
+          });
+      } else {
+        const child = state.inventory.find(i => String(i.itemId) === String(childItemId));
+        if (child) {
+          child.parentId = parentId || '';
+          recalculateInventoryHierarchy();
+          renderHierarchySettings();
+          showToast(parentId ? 'Assigned Sub-Device (mock)' : 'Unassigned Sub-Device (mock)');
+        }
+      }
+    }
+
+    // ════════════════════════════════════════════════════════════════
     // MODULE 2 & 3: EXCHANGE QUOTA TRACKER & CONSIGNMENT HOLD (BUFFER)
     // ════════════════════════════════════════════════════════════════
     function switchExchangeSubTab(sub) {
@@ -4033,8 +4989,8 @@ function exportStatisticsCSV() {
       document.getElementById('modal-ex-quota-title').innerText = isEdit ? 'Edit Substitution Quota Rule' : 'New Substitution Quota Rule';
       document.getElementById('ex-modal-quota-id').value = q ? q.quotaId : '';
 
-      const optsHtml = '<option value="">— Select Device —</option>' + state.inventory.map(i =>
-        `<option value="${escapeHtml(String(i.itemId))}">${i.deviceName} (${i.category || '—'} · Retail: ${i.retailStock || 0})</option>`
+      const optsHtml = '<option value="">— Select Device —</option>' + getTransactableInventory().map(i =>
+        `<option value="${escapeHtml(String(i.itemId))}">${i.deviceName}${i.isFreeItem ? ' [FREE]' : ''} (${i.category || '—'} · Retail: ${i.retailStock || 0})</option>`
       ).join('');
       const physSel = document.getElementById('ex-modal-phys-item');
       const subSel  = document.getElementById('ex-modal-sub-item');
@@ -4156,7 +5112,7 @@ function exportStatisticsCSV() {
             <td class="font-mono text-xs text-gray">${h.txnId || '—'}</td>
             <td class="font-semibold">${h.hn || '—'}</td>
             <td>${h.procedure || '—'}</td>
-            <td class="center font-mono font-bold" style="color:var(--purple-dark);">${h.pieceNo ? ('#' + h.pieceNo) : '—'}</td>
+            <td class="center font-mono font-bold" style="color:var(--purple-dark);">${h.pieceNo ? h.pieceNo : '—'}</td>
             <td class="center font-bold">${h.qty || 0}</td>
           </tr>
         `).join('');
@@ -4198,7 +5154,7 @@ function exportStatisticsCSV() {
 
       const itemSel = document.getElementById('csg-modal-itemid');
       itemSel.innerHTML = '<option value="">— Custom / Non-Inventory Vendor Item —</option>' +
-        state.inventory.map(i => `<option value="${escapeHtml(String(i.itemId))}">${i.deviceName} (${i.category || '—'})</option>`).join('');
+        getTransactableInventory().map(i => `<option value="${escapeHtml(String(i.itemId))}">${i.deviceName}${i.isFreeItem ? ' [FREE]' : ''} (${i.category || '—'})</option>`).join('');
       itemSel.value = '';
       openModal('modal-consignment-new');
     }
@@ -4576,7 +5532,7 @@ function exportStatisticsCSV() {
 
       const itemSel = document.getElementById('loan-modal-itemid');
       itemSel.innerHTML = '<option value="">— Select Inventory Device —</option>' +
-        state.inventory.map(i => `<option value="${escapeHtml(String(i.itemId))}">${i.deviceName} (${i.category || '—'} · Main: ${i.mainStock || 0}, Retail: ${i.retailStock || 0})</option>`).join('');
+        getTransactableInventory().map(i => `<option value="${escapeHtml(String(i.itemId))}">${i.deviceName}${i.isFreeItem ? ' [FREE]' : ''} (${i.category || '—'} · Main: ${i.mainStock || 0}, Retail: ${i.retailStock || 0})</option>`).join('');
 
       const uList = document.getElementById('loan-user-datalist');
       if (uList) {
@@ -5647,8 +6603,13 @@ function exportStatisticsCSV() {
       printStageHtml(html);
     }
 
-    // ── QR CODE CAMERA SCANNER (html5-qrcode loaded lazily on demand) ──
+    // ── QR CODE & BARCODE CAMERA SCANNER (html5-qrcode) ──
     let _qrLibLoading = false;
+    let _qrScannerInstance = null;
+    let _currentCameraFacing = 'environment';
+    let _lastScannedCode = '';
+    let _lastScannedTime = 0;
+
     function ensureQrCodeLibrary(callback) {
       if (typeof Html5Qrcode !== 'undefined') {
         callback(true);
@@ -5659,8 +6620,8 @@ function exportStatisticsCSV() {
         return;
       }
       _qrLibLoading = true;
-      const script = document.createElement('scr' + 'ipt');
-      script['sr' + 'c'] = 'https:\x2f\x2funpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js';
+      const script = document.createElement('script');
+      script.src = 'https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js';
       script.async = true;
       script.onload = () => { _qrLibLoading = false; callback(typeof Html5Qrcode !== 'undefined'); };
       script.onerror = () => { _qrLibLoading = false; callback(false); };
@@ -5670,36 +6631,97 @@ function exportStatisticsCSV() {
     function openQrScannerModal() {
       const manualInput = document.getElementById('qr-manual-code');
       if (manualInput) manualInput.value = '';
-      const statusEl = document.getElementById('qr-scanner-status');
-      if (statusEl) statusEl.innerText = 'Starting camera scanner...';
-
+      _lastScannedCode = '';
+      _lastScannedTime = 0;
       openModal('modal-qr-scanner');
+      setTimeout(() => {
+        startCameraScanning();
+      }, 120);
+    }
+
+    function startCameraScanning() {
+      const statusEl = document.getElementById('qr-scanner-status');
+      if (statusEl) statusEl.innerText = state.currentLang === 'th' ? 'กำลังเชื่อมต่อกล้อง...' : 'Initializing camera scanner...';
 
       ensureQrCodeLibrary((loaded) => {
         if (!loaded || typeof Html5Qrcode === 'undefined') {
-          if (statusEl) statusEl.innerText = 'QR camera library unavailable on this network. Please use manual Asset ID lookup below.';
+          if (statusEl) statusEl.innerText = state.currentLang === 'th'
+            ? 'ไม่สามารถโหลดระบบสแกนผ่านกล้องได้ กรุณากรอกรหัส Asset ด้านล่าง'
+            : 'QR & Barcode camera library unavailable. Please use manual code lookup below.';
           return;
         }
-        setTimeout(() => {
-          try {
-            _qrScannerInstance = new Html5Qrcode('qr-reader');
-            _qrScannerInstance.start(
-              { facingMode: 'environment' },
-              { fps: 10, qrbox: { width: 220, height: 220 } },
-              (decodedText) => {
-                handleQrCodeScanned(decodedText);
-              },
-              () => {}
-            ).then(() => {
-              if (statusEl) statusEl.innerText = 'Camera active — align asset QR code within the frame.';
-            }).catch(err => {
-              if (statusEl) statusEl.innerText = 'Camera access unavailable (' + (err.message || err) + '). Use manual lookup below.';
-            });
-          } catch (e) {
-            if (statusEl) statusEl.innerText = 'Unable to start camera. Use manual lookup below.';
+
+        try {
+          if (_qrScannerInstance) {
+            stopQrScannerInstance();
           }
-        }, 100);
+
+          // Configure 2D QR Code and 1D Barcodes (Code 128, Code 39, EAN, UPC)
+          const formatsToSupport = (typeof Html5QrcodeSupportedFormats !== 'undefined') ? [
+            Html5QrcodeSupportedFormats.QR_CODE,
+            Html5QrcodeSupportedFormats.CODE_128,
+            Html5QrcodeSupportedFormats.CODE_39,
+            Html5QrcodeSupportedFormats.EAN_13,
+            Html5QrcodeSupportedFormats.EAN_8,
+            Html5QrcodeSupportedFormats.UPC_A,
+            Html5QrcodeSupportedFormats.UPC_E
+          ] : undefined;
+
+          _qrScannerInstance = new Html5Qrcode('qr-reader', {
+            formatsToSupport: formatsToSupport,
+            verbose: false
+          });
+
+          const config = {
+            fps: 15,
+            qrbox: (viewfinderWidth, viewfinderHeight) => {
+              const minDim = Math.min(viewfinderWidth, viewfinderHeight);
+              const w = Math.min(Math.max(Math.floor(minDim * 0.85), 240), viewfinderWidth - 20);
+              const h = Math.min(Math.max(Math.floor(w * 0.75), 160), viewfinderHeight - 20);
+              return { width: w, height: h };
+            },
+            aspectRatio: 1.0
+          };
+
+          _qrScannerInstance.start(
+            { facingMode: _currentCameraFacing },
+            config,
+            (decodedText) => {
+              handleQrCodeScanned(decodedText);
+            },
+            () => {}
+          ).then(() => {
+            const camLabel = _currentCameraFacing === 'environment' ? 'Back' : 'Front';
+            if (statusEl) statusEl.innerText = state.currentLang === 'th'
+              ? `กล้องพร้อมใช้งาน (${camLabel}) — เล็งกล้องไปที่ QR Code หรือ Barcode ครุภัณฑ์`
+              : `Camera active (${camLabel}) — align Asset QR code or Barcode within the frame.`;
+          }).catch(err => {
+            const msg = String(err && err.message ? err.message : err);
+            if (msg.includes('NotAllowedError') || msg.includes('Permission')) {
+              if (statusEl) statusEl.innerText = state.currentLang === 'th'
+                ? '⚠️ การเข้าถึงกล้องถูกปฏิเสธ กรุณากดยอมรับสิทธิ์กล้องในเบราว์เซอร์ หรือค้นหาด้วยรหัสครุภัณฑ์ด้านล่าง'
+                : '⚠️ Camera access denied. Please grant camera permission in your browser or enter Asset ID below.';
+            } else if (msg.includes('NotFoundError') || msg.includes('DevicesNotFoundError')) {
+              if (statusEl) statusEl.innerText = state.currentLang === 'th'
+                ? '⚠️ ไม่พบอุปกรณ์กล้องบนเครื่องนี้ กรุณาพิมพ์รหัสค้นหาด้านล่าง'
+                : '⚠️ No camera found on this device. Please use manual code lookup below.';
+            } else if (msg.includes('NotReadableError')) {
+              if (statusEl) statusEl.innerText = state.currentLang === 'th'
+                ? '⚠️ กล้องกำลังถูกใช้งานโดยแอปพลิเคชันอื่น กรุณาปิดแท็บอื่นแล้วลองใหม่'
+                : '⚠️ Camera is in use by another application. Please close other camera tabs and retry.';
+            } else {
+              if (statusEl) statusEl.innerText = `Camera access unavailable (${msg}). Use manual lookup below.`;
+            }
+          });
+        } catch (e) {
+          if (statusEl) statusEl.innerText = 'Unable to start camera scanner. Use manual lookup below.';
+        }
       });
+    }
+
+    function toggleCameraFacing() {
+      _currentCameraFacing = (_currentCameraFacing === 'environment') ? 'user' : 'environment';
+      startCameraScanning();
     }
 
     function stopQrScannerInstance() {
@@ -5707,7 +6729,15 @@ function exportStatisticsCSV() {
         const inst = _qrScannerInstance;
         _qrScannerInstance = null;
         try {
-          inst.stop().then(() => inst.clear()).catch(() => {});
+          if (inst.isScanning) {
+            inst.stop().then(() => {
+              try { inst.clear(); } catch (e) {}
+            }).catch(() => {
+              try { inst.clear(); } catch (e) {}
+            });
+          } else {
+            try { inst.clear(); } catch (e) {}
+          }
         } catch (e) {}
       }
     }
@@ -5720,14 +6750,18 @@ function exportStatisticsCSV() {
     function handleQrCodeScanned(codeStr) {
       const q = String(codeStr || '').trim();
       if (!q) return;
-      stopQrScannerInstance();
+      const now = Date.now();
+      if (q === _lastScannedCode && (now - _lastScannedTime < 2500)) return;
+      _lastScannedCode = q;
+      _lastScannedTime = now;
+
       lookupAndOpenAssetByCode(q);
     }
 
     function handleManualQrLookup() {
       const q = (document.getElementById('qr-manual-code')?.value || '').trim();
       if (!q) {
-        showToast('Please enter an Asset ID or Hospital Asset Code');
+        showToast(state.currentLang === 'th' ? 'กรุณากรอกรหัส Asset ID หรือ Hospital Asset Code' : 'Please enter an Asset ID or Hospital Asset Code');
         return;
       }
       stopQrScannerInstance();
@@ -5735,18 +6769,29 @@ function exportStatisticsCSV() {
     }
 
     function lookupAndOpenAssetByCode(queryStr) {
-      const qL = queryStr.toLowerCase();
-      const matched = (state.assets || []).find(a =>
-        String(a.assetId || '').toLowerCase() === qL ||
-        String(a.hospitalCode || '').toLowerCase() === qL ||
-        String(a.serialNumber || '').toLowerCase() === qL ||
-        qL.includes(String(a.assetId || '').toLowerCase())
-      );
+      const rawQ = String(queryStr || '').trim();
+      if (!rawQ) return;
+      const qL = rawQ.toLowerCase();
+
+      // Query asset records matching either Hospital Asset Code or Asset ID
+      const matched = (state.assets || []).find(a => {
+        const aId = String(a.assetId || '').trim().toLowerCase();
+        const hCode = String(a.hospitalCode || '').trim().toLowerCase();
+        const sNum = String(a.serialNumber || '').trim().toLowerCase();
+        if (aId && (aId === qL || qL.includes(aId) || aId.includes(qL))) return true;
+        if (hCode && (hCode === qL || qL.includes(hCode) || hCode.includes(qL))) return true;
+        if (sNum && sNum === qL) return true;
+        return false;
+      });
+
       if (matched) {
-        showToast(`Found Asset: ${matched.assetName} (${matched.assetId})`);
+        closeQrScannerModal();
+        showToast(`Found Asset: ${matched.assetName || matched.assetId} (${matched.hospitalCode || matched.assetId})`);
         openAssetDetailModal(matched.assetId);
       } else {
-        showToast(`No asset matched code: "${queryStr}"`);
+        showToast(state.currentLang === 'th' ? `⚠️ ไม่พบข้อมูลครุภัณฑ์ที่ตรงกับรหัส "${rawQ}"` : `⚠️ No matching asset found for code: "${rawQ}"`);
+        const statusEl = document.getElementById('qr-scanner-status');
+        if (statusEl) statusEl.innerText = state.currentLang === 'th' ? `⚠️ ไม่พบครุภัณฑ์รหัส "${rawQ}" — กรุณาลองสแกนใหม่` : `⚠️ No asset matched "${rawQ}". Scan another code.`;
       }
     }
 
@@ -5798,7 +6843,9 @@ function exportStatisticsCSV() {
       state.consignments = Array.isArray(res.consignments) ? res.consignments : [];
       state.loans = Array.isArray(res.loans) ? res.loans : [];
       state.assets = Array.isArray(res.assets) ? res.assets : [];
+      state.announcements = Array.isArray(res.announcements) ? res.announcements : [];
       state.settingsDirty = { diseases: false, procedures: false, shifts: false, categories: false, departments: false, users: false };
+      recalculateInventoryHierarchy();
     }
 
     function fetchDataFromServer() {
@@ -5891,7 +6938,33 @@ function exportStatisticsCSV() {
             {itemId:'4', hoItemId:'42221604YSI00001', deviceName:'Y-side arm adapter', category:'Accessory', buyPrice:350, sellPrice:500, mainStock:475, retailStock:19, bufferStock:0, totalStock:494, hoStock:527, stockDiff:-33, stockMonth:80, exceedPercent:-6, orderEstimate:33, buyPoint:60, safetyStock:43},
             {itemId:'5', hoItemId:'42203402IMA00004', deviceName:'Sim2 5 F 100 cm', category:'Catheter', buyPrice:850, sellPrice:1300, mainStock:490, retailStock:12, bufferStock:0, totalStock:502, hoStock:475, stockDiff:27, stockMonth:55, exceedPercent:5, orderEstimate:0, buyPoint:70, safetyStock:48},
             {itemId:'6', hoItemId:'CM-IOP300', deviceName:'Iopamiro 300 (100 ml)', category:'Contrast Media', buyPrice:600, sellPrice:900, mainStock:20, retailStock:6, bufferStock:0, totalStock:26, hoStock:26, stockDiff:0, stockMonth:15, exceedPercent:0, orderEstimate:0, buyPoint:10, safetyStock:5},
-            {itemId:'7', hoItemId:'CM-VIS320', deviceName:'Visipaque 320 (100 ml)', category:'Contrast Media', buyPrice:950, sellPrice:1400, mainStock:3, retailStock:1, bufferStock:0, totalStock:4, hoStock:4, stockDiff:0, stockMonth:10, exceedPercent:0, orderEstimate:6, buyPoint:8, safetyStock:5}
+            {itemId:'7', hoItemId:'CM-VIS320', deviceName:'Visipaque 320 (100 ml)', category:'Contrast Media', buyPrice:950, sellPrice:1400, mainStock:3, retailStock:1, bufferStock:0, totalStock:4, hoStock:4, stockDiff:0, stockMonth:10, exceedPercent:0, orderEstimate:6, buyPoint:8, safetyStock:5},
+            {itemId:'STENT-260601090000', hoItemId:'42203405SOL00001', deviceName:'Solitaire Platinum Stent Retriever (Group)', category:'Stent', buyPrice:85000, sellPrice:95000, mainStock:0, retailStock:0, bufferStock:0, totalStock:0, hoStock:6, ownHoStock:6, stockDiff:0, stockMonth:4, exceedPercent:0, orderEstimate:0, buyPoint:2, safetyStock:1, isFreeItem:false, isParent:true, parentId:''},
+            {itemId:'STENT-260601090001', hoItemId:'42203405SOL00001', deviceName:'Solitaire Platinum 4x40 mm', category:'Stent', buyPrice:85000, sellPrice:95000, mainStock:2, retailStock:2, bufferStock:0, totalStock:4, hoStock:0, stockDiff:4, stockMonth:2, exceedPercent:0, orderEstimate:0, buyPoint:1, safetyStock:1, isFreeItem:false, isParent:false, parentId:'STENT-260601090000'},
+            {itemId:'STENT-260601090002', hoItemId:'42203405SOL00001', deviceName:'Solitaire Platinum 6x40 mm', category:'Stent', buyPrice:85000, sellPrice:95000, mainStock:1, retailStock:1, bufferStock:0, totalStock:2, hoStock:0, stockDiff:2, stockMonth:2, exceedPercent:0, orderEstimate:0, buyPoint:1, safetyStock:1, isFreeItem:false, isParent:false, parentId:'STENT-260601090000'},
+            {itemId:'MICRO-260601090010', hoItemId:'42203406REB00018', deviceName:'Rebar 18 Microcatheter (PO)', category:'Microcatheter', buyPrice:18500, sellPrice:22000, mainStock:3, retailStock:2, bufferStock:0, totalStock:5, hoStock:5, stockDiff:0, stockMonth:4, exceedPercent:0, orderEstimate:0, buyPoint:2, safetyStock:1, isFreeItem:false, isParent:false, parentId:''},
+            {itemId:'MICRO-260601090011', hoItemId:'', deviceName:'Rebar 18 Microcatheter (Free)', category:'Microcatheter', buyPrice:0, sellPrice:0, mainStock:2, retailStock:2, bufferStock:0, totalStock:4, hoStock:0, stockDiff:0, stockMonth:0, exceedPercent:0, orderEstimate:0, buyPoint:0, safetyStock:0, isFreeItem:true, isParent:false, parentId:''}
+          ];
+          recalculateInventoryHierarchy();
+        }
+        if (!state.announcements || state.announcements.length === 0) {
+          state.announcements = [
+            {
+              id: 'ANN-260601083000',
+              title: 'ข้อตกลงการตัดสต็อกชุด Solitaire Platinum + Rebar 18 (Free)',
+              content: 'เมื่อเปิดใช้ Solitaire Platinum 1 ชิ้น สามารถเลือกตัด Rebar 18 Microcatheter (Free) คู่กันได้ทันที โดยตัว (Free) จะตั้งราคาทุน = 0 และไม่นำไปกระทบยอด HO Stock',
+              priority: 1,
+              badge: 'Critical',
+              updatedAt: '2026-06-01 08:30'
+            },
+            {
+              id: 'ANN-260602091500',
+              title: 'การจัดการโครงสร้าง Parent / Sub-Device ในหน้าคลังเวชภัณฑ์',
+              content: 'รายการที่เป็น GROUP (Parent) ใช้สำหรับดูยอดรวมทุกขนาดและเทียบยอด HO Stock เท่านั้น การเบิกใช้งานจริง (Procedure Use / Stock In-Out / Adjustment) ให้เลือกที่รายการย่อย (Sub-Device) เสมอ',
+              priority: 2,
+              badge: 'Notice',
+              updatedAt: '2026-06-02 09:15'
+            }
           ];
         }
         if (!state.settings || !state.settings.procedures || state.settings.procedures.length === 0) {
@@ -6299,6 +7372,7 @@ function exportStatisticsCSV() {
               document.querySelectorAll('#proc-procedures-list input[type="checkbox"]').forEach(cb => cb.checked = false);
               updateProcCountBadge();
               document.querySelectorAll('#proc-techs input[type="checkbox"]').forEach(cb => cb.checked = false);
+              recalculateInventoryHierarchy();
               showToast('Procedure logged (Mock)');
               renderCurrentTab();
             }
@@ -6413,6 +7487,7 @@ function exportStatisticsCSV() {
               }
             });
             state.stockLines = [{ itemId: '', qty: 1, loc: 'Main', notes: '' }];
+            recalculateInventoryHierarchy();
             showToast('Stock movement saved (Mock)');
             renderCurrentTab();
           }
@@ -6497,6 +7572,7 @@ function exportStatisticsCSV() {
               }
             });
             state.adjBatch = [];
+            recalculateInventoryHierarchy();
             showToast('Adjustments saved (Mock)');
             renderCurrentTab();
           }
