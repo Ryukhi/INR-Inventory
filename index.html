@@ -16,7 +16,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@300;400;500;600;700&family=Noto+Sans+Thai:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=20261112c">
+  <link rel="stylesheet" href="styles.css?v=20261117a">
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 </head>
 <body>
@@ -36,6 +36,7 @@
         <button class="nav-tab" data-tab="procedure" onclick="if(typeof switchTab==='function')switchTab('procedure')"><svg class="nav-icon" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 2a4 4 0 00-4 4v1H5a2 2 0 00-2 2v7a2 2 0 002 2h10a2 2 0 002-2V9a2 2 0 00-2-2h-1V6a4 4 0 00-4-4zm2 5V6a2 2 0 10-4 0v1h4zm-3 3a1 1 0 012 0v1h1a1 1 0 110 2h-1v1a1 1 0 11-2 0v-1H8a1 1 0 110-2h1v-1z" clip-rule="evenodd"/></svg><span>Procedure Use</span></button>
         <button class="nav-tab" data-tab="exchange" onclick="if(typeof switchTab==='function')switchTab('exchange')"><svg class="nav-icon" viewBox="0 0 20 20" fill="currentColor"><path d="M5 4a1 1 0 00-2 0v7.268a2 2 0 000 3.464V16a1 1 0 102 0v-1.268a2 2 0 000-3.464V4zM11 4a1 1 0 10-2 0v1.268a2 2 0 000 3.464V16a1 1 0 102 0V8.732a2 2 0 000-3.464V4zM16 3a1 1 0 011 1v7.268a2 2 0 010 3.464V16a1 1 0 11-2 0v-1.268a2 2 0 010-3.464V4a1 1 0 011-1z"/></svg><span>Exchange and Consignment</span></button>
         <button class="nav-tab" data-tab="loan" onclick="if(typeof switchTab==='function')switchTab('loan')"><svg class="nav-icon" viewBox="0 0 20 20" fill="currentColor"><path d="M8 5a1 1 0 100 2h5.586l-1.293 1.293a1 1 0 001.414 1.414l3-3a1 1 0 000-1.414l-3-3a1 1 0 10-1.414 1.414L13.586 5H8zM12 15a1 1 0 100-2H6.414l1.293-1.293a1 1 0 10-1.414-1.414l-3 3a1 1 0 000 1.414l3 3a1 1 0 001.414-1.414L6.414 15H12z"/></svg><span>Loan and Transfer</span></button>
+        <button class="nav-tab" data-tab="procurement" onclick="if(typeof switchTab==='function')switchTab('procurement')"><svg class="nav-icon" viewBox="0 0 20 20" fill="currentColor"><path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z"/><path fill-rule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clip-rule="evenodd"/></svg><span>Procurement</span></button>
         <button class="nav-tab" data-tab="transactions" onclick="if(typeof switchTab==='function')switchTab('transactions')"><svg class="nav-icon" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clip-rule="evenodd"/></svg><span>Transactions</span></button>
         <button class="nav-tab" data-tab="statistic" onclick="if(typeof switchTab==='function')switchTab('statistic')"><svg class="nav-icon" viewBox="0 0 20 20" fill="currentColor"><path d="M2 11a1 1 0 011-1h2a1 1 0 011 1v5a1 1 0 01-1 1H3a1 1 0 01-1-1v-5zM8 7a1 1 0 011-1h2a1 1 0 011 1v9a1 1 0 01-1 1H9a1 1 0 01-1-1V7zM14 4a1 1 0 011-1h2a1 1 0 011 1v12a1 1 0 01-1 1h-2a1 1 0 01-1-1V4z"/></svg><span>Statistics</span></button>
         <button class="nav-tab" data-tab="assets" onclick="if(typeof switchTab==='function')switchTab('assets')"><svg class="nav-icon" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 5a2 2 0 012-2h10a2 2 0 012 2v8a2 2 0 01-2 2h-2.22l.123.489.804.804A1 1 0 0113 18H7a1 1 0 01-.707-1.707l.804-.804L7.22 15H5a2 2 0 01-2-2V5zm5.771 7H5V5h10v7H8.771z" clip-rule="evenodd"/></svg><span>Assets</span></button>
@@ -91,7 +92,7 @@
             <div class="card-header flex justify-between items-center flex-wrap gap-2">
               <div class="flex items-center gap-2">
                 <svg class="btn-icon" style="color:var(--brand);" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M18 3a1 1 0 00-1.447-.894L8.763 6H5a3 3 0 000 6h.28l1.771 5.316A1 1 0 008 18h1a1 1 0 001-1v-4.382l6.553 3.276A1 1 0 0018 15V3z" clip-rule="evenodd"/></svg>
-                <strong data-i18n="ann_board_title">Announcement Board / บันทึกสิ่งที่ควรทราบ</strong>
+                <strong data-i18n="ann_board_title">Announcement</strong>
                 <span class="badge badge-blue" id="dash-ann-count-badge">0</span>
               </div>
               <button type="button" class="btn btn-brand btn-sm" onclick="openAnnouncementModal('')">
@@ -210,6 +211,9 @@
                 <option value="Stock In">Stock In</option>
                 <option value="Stock Out">Stock Out</option>
                 <option value="Adjustment">Adjustment</option>
+                <option value="HO Check">HO Check (กระทบยอด HO)</option>
+                <option value="Add Device">Add Device</option>
+                <option value="Edit Device">Edit Device</option>
               </select>
             </div>
             <div class="table-wrap">
@@ -265,8 +269,7 @@
                     <th data-i18n="lbl_disease">Disease</th>
                     <th data-i18n="lbl_shift">Shift</th>
                     <th data-i18n="lbl_tech">Technologist</th>
-                    <th class="center" data-i18n="stock_qty">Quantity</th>
-                    <th class="center" data-i18n="tbl_action">Action</th>
+                    <th>Notes/Complication</th>
                   </tr>
                 </thead>
                 <tbody id="proc-history-body"></tbody>
@@ -388,6 +391,10 @@
                 <svg class="btn-icon" viewBox="0 0 20 20" fill="currentColor"><path d="M5 4a1 1 0 00-2 0v7.268a2 2 0 000 3.464V16a1 1 0 102 0v-1.268a2 2 0 000-3.464V4zM11 4a1 1 0 10-2 0v1.268a2 2 0 000 3.464V16a1 1 0 102 0V8.732a2 2 0 000-3.464V4zM16 3a1 1 0 011 1v7.268a2 2 0 010 3.464V16a1 1 0 11-2 0v-1.268a2 2 0 010-3.464V4a1 1 0 011-1z"/></svg>
                 <span>Adjustment</span>
               </button>
+              <button type="button" class="btn btn-outline btn-sm" onclick="openHoReconcileModal()" data-i18n="btn_ho_reconcile">
+                <svg class="btn-icon" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+                <span>กระทบยอด HO</span>
+              </button>
             </div>
           </div>
           <div class="card">
@@ -425,7 +432,7 @@
                   </div>
                 </div>
                 <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 8px; font-size: 12px;">
-                  <label style="display:none;"><input type="checkbox" id="inv-col-itemid" onchange="renderInventoryTab()"> <span>Item ID</span></label>
+                  <label style="cursor:pointer"><input type="checkbox" id="inv-col-itemid" onchange="renderInventoryTab()"> <span>Item ID</span></label>
                   <label style="cursor:pointer"><input type="checkbox" id="inv-col-name" checked onchange="renderInventoryTab()"> <span>Device Name</span></label>
                   <label style="cursor:pointer"><input type="checkbox" id="inv-col-hoid" onchange="renderInventoryTab()"> <span>HO Item ID</span></label>
                   <label style="cursor:pointer"><input type="checkbox" id="inv-col-cat" onchange="renderInventoryTab()"> <span>Category</span></label>
@@ -442,6 +449,7 @@
                   <label style="cursor:pointer"><input type="checkbox" id="inv-col-orderest" onchange="renderInventoryTab()"> <span>Order Estimate</span></label>
                   <label style="cursor:pointer"><input type="checkbox" id="inv-col-buypoint" onchange="renderInventoryTab()"> <span>Buy Point</span></label>
                   <label style="cursor:pointer"><input type="checkbox" id="inv-col-safetystock" onchange="renderInventoryTab()"> <span>Safety Stock</span></label>
+                  <label style="cursor:pointer"><input type="checkbox" id="inv-col-company" onchange="renderInventoryTab()"> <span>Company/Vendor</span></label>
                 </div>
               </div>
             </div>
@@ -451,6 +459,7 @@
                   <tr>
                     <th class="col-inv-name sortable" onclick="sortInventory('deviceName')"><span>Device Name</span> <span class="sort-icon" id="sort-deviceName">⇅</span></th>
                     <th class="col-inv-hoid sortable" onclick="sortInventory('hoItemId')"><span>HO Item ID</span> <span class="sort-icon" id="sort-hoItemId">⇅</span></th>
+                    <th class="col-inv-itemid sortable" onclick="sortInventory('itemId')"><span>Item ID</span> <span class="sort-icon" id="sort-itemId">⇅</span></th>
                     <th class="col-inv-cat sortable" onclick="sortInventory('category')"><span>Category</span> <span class="sort-icon" id="sort-category">⇅</span></th>
                     <th class="col-inv-buyprice num sortable" onclick="sortInventory('buyPrice')"><span>Buy Price</span> <span class="sort-icon" id="sort-buyPrice">⇅</span></th>
                     <th class="col-inv-sellprice num sortable" onclick="sortInventory('sellPrice')"><span>Sell Price</span> <span class="sort-icon" id="sort-sellPrice">⇅</span></th>
@@ -465,6 +474,7 @@
                     <th class="col-inv-orderest num sortable" onclick="sortInventory('orderEstimate')"><span>Order Est</span> <span class="sort-icon" id="sort-orderEstimate">⇅</span></th>
                     <th class="col-inv-buypoint num sortable" onclick="sortInventory('buyPoint')"><span>Buy Point</span> <span class="sort-icon" id="sort-buyPoint">⇅</span></th>
                     <th class="col-inv-safetystock num sortable" onclick="sortInventory('safetyStock')"><span>Safety Stock</span> <span class="sort-icon" id="sort-safetyStock">⇅</span></th>
+                    <th class="col-inv-company sortable" onclick="sortInventory('company')"><span>Company/Vendor</span> <span class="sort-icon" id="sort-company">⇅</span></th>
                   </tr>
                 </thead>
                 <tbody id="inv-tab-table-body">
@@ -944,26 +954,87 @@
           </div>
         </div>
 
+        <!-- 8B. PROCUREMENT MODULE -->
+        <div id="tab-procurement" class="tab-panel space-y hidden">
+          <div class="tab-header-stack">
+            <h2 class="tab-section-title" id="tab-title-procurement" data-i18n="nav_procurement">Procurement</h2>
+            <div class="tab-action-bar no-print">
+              <button class="btn btn-brand btn-sm" id="btn-proc-primary-add" onclick="openProcurementAddModal()">
+                <svg class="btn-icon" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd"/></svg>
+                <span id="btn-proc-primary-add-label">Add E-Bidding Plan</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Sub-tabs: E-Bidding | Contracts | Contract POs | Specific Purchase | Receiving -->
+          <div class="sub-tabs no-print" id="proc-subtabs">
+            <button class="sub-tab active" data-proc="ebidding" onclick="switchProcurementSubTab('ebidding')">
+              <span data-i18n="proc_sub_ebidding">E-Bidding</span> (<span id="proc-count-ebidding">0</span>)
+            </button>
+            <button class="sub-tab" data-proc="contracts" onclick="switchProcurementSubTab('contracts')">
+              <span data-i18n="proc_sub_contracts">Contracts</span> (<span id="proc-count-contracts">0</span>)
+            </button>
+            <button class="sub-tab" data-proc="contract_po" onclick="switchProcurementSubTab('contract_po')">
+              <span data-i18n="proc_sub_po">Contract POs</span> (<span id="proc-count-contract_po">0</span>)
+            </button>
+            <button class="sub-tab" data-proc="specific_purchase" onclick="switchProcurementSubTab('specific_purchase')">
+              <span data-i18n="proc_sub_sp">Specific Purchase</span> (<span id="proc-count-specific_purchase">0</span>)
+            </button>
+            <button class="sub-tab" data-proc="receiving" onclick="switchProcurementSubTab('receiving')">
+              <span data-i18n="proc_sub_receiving">Receiving</span> (<span id="proc-count-receiving">0</span>)
+            </button>
+          </div>
+
+          <!-- Summary KPI Strip -->
+          <div id="proc-kpi-strip" class="proc-kpi-grid"></div>
+
+          <!-- Filter Bar (Fiscal Year, Effective Status, Search) & List Table -->
+          <div class="card">
+            <div class="card-header space-y-sm">
+              <div class="inv-toolbar-row">
+                <div class="inv-toolbar-left">
+                  <div class="flex items-center gap-1">
+                    <span class="text-xs font-semibold text-gray-dark" data-i18n="proc_fy_label" style="white-space:nowrap;">Fiscal Year (BE):</span>
+                    <select id="proc-fy-select" class="form-select form-input-sm" style="width:auto; min-width:110px; font-weight:600;" onchange="onProcurementFyChange(this.value)">
+                    </select>
+                  </div>
+                  <select id="proc-status-filter" class="form-select form-input-sm" style="width:auto; min-width:165px;" onchange="renderProcurementTab()">
+                    <option value="">All Effective Statuses</option>
+                  </select>
+                  <input type="text" id="proc-search-input" class="form-input form-input-sm" style="max-width:320px; flex:1 1 200px;" placeholder="Search Device Name, HO Item ID, Contract No, Company..." oninput="renderProcurementTab()">
+                  <button type="button" class="btn btn-outline btn-sm" onclick="resetProcurementFilters()">Default</button>
+                </div>
+              </div>
+            </div>
+            <div class="table-wrap">
+              <table class="data-table" id="proc-main-table">
+                <thead id="proc-table-head"></thead>
+                <tbody id="proc-table-body"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
         <!-- 9. SETTINGS -->
         <div id="tab-settings" class="tab-panel space-y hidden" style="max-width:1000px; margin:0 auto;">
           <div class="tab-header-stack">
             <h2 class="tab-section-title" id="tab-title-settings" data-i18n="nav_settings">Settings</h2>
           </div>
 
-          <!-- Section selector buttons (title only) -->
+          <!-- Section selector buttons -->
           <div class="sub-tabs" id="settings-subtabs">
-            <button class="sub-tab active" data-sec="diseases" onclick="switchSettingsSection('diseases')">Disease</button>
+            <button class="sub-tab active" data-sec="groups" onclick="switchSettingsSection('groups')">Group Management</button>
+            <button class="sub-tab" data-sec="users" onclick="switchSettingsSection('users')">User / Tech Management</button>
+            <button class="sub-tab" data-sec="diseases" onclick="switchSettingsSection('diseases')">Disease</button>
             <button class="sub-tab" data-sec="procedures" onclick="switchSettingsSection('procedures')">Procedure Types</button>
             <button class="sub-tab" data-sec="shifts" onclick="switchSettingsSection('shifts')">Shift</button>
-            <button class="sub-tab" data-sec="users" onclick="switchSettingsSection('users')">User</button>
             <button class="sub-tab" data-sec="categories" onclick="switchSettingsSection('categories')">Category</button>
             <button class="sub-tab" data-sec="departments" onclick="switchSettingsSection('departments')">Departments (Loan/Transfer)</button>
-            <button class="sub-tab" data-sec="hierarchy" onclick="switchSettingsSection('hierarchy')">Device Hierarchy (Parent / Child)</button>
             <button class="sub-tab" data-sec="security" onclick="switchSettingsSection('security')">Security Passcode</button>
           </div>
 
           <!-- List section (Disease / Procedure Types / Shift / Category / Departments) -->
-          <div class="card" id="settings-list-card">
+          <div class="card hidden" id="settings-list-card">
             <div class="card-header flex justify-between items-center flex-wrap gap-2">
               <strong id="settings-list-title">Disease</strong>
               <div class="flex gap-2 items-center">
@@ -992,19 +1063,17 @@
             </div>
           </div>
 
-          <!-- User section -->
+          <!-- 3.2 User / Tech Management (Unified Nicknames List) -->
           <div class="card hidden" id="settings-user-card">
             <div class="card-header flex justify-between items-center flex-wrap gap-2">
-              <strong>User</strong>
+              <div>
+                <strong>User / Tech Management (Unified Personnel List)</strong>
+                <div class="text-xs text-gray">Manage User Nicknames used across Procedure Use, Inventory Add/Edit, Stock In/Out, Adjustment, and HO Reconciliation.</div>
+              </div>
               <div class="flex gap-2 items-center">
-                <span class="badge badge-low hidden" id="settings-user-dirty">Unsaved changes</span>
-                <button class="btn btn-outline btn-sm" onclick="openUserModal(-1)">
+                <button class="btn btn-brand btn-sm" onclick="openUserModal(-1)">
                   <svg class="btn-icon" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd"/></svg>
-                  Add Staff Member
-                </button>
-                <button class="btn btn-brand btn-sm" id="btn-save-users" onclick="saveUsersList()">
-                  <svg class="btn-icon" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
-                  Save Staff List
+                  + Add User Nickname
                 </button>
               </div>
             </div>
@@ -1012,14 +1081,9 @@
               <table class="data-table">
                 <thead>
                   <tr>
-                    <th>Name</th>
-                    <th>Surname</th>
+                    <th style="width:180px;">User ID</th>
                     <th>Nickname</th>
-                    <th>Position</th>
-                    <th>Authorization</th>
-                    <th>Phone</th>
-                    <th>Date of birth</th>
-                    <th class="center">Actions</th>
+                    <th class="center" style="width:140px;">Actions</th>
                   </tr>
                 </thead>
                 <tbody id="settings-users-body"></tbody>
@@ -1027,43 +1091,43 @@
             </div>
           </div>
 
-          <!-- Device Hierarchy (Parent / Child) section -->
-          <div class="card hidden" id="settings-hierarchy-card">
+          <!-- 3.1 Group Management section -->
+          <div class="card" id="settings-groups-card">
             <div class="card-header flex justify-between items-center flex-wrap gap-2">
               <div>
-                <strong>Device &amp; Sub-Device Hierarchy Management</strong>
-                <div class="text-xs text-gray">Group sub-devices (sizes/free items) under a Parent Device Group for aggregated stock &amp; HO PO tracking.</div>
+                <strong>Group Management (HO Item ID &amp; Shared Pricing)</strong>
+                <div class="text-xs text-gray">Manage Groups, shared Buy/Sell prices, Group HO Stock, and member sub-items. Items sharing an HO Item ID are auto-grouped unless manually removed.</div>
               </div>
-              <button type="button" class="btn btn-brand btn-sm" onclick="openAddParentDeviceModal()">
+              <button type="button" class="btn btn-brand btn-sm" onclick="openGroupModal('')">
                 <svg class="btn-icon" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd"/></svg>
-                <span>+ New Parent Device Group</span>
+                <span>+ Create New Group</span>
               </button>
             </div>
             <div class="card-body space-y">
-              <!-- Quick Assign Child to Parent -->
+              <!-- Quick Add Item to Group -->
               <div class="p-3 rounded border" style="background:var(--gray-50); border-color:var(--gray-200);">
-                <div class="text-xs font-bold mb-2" style="color:var(--gray-700);">Quick Assign / Move Sub-Device to Parent Group</div>
+                <div class="text-xs font-bold mb-2" style="color:var(--gray-700);">Add / Move Inventory Item into a Group</div>
                 <div class="grid-3" style="align-items:end;">
                   <div class="form-group" style="margin-bottom:0;">
-                    <label class="form-label text-xs">Child Sub-Device (อุปกรณ์ย่อย / ขนาดจริง)</label>
-                    <select id="hier-assign-child-select" class="form-select form-input-sm">
-                      <option value="">-- Select Sub-Device --</option>
+                    <label class="form-label text-xs">Inventory Item (Ungrouped or Grouped)</label>
+                    <select id="grp-assign-item-select" class="form-select form-input-sm">
+                      <option value="">-- Select Inventory Item --</option>
                     </select>
                   </div>
                   <div class="form-group" style="margin-bottom:0;">
-                    <label class="form-label text-xs">Target Parent Group (Device หลัก)</label>
-                    <select id="hier-assign-parent-select" class="form-select form-input-sm">
-                      <option value="">-- Standalone (No Parent) --</option>
+                    <label class="form-label text-xs">Target Group</label>
+                    <select id="grp-assign-group-select" class="form-select form-input-sm">
+                      <option value="">-- Select Group --</option>
                     </select>
                   </div>
                   <div>
-                    <button type="button" class="btn btn-brand btn-sm" onclick="submitQuickHierarchyAssign()">Assign / Update</button>
+                    <button type="button" class="btn btn-brand btn-sm" onclick="submitQuickGroupAssign()">Add to Group</button>
                   </div>
                 </div>
               </div>
 
-              <!-- Hierarchy Tree List -->
-              <div id="settings-hierarchy-tree">
+              <!-- Groups & Ungrouped Items List -->
+              <div id="settings-groups-tree">
                 <!-- Populated dynamically -->
               </div>
             </div>
@@ -1111,16 +1175,22 @@
           <input type="hidden" id="inv-modal-is-edit" value="false">
           <input type="hidden" id="inv-modal-orig-id" value="">
           <input type="hidden" id="inv-modal-is-free" value="false">
-          <input type="hidden" id="inv-modal-is-parent" value="false">
-          <input type="hidden" id="inv-modal-parent-id" value="">
+          <input type="hidden" id="inv-modal-group-id" value="">
           
           <div class="device-modal-grid">
+            <div class="form-group" style="grid-column: span 2; background:var(--gray-50); padding:10px 12px; border-radius:6px; border:1px solid var(--gray-200);">
+              <label class="form-label"><span>Recorded By — User (Nickname)</span> <span style="color:var(--red);">*</span></label>
+              <select id="inv-modal-user" class="form-select" required>
+                <option value="">-- Select User (Nickname) --</option>
+              </select>
+            </div>
+
             <div class="form-group inv-edit-only">
               <label class="form-label">Item ID (Permanent)</label>
               <input type="text" id="inv-modal-itemid" class="form-input" placeholder="Auto-generate" readonly style="background:var(--gray-100); cursor:not-allowed;">
             </div>
             <div class="form-group">
-              <label class="form-label">HO Item ID <span class="text-xs text-gray">(Optional for Free Item)</span></label>
+              <label class="form-label">HO Item ID <span class="text-xs text-gray">(Items sharing HO ID auto-group)</span></label>
               <input type="text" id="inv-modal-hoid" class="form-input" placeholder="e.g. 42203403INT00001">
             </div>
 
@@ -1142,6 +1212,11 @@
                 <option value="Accessory">
                 <option value="Other">
               </datalist>
+            </div>
+
+            <div class="form-group" style="grid-column: span 2;">
+              <label class="form-label">Company / Vendor <span class="text-xs text-gray">(Optional — used for Procurement auto-fill)</span></label>
+              <input type="text" id="inv-modal-company" list="company-datalist" class="form-input" placeholder="e.g. Medtronic Thailand, Stryker, DKSH...">
             </div>
 
             <div class="form-group" style="grid-column: span 2;">
@@ -1172,7 +1247,7 @@
               <input type="number" id="inv-modal-total" class="form-input" placeholder="0" oninput="calcModalStock()">
             </div>
             <div class="form-group">
-              <label class="form-label">HO Stock</label>
+              <label class="form-label">HO Stock <span class="text-xs text-gray">(Standalone items)</span></label>
               <input type="number" id="inv-modal-hostock" class="form-input" placeholder="0" oninput="calcModalStock()">
             </div>
 
@@ -1189,7 +1264,7 @@
               <label class="form-label">Exceed %</label>
               <input type="number" step="any" id="inv-modal-exceed" class="form-input" placeholder="0">
             </div>
-            <div class="form-group inv-edit-only">
+            <div class="form-group">
               <label class="form-label">Order Estimate</label>
               <input type="number" id="inv-modal-orderest" class="form-input" placeholder="0">
             </div>
@@ -1198,7 +1273,7 @@
               <label class="form-label">Buy Point</label>
               <input type="number" id="inv-modal-buypoint" class="form-input" placeholder="0">
             </div>
-            <div class="form-group inv-edit-only">
+            <div class="form-group">
               <label class="form-label">Safety Stock</label>
               <input type="number" id="inv-modal-safety" class="form-input" placeholder="0">
             </div>
@@ -1217,12 +1292,20 @@
       <!-- Adjust Modal -->
       <div id="modal-adjust" class="modal hidden" style="max-width:860px;">
         <div class="modal-header">
-          <div class="modal-title">Stock Adjustment</div>
+          <div class="modal-title">Stock Adjustment (กระทบยอด)</div>
           <button class="modal-close" onclick="closeModal()">✕</button>
         </div>
         <div class="modal-body space-y">
           <div class="flex justify-between items-center mb-2 flex-wrap gap-2">
-            <input type="text" id="adj-search-input" placeholder="Filter devices..." class="form-input" style="max-width:300px;">
+            <div class="flex items-center gap-2 flex-wrap" style="flex:1;">
+              <input type="text" id="adj-search-input" placeholder="Filter devices..." class="form-input" style="max-width:260px;">
+              <div class="flex items-center gap-1">
+                <label class="text-xs font-semibold text-gray-dark" style="white-space:nowrap;">User (Nickname) <span style="color:var(--red);">*</span>:</label>
+                <select id="adj-modal-user" class="form-select form-input-sm" style="min-width:160px;" required>
+                  <option value="">-- Select User --</option>
+                </select>
+              </div>
+            </div>
             <button class="btn btn-brand" id="btn-submit-adjustments">
               <svg class="btn-icon" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
               Submit Adjustments
@@ -1245,6 +1328,108 @@
               </tbody>
             </table>
           </div>
+          <div class="flex gap-2 justify-end mt-4">
+            <button type="button" class="btn btn-outline" onclick="closeModal()">Cancel</button>
+            <button type="button" class="btn btn-brand" onclick="document.getElementById('btn-submit-adjustments').click()">
+              <svg class="btn-icon" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+              Submit Adjustments
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- HO Stock Reconciliation Modal ("กระทบยอด HO") -->
+      <div id="modal-ho-reconcile" class="modal hidden" style="max-width:860px;">
+        <div class="modal-header">
+          <div class="modal-title">กระทบยอด HO (HO Stock Reconciliation)</div>
+          <button class="modal-close" onclick="closeModal()">✕</button>
+        </div>
+        <div class="modal-body space-y">
+          <div class="p-3 rounded border flex justify-between items-center flex-wrap gap-3" style="background:var(--gray-50); border-color:var(--gray-200);">
+            <div class="flex items-center gap-3 flex-wrap">
+              <div>
+                <label class="form-label text-xs">User (Nickname) <span style="color:var(--red);">*</span></label>
+                <select id="ho-rec-user" class="form-select form-input-sm" style="min-width:170px;" required>
+                  <option value="">-- Select User --</option>
+                </select>
+              </div>
+              <div>
+                <label class="form-label text-xs">Reconciliation Date <span style="color:var(--red);">*</span></label>
+                <input type="date" id="ho-rec-date" class="form-input form-input-sm" style="width:auto;">
+              </div>
+              <div>
+                <label class="form-label text-xs">Filter Group / Device / HO ID</label>
+                <input type="text" id="ho-rec-search" class="form-input form-input-sm" placeholder="Search..." style="min-width:210px;" oninput="renderHoReconcileTable()">
+              </div>
+            </div>
+            <div class="text-xs text-gray" style="max-width:260px;">
+              Enter <strong>New HO Stock</strong> only for rows checked today. Blank rows remain unchanged.
+            </div>
+          </div>
+
+          <div class="table-wrap" style="max-height:460px;">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Device Name (or Group Name)</th>
+                  <th>HO Item ID</th>
+                  <th class="center">HO Stock</th>
+                  <th class="center" style="background:var(--yellow-50); width:150px;">New HO Stock</th>
+                  <th class="center">Last Checked</th>
+                </tr>
+              </thead>
+              <tbody id="ho-rec-table-body"></tbody>
+            </table>
+          </div>
+
+          <div class="flex gap-2 justify-end mt-4">
+            <button type="button" class="btn btn-outline" onclick="closeModal()">Cancel</button>
+            <button type="button" class="btn btn-brand" onclick="submitHoReconciliationModal()">
+              <svg class="btn-icon" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+              Save HO Reconciliation
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Create / Edit Group Modal -->
+      <div id="modal-group" class="modal hidden" style="max-width:540px;">
+        <div class="modal-header">
+          <div class="modal-title" id="modal-group-title">Create Group</div>
+          <button class="modal-close" onclick="closeModal()">✕</button>
+        </div>
+        <div class="modal-body space-y">
+          <input type="hidden" id="grp-modal-id" value="">
+          <div class="form-grid">
+            <div class="form-group col-span-2">
+              <label class="form-label">Group Name <span style="color:var(--red);">*</span></label>
+              <input type="text" id="grp-modal-name" class="form-input" placeholder="e.g. Solitare X" required>
+            </div>
+            <div class="form-group col-span-2">
+              <label class="form-label">HO Item ID <span class="text-xs text-gray">(Shared HO Item ID for the group, optional)</span></label>
+              <input type="text" id="grp-modal-hoid" class="form-input" placeholder="e.g. 42203405SOL00001">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Shared Buy Price (฿)</label>
+              <input type="number" step="any" id="grp-modal-buy" class="form-input" placeholder="0.00">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Shared Sell Price (฿)</label>
+              <input type="number" step="any" id="grp-modal-sell" class="form-input" placeholder="0.00">
+            </div>
+            <div class="form-group col-span-2">
+              <label class="form-label">Group HO Stock</label>
+              <input type="number" id="grp-modal-hostock" class="form-input" placeholder="0">
+            </div>
+          </div>
+          <div class="text-xs text-gray">Updating a Group's Buy Price and Sell Price applies uniformly to the Group and all its member items.</div>
+          <div class="flex gap-2 justify-end mt-4">
+            <button type="button" class="btn btn-outline" onclick="closeModal()">Cancel</button>
+            <button type="button" class="btn btn-brand" onclick="saveGroupModal()">
+              <svg class="btn-icon" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+              Save Group
+            </button>
+          </div>
         </div>
       </div>
 
@@ -1257,6 +1442,13 @@
         <div class="modal-body space-y">
           <input type="radio" name="stock-action" value="Stock In" checked class="hidden">
           <input type="radio" name="stock-action" value="Stock Out" class="hidden">
+
+          <div class="form-group" style="background:var(--gray-50); padding:10px 12px; border-radius:6px; border:1px solid var(--gray-200);">
+            <label class="form-label"><span>Recorded By — User (Nickname)</span> <span style="color:var(--red);">*</span></label>
+            <select id="stock-modal-user" class="form-select" required>
+              <option value="">-- Select User (Nickname) --</option>
+            </select>
+          </div>
 
           <div class="device-modal-grid">
             <div class="form-group">
@@ -1293,56 +1485,24 @@
         </div>
       </div>
 
-      <!-- Add/Edit User Modal -->
-      <div id="modal-user" class="modal hidden" style="max-width:640px;">
+      <!-- Add/Edit User Nickname Modal -->
+      <div id="modal-user" class="modal hidden" style="max-width:440px;">
         <div class="modal-header">
-          <div class="modal-title" id="modal-user-title">Add User</div>
+          <div class="modal-title" id="modal-user-title">Add User Nickname</div>
           <button class="modal-close" onclick="closeModal()">✕</button>
         </div>
         <div class="modal-body space-y">
           <input type="hidden" id="user-modal-idx" value="">
-          <div class="form-grid">
-            <div class="form-group">
-              <label class="form-label"><span>User name</span> <span style="color:var(--red);">*</span></label>
-              <input type="text" id="user-modal-name" class="form-input">
-            </div>
-            <div class="form-group">
-              <label class="form-label">User surname</label>
-              <input type="text" id="user-modal-surname" class="form-input">
-            </div>
-            <div class="form-group">
-              <label class="form-label">User nickname</label>
-              <input type="text" id="user-modal-nickname" class="form-input">
-            </div>
-            <div class="form-group">
-              <label class="form-label">Position</label>
-              <input type="text" id="user-modal-position" class="form-input" list="user-position-list" placeholder="Select or type a new position">
-              <datalist id="user-position-list"></datalist>
-            </div>
-            <div class="form-group">
-              <label class="form-label">Authorization</label>
-              <select id="user-modal-auth" class="form-select">
-                <option value="System Administrator">System Administrator</option>
-                <option value="Manager">Manager</option>
-                <option value="Operational Staff">Operational Staff</option>
-                <option value="Visitor">Visitor</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label class="form-label">Phone number</label>
-              <input type="text" id="user-modal-phone" class="form-input" placeholder="08x-xxx-xxxx">
-            </div>
-            <div class="form-group">
-              <label class="form-label">Date of birth</label>
-              <input type="date" id="user-modal-dob" class="form-input">
-            </div>
+          <input type="hidden" id="user-modal-id" value="">
+          <div class="form-group">
+            <label class="form-label"><span>Nickname</span> <span style="color:var(--red);">*</span></label>
+            <input type="text" id="user-modal-nickname" class="form-input" placeholder="e.g. Sak, Nat, Ploy..." required>
           </div>
-          <div class="text-xs text-gray">Changes are staged — click Save in the Users section to write them to the sheet.</div>
           <div class="flex gap-2 mt-4" style="justify-content:flex-end;">
             <button type="button" class="btn btn-outline" onclick="closeModal()">Cancel</button>
             <button type="button" class="btn btn-brand" onclick="applyUserModal()">
               <svg class="btn-icon" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
-              OK
+              Save Nickname
             </button>
           </div>
         </div>
@@ -2134,6 +2294,457 @@
           </div>
         </div>
       </div>
+
+      <!-- Shared Company Autocomplete Datalist -->
+      <datalist id="company-datalist"></datalist>
+
+      <!-- ══════════════════════════════════════════════════════════════════ -->
+      <!-- PROCUREMENT MODAL 1: E-BIDDING PLAN                               -->
+      <!-- ══════════════════════════════════════════════════════════════════ -->
+      <div id="modal-ebidding" class="modal hidden" style="max-width:640px;">
+        <div class="modal-header">
+          <div class="modal-title" id="eb-modal-title">Add E-Bidding Plan</div>
+          <button class="modal-close" onclick="closeModal()">✕</button>
+        </div>
+        <div class="modal-body space-y">
+          <input type="hidden" id="eb-modal-id" value="">
+
+          <div class="form-group">
+            <label class="form-label">Quick Item Picker <span class="text-xs text-gray">(Search by Device Name or HO Item ID to auto-fill)</span></label>
+            <input type="text" id="eb-item-picker-input" class="form-input" placeholder="Type Device Name or HO Item ID..." oninput="filterProcItemPicker('eb', this.value)" onfocus="filterProcItemPicker('eb', this.value)" autocomplete="off">
+            <div id="eb-item-picker-results" class="search-results hidden"></div>
+          </div>
+
+          <div class="grid-2">
+            <div class="form-group">
+              <label class="form-label">Fiscal Year (BE) <span style="color:var(--red);">*</span></label>
+              <input type="number" id="eb-modal-fy" class="form-input" placeholder="e.g. 2569" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Manual Status</label>
+              <select id="eb-modal-status" class="form-select">
+                <option value="Planned">Planned</option>
+                <option value="In Progress">In Progress</option>
+                <option value="Cancelled">Cancelled</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="grid-2">
+            <div class="form-group">
+              <label class="form-label">HO Item ID</label>
+              <input type="text" id="eb-modal-hoid" class="form-input" placeholder="e.g. 42203403INT00001">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Device Name <span style="color:var(--red);">*</span></label>
+              <input type="text" id="eb-modal-device" class="form-input" placeholder="Device Name..." required>
+            </div>
+          </div>
+
+          <div class="grid-3">
+            <div class="form-group">
+              <label class="form-label">Unit Price (฿)</label>
+              <input type="number" step="any" id="eb-modal-price" class="form-input" placeholder="0.00" oninput="updateEBiddingModalCalc()">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Budget Plan Quantity <span style="color:var(--red);">*</span></label>
+              <input type="number" id="eb-modal-qty" class="form-input" placeholder="0" min="1" oninput="updateEBiddingModalCalc()" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Total Value (Calculated)</label>
+              <input type="text" id="eb-modal-total" class="form-input" readonly style="background:var(--gray-100); font-weight:700; color:var(--brand-dark);" value="฿0.00">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">E-Bidding Company / Vendor</label>
+            <input type="text" id="eb-modal-company" list="company-datalist" class="form-input" placeholder="Select or type company name...">
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Remarks</label>
+            <textarea id="eb-modal-remarks" class="form-input" rows="2" placeholder="Optional remarks or planning notes..."></textarea>
+          </div>
+
+          <div class="flex justify-end gap-2 pt-2">
+            <button type="button" class="btn btn-outline" onclick="closeModal()">Cancel</button>
+            <button type="button" class="btn btn-brand" onclick="saveEBiddingModal()">Save E-Bidding</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══════════════════════════════════════════════════════════════════ -->
+      <!-- PROCUREMENT MODAL 2: CONTRACT                                     -->
+      <!-- ══════════════════════════════════════════════════════════════════ -->
+      <div id="modal-contract" class="modal hidden" style="max-width:660px;">
+        <div class="modal-header">
+          <div class="modal-title" id="ct-modal-title">Create Contract</div>
+          <button class="modal-close" onclick="closeModal()">✕</button>
+        </div>
+        <div class="modal-body space-y">
+          <input type="hidden" id="ct-modal-id" value="">
+
+          <div class="form-group">
+            <label class="form-label">Linked E-Bidding Record <span style="color:var(--red);">*</span> <span class="text-xs text-gray">(Non-cancelled E-Bidding records)</span></label>
+            <select id="ct-modal-ebidding-id" class="form-select" onchange="onContractEBiddingSelect(this.value)">
+              <option value="">-- Select E-Bidding Record --</option>
+            </select>
+          </div>
+
+          <div class="grid-3">
+            <div class="form-group">
+              <label class="form-label">Fiscal Year (Inherited)</label>
+              <input type="text" id="ct-modal-fy" class="form-input" readonly style="background:var(--gray-100);">
+            </div>
+            <div class="form-group">
+              <label class="form-label">HO Item ID (Inherited)</label>
+              <input type="text" id="ct-modal-hoid" class="form-input" readonly style="background:var(--gray-100);">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Device Name (Inherited)</label>
+              <input type="text" id="ct-modal-device" class="form-input" readonly style="background:var(--gray-100); font-weight:600;">
+            </div>
+          </div>
+
+          <div class="grid-3">
+            <div class="form-group">
+              <label class="form-label">Contract Number <span style="color:var(--red);">*</span></label>
+              <input type="text" id="ct-modal-number" class="form-input" placeholder="e.g. สัญญาที่ 120/2569" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Contract Start Date <span style="color:var(--red);">*</span></label>
+              <input type="date" id="ct-modal-start" class="form-input" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Contract End Date <span style="color:var(--red);">*</span></label>
+              <input type="date" id="ct-modal-end" class="form-input" required>
+            </div>
+          </div>
+
+          <div class="grid-3">
+            <div class="form-group">
+              <label class="form-label">Final Contract Unit Price (฿)</label>
+              <input type="number" step="any" id="ct-modal-price" class="form-input" placeholder="0.00" oninput="updateContractModalCalc()">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Total Contract Quantity <span style="color:var(--red);">*</span></label>
+              <input type="number" id="ct-modal-qty" class="form-input" placeholder="0" min="1" oninput="updateContractModalCalc()" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Remaining Qty (Live)</label>
+              <input type="text" id="ct-modal-remaining" class="form-input" readonly style="background:var(--gray-100); font-weight:700;" value="0">
+            </div>
+          </div>
+
+          <div class="grid-2">
+            <div class="form-group">
+              <label class="form-label">Company / Vendor</label>
+              <input type="text" id="ct-modal-company" list="company-datalist" class="form-input" placeholder="Company name...">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Manual Status</label>
+              <select id="ct-modal-status" class="form-select">
+                <option value="">Active (Automatic: In Progress / Completed)</option>
+                <option value="Cancelled">Cancelled</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Remarks</label>
+            <textarea id="ct-modal-remarks" class="form-input" rows="2" placeholder="Optional contract terms or remarks..."></textarea>
+          </div>
+
+          <div class="flex justify-end gap-2 pt-2">
+            <button type="button" class="btn btn-outline" onclick="closeModal()">Cancel</button>
+            <button type="button" class="btn btn-brand" onclick="saveContractModal()">Save Contract</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══════════════════════════════════════════════════════════════════ -->
+      <!-- PROCUREMENT MODAL 3: CONTRACT PURCHASE ORDER (PO LOT)             -->
+      <!-- ══════════════════════════════════════════════════════════════════ -->
+      <div id="modal-contract-po" class="modal hidden" style="max-width:660px;">
+        <div class="modal-header">
+          <div class="modal-title" id="po-modal-title">Create Contract Purchase Order (Lot)</div>
+          <button class="modal-close" onclick="closeModal()">✕</button>
+        </div>
+        <div class="modal-body space-y">
+          <input type="hidden" id="po-modal-id" value="">
+
+          <div class="grid-2">
+            <div class="form-group">
+              <label class="form-label">Linked Contract <span style="color:var(--red);">*</span> <span class="text-xs text-gray">(In Progress contracts)</span></label>
+              <select id="po-modal-contract-id" class="form-select" onchange="onContractPOContractSelect(this.value)">
+                <option value="">-- Select Active Contract --</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">PO Issue Date <span style="color:var(--red);">*</span></label>
+              <input type="date" id="po-modal-date" class="form-input" required>
+            </div>
+          </div>
+
+          <!-- Read-only Contract Metadata Card -->
+          <div class="proc-info-banner" id="po-contract-summary-box">
+            <div class="grid-3 text-xs">
+              <div><span class="text-gray">Contract No:</span> <strong id="po-disp-contract-no">-</strong></div>
+              <div><span class="text-gray">Period:</span> <strong id="po-disp-period">-</strong></div>
+              <div><span class="text-gray">Company:</span> <strong id="po-disp-company">-</strong></div>
+              <div><span class="text-gray">HO Item ID:</span> <strong id="po-disp-hoid">-</strong></div>
+              <div><span class="text-gray">Device:</span> <strong id="po-disp-device">-</strong></div>
+              <div><span class="text-gray">Total Contract Qty:</span> <strong id="po-disp-total-qty">0</strong></div>
+            </div>
+          </div>
+
+          <div class="grid-4">
+            <div class="form-group">
+              <label class="form-label">Unit Price (฿)</label>
+              <input type="number" step="any" id="po-modal-price" class="form-input" placeholder="0.00" oninput="updateContractPOModalCalc()">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Ordered Qty (This Lot) <span style="color:var(--red);">*</span></label>
+              <input type="number" id="po-modal-qty" class="form-input" placeholder="0" min="1" oninput="updateContractPOModalCalc()" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Order Value (฿)</label>
+              <input type="text" id="po-modal-value" class="form-input" readonly style="background:var(--gray-100); font-weight:700; color:var(--brand-dark);" value="฿0.00">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Remaining After Lot</label>
+              <input type="text" id="po-modal-remaining" class="form-input" readonly style="background:var(--gray-100); font-weight:700;" value="0">
+            </div>
+          </div>
+
+          <div id="po-modal-neg-warning" class="proc-warn-banner hidden"></div>
+
+          <div class="grid-2">
+            <div class="form-group">
+              <label class="form-label">Manual Status</label>
+              <select id="po-modal-status" class="form-select">
+                <option value="">Active (Automatic: Pending PO / Completed)</option>
+                <option value="Cancelled">Cancelled</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Remarks</label>
+              <input type="text" id="po-modal-remarks" class="form-input" placeholder="PO reference / lot remarks...">
+            </div>
+          </div>
+
+          <div class="flex justify-end gap-2 pt-2">
+            <button type="button" class="btn btn-outline" onclick="closeModal()">Cancel</button>
+            <button type="button" class="btn btn-brand" onclick="saveContractPOModal()">Save Contract PO</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══════════════════════════════════════════════════════════════════ -->
+      <!-- PROCUREMENT MODAL 4: SPECIFIC-METHOD PURCHASE                     -->
+      <!-- ══════════════════════════════════════════════════════════════════ -->
+      <div id="modal-specific-purchase" class="modal hidden" style="max-width:660px;">
+        <div class="modal-header">
+          <div class="modal-title" id="sp-modal-title">Add Specific-Method Purchase</div>
+          <button class="modal-close" onclick="closeModal()">✕</button>
+        </div>
+        <div class="modal-body space-y">
+          <input type="hidden" id="sp-modal-id" value="">
+
+          <div class="form-group">
+            <label class="form-label">Quick Item Picker <span class="text-xs text-gray">(Search by Device Name or HO Item ID to auto-fill)</span></label>
+            <input type="text" id="sp-item-picker-input" class="form-input" placeholder="Type Device Name or HO Item ID..." oninput="filterProcItemPicker('sp', this.value)" onfocus="filterProcItemPicker('sp', this.value)" autocomplete="off">
+            <div id="sp-item-picker-results" class="search-results hidden"></div>
+          </div>
+
+          <div class="grid-3">
+            <div class="form-group">
+              <label class="form-label">PO Issue Date <span style="color:var(--red);">*</span></label>
+              <input type="date" id="sp-modal-date" class="form-input" onchange="onSpecificPurchaseDateChange(this.value)" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Fiscal Year (Auto-derived, editable)</label>
+              <input type="number" id="sp-modal-fy" class="form-input" oninput="updateSpecificPurchaseModalCalc()" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Manual Status</label>
+              <select id="sp-modal-status" class="form-select">
+                <option value="">Active (Automatic: Pending PO / Completed)</option>
+                <option value="Cancelled">Cancelled</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="grid-3">
+            <div class="form-group">
+              <label class="form-label">HO Item ID</label>
+              <input type="text" id="sp-modal-hoid" class="form-input" placeholder="HO Item ID..." oninput="updateSpecificPurchaseModalCalc()">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Device Name <span style="color:var(--red);">*</span></label>
+              <input type="text" id="sp-modal-device" class="form-input" placeholder="Device Name..." oninput="updateSpecificPurchaseModalCalc()" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Company / Vendor</label>
+              <input type="text" id="sp-modal-company" list="company-datalist" class="form-input" placeholder="Company name...">
+            </div>
+          </div>
+
+          <div class="grid-3">
+            <div class="form-group">
+              <label class="form-label">Unit Price (฿)</label>
+              <input type="number" step="any" id="sp-modal-price" class="form-input" placeholder="0.00" oninput="updateSpecificPurchaseModalCalc()">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Budget Plan Quantity</label>
+              <input type="number" id="sp-modal-budget-qty" class="form-input" placeholder="0" oninput="updateSpecificPurchaseModalCalc()">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Budget Plan Value (Calc)</label>
+              <input type="text" id="sp-modal-budget-val" class="form-input" readonly style="background:var(--gray-100);" value="฿0.00">
+            </div>
+          </div>
+
+          <div class="grid-3">
+            <div class="form-group">
+              <label class="form-label">Ordered Quantity <span style="color:var(--red);">*</span></label>
+              <input type="number" id="sp-modal-ordered-qty" class="form-input" placeholder="0" min="1" oninput="updateSpecificPurchaseModalCalc()" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Order Value (Calc)</label>
+              <input type="text" id="sp-modal-order-val" class="form-input" readonly style="background:var(--gray-100); font-weight:700; color:var(--brand-dark);" value="฿0.00">
+            </div>
+            <div class="form-group">
+              <label class="form-label" title="Budget Plan Qty - Total Ordered Qty of all non-cancelled Specific Purchases for same FY + HO Item ID">Remaining Qty (FY + Item)</label>
+              <input type="text" id="sp-modal-remaining" class="form-input" readonly style="background:var(--gray-100); font-weight:700;" value="0">
+            </div>
+          </div>
+
+          <div id="sp-modal-neg-warning" class="proc-warn-banner hidden"></div>
+
+          <div class="form-group">
+            <label class="form-label">Remarks</label>
+            <textarea id="sp-modal-remarks" class="form-input" rows="2" placeholder="Optional specific purchase remarks..."></textarea>
+          </div>
+
+          <div class="flex justify-end gap-2 pt-2">
+            <button type="button" class="btn btn-outline" onclick="closeModal()">Cancel</button>
+            <button type="button" class="btn btn-brand" onclick="saveSpecificPurchaseModal()">Save Specific Purchase</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══════════════════════════════════════════════════════════════════ -->
+      <!-- PROCUREMENT MODAL 5: GOODS RECEIVING & ITEM ID ALLOCATION         -->
+      <!-- ══════════════════════════════════════════════════════════════════ -->
+      <div id="modal-receiving" class="modal hidden" style="max-width:740px;">
+        <div class="modal-header">
+          <div class="modal-title" id="rc-modal-title">Goods Receiving &amp; Stock-In Allocation</div>
+          <button class="modal-close" onclick="closeModal()">✕</button>
+        </div>
+        <div class="modal-body space-y">
+          <input type="hidden" id="rc-modal-id" value="">
+
+          <div id="rc-locked-banner" class="proc-info-banner hidden" style="background:#ecfdf5; border-color:#6ee7b7; color:#065f46;"></div>
+
+          <div class="grid-3">
+            <div class="form-group">
+              <label class="form-label">Source Type <span style="color:var(--red);">*</span></label>
+              <select id="rc-modal-source-type" class="form-select" onchange="onReceivingSourceTypeChange(this.value)">
+                <option value="Contract PO">Contract PO</option>
+                <option value="Specific Purchase">Specific Purchase</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Source Record ID <span style="color:var(--red);">*</span></label>
+              <select id="rc-modal-source-id" class="form-select" onchange="onReceivingSourceIdChange(this.value)">
+                <option value="">-- Select Order --</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Receiving Date <span style="color:var(--red);">*</span></label>
+              <input type="date" id="rc-modal-date" class="form-input" required>
+            </div>
+          </div>
+
+          <div class="grid-3">
+            <div class="form-group">
+              <label class="form-label">HO Item ID (From Source)</label>
+              <input type="text" id="rc-modal-hoid" class="form-input" readonly style="background:var(--gray-100);">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Device Name (From Source)</label>
+              <input type="text" id="rc-modal-device" class="form-input" readonly style="background:var(--gray-100); font-weight:600;">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Company / Vendor</label>
+              <input type="text" id="rc-modal-company" list="company-datalist" class="form-input" placeholder="Company name...">
+            </div>
+          </div>
+
+          <div class="grid-4">
+            <div class="form-group">
+              <label class="form-label">Source Ordered Qty</label>
+              <input type="number" id="rc-modal-source-qty" class="form-input" readonly style="background:var(--gray-100);">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Qty on Receiving Doc <span style="color:var(--red);">*</span></label>
+              <input type="number" id="rc-modal-qty" class="form-input" min="1" oninput="updateReceivingModalCalc()" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Unit Price (฿)</label>
+              <input type="number" step="any" id="rc-modal-price" class="form-input" oninput="updateReceivingModalCalc()">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Receiving Value (Calc)</label>
+              <input type="text" id="rc-modal-value" class="form-input" readonly style="background:var(--gray-100); font-weight:700; color:var(--brand-dark);" value="฿0.00">
+            </div>
+          </div>
+
+          <div id="rc-qty-mismatch-warn" class="proc-warn-banner hidden"></div>
+
+          <!-- Item ID Allocation Section -->
+          <div class="card" style="border:1px solid var(--gray-200); box-shadow:none;">
+            <div class="card-header flex justify-between items-center flex-wrap gap-2" style="background:var(--gray-50); padding:10px 14px;">
+              <div>
+                <strong class="text-sm">Item ID Allocation (For Stock-In to Main Store)</strong>
+                <div class="text-xs text-gray">Allocate the received quantity across specific child/standalone Inventory Item IDs. Matching HO Item ID items are offered first.</div>
+              </div>
+              <span class="badge" id="rc-alloc-sum-badge">Allocated: 0 / 0</span>
+            </div>
+            <div class="card-body space-y-sm" style="padding:12px 14px;">
+              <div id="rc-alloc-rows-container" class="space-y-sm"></div>
+              <div class="flex gap-2 items-center flex-wrap pt-1" id="rc-alloc-add-bar">
+                <input type="text" id="rc-alloc-search-input" class="form-input form-input-sm" style="flex:1; min-width:220px;" placeholder="Search other Inventory item by Device Name or Item ID to add..." oninput="filterReceivingManualAllocSearch(this.value)" onfocus="filterReceivingManualAllocSearch(this.value)" autocomplete="off">
+                <div id="rc-alloc-search-results" class="search-results hidden" style="max-height:180px;"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="grid-2">
+            <div class="form-group">
+              <label class="form-label">Manual Status</label>
+              <select id="rc-modal-status" class="form-select">
+                <option value="">Awaiting Delivery (Default)</option>
+                <option value="Cancelled">Cancelled</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Remarks</label>
+              <input type="text" id="rc-modal-remarks" class="form-input" placeholder="Invoice no., delivery note, lot/expiry...">
+            </div>
+          </div>
+
+          <div class="flex justify-end gap-2 pt-2">
+            <button type="button" class="btn btn-outline" onclick="closeModal()">Close</button>
+            <button type="button" class="btn btn-outline" id="btn-rc-save-draft" onclick="saveReceivingModal(false)">Save Receiving (Awaiting Delivery)</button>
+            <button type="button" class="btn btn-brand" id="btn-rc-complete" onclick="saveReceivingModal(true)">
+              <svg class="btn-icon" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+              Complete &amp; Post Stock-In
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- Toast notification -->
@@ -2179,6 +2790,6 @@
     }, 4000);
   </script>
 
-  <script src="app.js?v=20261112c"></script>
+  <script src="app.js?v=20261117a"></script>
 </body>
 </html>
