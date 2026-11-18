@@ -160,14 +160,27 @@ window.__INR_MAIN_PARSED = true;
       stockLines: [{ itemId: '', qty: 1, loc: 'Main', notes: '' }],
       stockType: 'Stock In',
       invSort: { key: 'category', dir: 'asc' },
-      settingsSection: 'diseases',
+      settingsSection: 'groups',
       editingSettingIdx: -1,
       settingsDirty: { diseases: false, procedures: false, shifts: false, categories: false, departments: false, users: false },
       statSubTab: 'device',
       procEditId: null,
       procEditDevices: [],
       announcements: [],
-      collapsedParents: {}
+      groups: [],
+      hoReconcileDraft: {},
+      // Module 8: Procurement state
+      procurementSubTab: 'ebidding',
+      procurementFy: '',
+      ebiddings: [],
+      contracts: [],
+      contractPOs: [],
+      specificPurchases: [],
+      receivings: [],
+      companyList: [],
+      fiscalYearList: [],
+      expandedContracts: {},
+      receivingAllocations: []
     };
 
     // ===== BILINGUAL TRANSLATION DICTIONARY (TH / EN) =====
@@ -180,15 +193,28 @@ window.__INR_MAIN_PARSED = true;
         nav_exchange: 'Exchange and Consignment',
         nav_transfer: 'Transfer',
         nav_loan: 'Transfer',
+        nav_procurement: 'Procurement',
         nav_transactions: 'Transactions',
         nav_statistics: 'Statistics',
         nav_assets: 'Assets',
         nav_settings: 'Settings',
+        proc_sub_ebidding: 'E-Bidding',
+        proc_sub_contracts: 'Contracts',
+        proc_sub_po: 'Contract POs',
+        proc_sub_sp: 'Specific Purchase',
+        proc_sub_receiving: 'Receiving',
+        proc_fy_label: 'Fiscal Year (BE):',
+        proc_add_ebidding: 'Add E-Bidding Plan',
+        proc_add_contract: 'Create Contract',
+        proc_add_po: 'Create Contract PO (Lot)',
+        proc_add_sp: 'Add Specific Purchase',
+        proc_add_receiving: 'Record Goods Receiving',
 
         // 2. Action Buttons
         btn_add_device: 'Add Device',
         btn_stock_in_out: 'Stock In / Out',
         btn_adjustment: 'Adjustment',
+        btn_ho_reconcile: 'กระทบยอด HO',
         btn_export_csv: 'Export CSV',
         btn_export_pdf: 'Export PDF',
         btn_print: 'Print',
@@ -263,7 +289,7 @@ window.__INR_MAIN_PARSED = true;
         tbl_status: 'Status',
         inv_all_cats: 'All Categories',
         inv_all_status: 'All Status',
-        ann_board_title: 'Announcement Board / บันทึกสิ่งที่ควรทราบ',
+        ann_board_title: 'Announcement',
         ann_btn_add: 'New Announcement'
       },
       th: {
@@ -274,15 +300,28 @@ window.__INR_MAIN_PARSED = true;
         nav_exchange: 'การแลกและฝากของ',
         nav_transfer: 'การโอนย้าย',
         nav_loan: 'การโอนย้าย',
+        nav_procurement: 'การจัดซื้อและตรวจรับ',
         nav_transactions: 'ประวัติรายการ',
         nav_statistics: 'สถิติ',
         nav_assets: 'ครุภัณฑ์',
         nav_settings: 'ตั้งค่า',
+        proc_sub_ebidding: 'แผน E-Bidding',
+        proc_sub_contracts: 'สัญญาจะซื้อจะขาย',
+        proc_sub_po: 'ใบสั่งซื้อตามสัญญา (PO)',
+        proc_sub_sp: 'จัดซื้อวิธีเฉพาะเจาะจง',
+        proc_sub_receiving: 'การตรวจรับพัสดุ',
+        proc_fy_label: 'ปีงบประมาณ (พ.ศ.):',
+        proc_add_ebidding: 'เพิ่มแผน E-Bidding',
+        proc_add_contract: 'สร้างสัญญาจะซื้อจะขาย',
+        proc_add_po: 'ออกใบสั่งซื้อตามสัญญา (PO)',
+        proc_add_sp: 'เพิ่มรายการจัดซื้อเฉพาะเจาะจง',
+        proc_add_receiving: 'บันทึกการตรวจรับพัสดุ',
 
         // 2. Action Buttons
         btn_add_device: 'เพิ่มรายการ',
         btn_stock_in_out: 'นำเข้า / จ่ายออก',
         btn_adjustment: 'กระทบยอด',
+        btn_ho_reconcile: 'กระทบยอด HO',
         btn_export_csv: 'Export CSV',
         btn_export_pdf: 'Export PDF',
         btn_print: 'พิมพ์',
@@ -357,7 +396,7 @@ window.__INR_MAIN_PARSED = true;
         tbl_status: 'สถานะ',
         inv_all_cats: 'ทุกหมวดหมู่',
         inv_all_status: 'ทุกสถานะ',
-        ann_board_title: 'บันทึกสิ่งที่ควรทราบ / ประกาศสำคัญ',
+        ann_board_title: 'ประกาศ',
         ann_btn_add: 'เพิ่มประกาศ'
       }
     };
@@ -454,6 +493,7 @@ window.__INR_MAIN_PARSED = true;
       procedure: '<svg class="nav-icon" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 2a4 4 0 00-4 4v1H5a2 2 0 00-2 2v7a2 2 0 002 2h10a2 2 0 002-2V9a2 2 0 00-2-2h-1V6a4 4 0 00-4-4zm2 5V6a2 2 0 10-4 0v1h4zm-3 3a1 1 0 012 0v1h1a1 1 0 110 2h-1v1a1 1 0 11-2 0v-1H8a1 1 0 110-2h1v-1z" clip-rule="evenodd"/></svg>',
       exchange: '<svg class="nav-icon" viewBox="0 0 20 20" fill="currentColor"><path d="M5 4a1 1 0 00-2 0v7.268a2 2 0 000 3.464V16a1 1 0 102 0v-1.268a2 2 0 000-3.464V4zM11 4a1 1 0 10-2 0v1.268a2 2 0 000 3.464V16a1 1 0 102 0V8.732a2 2 0 000-3.464V4zM16 3a1 1 0 011 1v7.268a2 2 0 010 3.464V16a1 1 0 11-2 0v-1.268a2 2 0 010-3.464V4a1 1 0 011-1z"/></svg>',
       loan: '<svg class="nav-icon" viewBox="0 0 20 20" fill="currentColor"><path d="M8 5a1 1 0 100 2h5.586l-1.293 1.293a1 1 0 001.414 1.414l3-3a1 1 0 000-1.414l-3-3a1 1 0 10-1.414 1.414L13.586 5H8zM12 15a1 1 0 100-2H6.414l1.293-1.293a1 1 0 10-1.414-1.414l-3 3a1 1 0 000 1.414l3 3a1 1 0 001.414-1.414L6.414 15H12z"/></svg>',
+      procurement: '<svg class="nav-icon" viewBox="0 0 20 20" fill="currentColor"><path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z"/><path fill-rule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clip-rule="evenodd"/></svg>',
       transactions: '<svg class="nav-icon" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clip-rule="evenodd"/></svg>',
       statistic: '<svg class="nav-icon" viewBox="0 0 20 20" fill="currentColor"><path d="M2 11a1 1 0 011-1h2a1 1 0 011 1v5a1 1 0 01-1 1H3a1 1 0 01-1-1v-5zM8 7a1 1 0 011-1h2a1 1 0 011 1v9a1 1 0 01-1 1H9a1 1 0 01-1-1V7zM14 4a1 1 0 011-1h2a1 1 0 011 1v12a1 1 0 01-1 1h-2a1 1 0 01-1-1V4z"/></svg>',
       assets: '<svg class="nav-icon" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 5a2 2 0 012-2h10a2 2 0 012 2v8a2 2 0 01-2 2h-2.22l.123.489.804.804A1 1 0 0113 18H7a1 1 0 01-.707-1.707l.804-.804L7.22 15H5a2 2 0 01-2-2V5zm5.771 7H5V5h10v7H8.771z" clip-rule="evenodd"/></svg>',
@@ -486,6 +526,7 @@ window.__INR_MAIN_PARSED = true;
       { id: 'procedure',    labelKey: 'nav_procedure',    label: 'Procedure Use',            icon: ICONS.procedure },
       { id: 'exchange',     labelKey: 'nav_exchange',     label: 'Exchange and Consignment', icon: ICONS.exchange },
       { id: 'loan',         labelKey: 'nav_transfer',     label: 'Transfer',                 icon: ICONS.loan },
+      { id: 'procurement',  labelKey: 'nav_procurement',  label: 'Procurement',              icon: ICONS.procurement },
       { id: 'transactions', labelKey: 'nav_transactions', label: 'Transactions',             icon: ICONS.transactions },
       { id: 'statistic',    labelKey: 'nav_statistics',   label: 'Statistics',               icon: ICONS.statistic },
       { id: 'assets',       labelKey: 'nav_assets',       label: 'Assets',                   icon: ICONS.assets },
@@ -545,14 +586,53 @@ window.__INR_MAIN_PARSED = true;
       }
     }
 
+    function formatDateDDMMYYYY(dateStr) {
+      if (!dateStr) return '-';
+      const s = String(dateStr).trim();
+      if (!s || s === '-') return '-';
+      const m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+      if (m) {
+        return `${String(m[3]).padStart(2, '0')}/${String(m[2]).padStart(2, '0')}/${m[1]}`;
+      }
+      const m2 = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+      if (m2) {
+        return `${String(m2[1]).padStart(2, '0')}/${String(m2[2]).padStart(2, '0')}/${m2[3]}`;
+      }
+      try {
+        const d = new Date(s);
+        if (!isNaN(d.getTime())) {
+          return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
+        }
+      } catch (e) {}
+      return s;
+    }
+
     function getDeviceName(itemId) {
-      const item = state.inventory.find(i => String(i.itemId) === String(itemId));
-      return item ? item.deviceName : itemId;
+      const item = (state.inventory || []).find(i => String(i.itemId) === String(itemId));
+      if (item) return item.deviceName;
+      const grp = (state.groups || []).find(g => String(g.groupId) === String(itemId));
+      if (grp) return grp.groupName;
+      return itemId;
     }
 
     function getDeviceCategory(itemId) {
-      const item = state.inventory.find(i => String(i.itemId) === String(itemId));
-      return item ? item.category : '';
+      const item = (state.inventory || []).find(i => String(i.itemId) === String(itemId));
+      if (item) return item.category;
+      const grp = (state.groups || []).find(g => String(g.groupId) === String(itemId));
+      return grp ? (grp.category || '') : '';
+    }
+
+    function populateUserNicknameSelect(selectId, preserveValue) {
+      const sel = document.getElementById(selectId);
+      if (!sel) return;
+      const cur = preserveValue !== undefined ? preserveValue : sel.value;
+      const users = (typeof getUsersList === 'function') ? getUsersList() : ((state.settings && state.settings.users) || []);
+      sel.innerHTML = `<option value="">-- Select User (Nickname) --</option>` +
+        users.map(u => {
+          const nick = String((u && (u.nickname || u.name)) || u || '').trim();
+          if (!nick) return '';
+          return `<option value="${escapeHtml(nick)}" ${nick === cur ? 'selected' : ''}>${escapeHtml(nick)}</option>`;
+        }).filter(Boolean).join('');
     }
 
     function generateClientItemId(category) {
@@ -580,61 +660,162 @@ window.__INR_MAIN_PARSED = true;
     }
 
     function getTransactableInventory() {
-      return (state.inventory || []).filter(i => !i.isParent);
+      return state.inventory || [];
     }
 
     function recalculateInventoryHierarchy() {
-      if (!Array.isArray(state.inventory)) return;
-      // Pass 1: Normalize Free Items and standalone/child items
-      state.inventory.forEach(item => {
-        item.isFreeItem = Boolean(item.isFreeItem);
-        item.isParent   = Boolean(item.isParent);
-        item.parentId   = item.isParent ? '' : String(item.parentId || '').trim();
-        if (item.isFreeItem) {
-          item.buyPrice  = 0;
-          item.hoStock   = 0;
-          item.stockDiff = 0;
-        } else if (!item.isParent) {
-          const m = Number(item.mainStock) || 0;
-          const r = Number(item.retailStock) || 0;
-          item.totalStock = m + r;
-          item.stockDiff  = item.totalStock - (Number(item.hoStock) || 0);
+      if (!Array.isArray(state.inventory)) state.inventory = [];
+      if (!Array.isArray(state.groups)) state.groups = [];
+
+      // Filter out any legacy virtual parent rows if present in local cache
+      state.inventory = state.inventory.filter(i => !i.isParent);
+
+      const groupById = {};
+      const groupByHoId = {};
+      state.groups.forEach(g => {
+        if (!g || !g.groupId) return;
+        const gid = String(g.groupId).trim();
+        g.groupId = gid;
+        g.groupName = String(g.groupName || gid).trim();
+        g.hoItemId = String(g.hoItemId || '').trim();
+        g.buyPrice = Number(g.buyPrice) || 0;
+        g.sellPrice = Number(g.sellPrice) || 0;
+        g.hoStock = Number(g.hoStock) || 0;
+        g.hoLastChecked = g.hoLastChecked || '';
+        g.mainStock = 0;
+        g.retailStock = 0;
+        g.bufferStock = 0;
+        g.totalStock = 0;
+        g.safetyStock = 0;
+        g.orderEstimate = 0;
+        g.category = '';
+        g.company = '';
+        groupById[gid] = g;
+        if (g.hoItemId && !groupByHoId[g.hoItemId]) {
+          groupByHoId[g.hoItemId] = g;
         }
       });
 
-      // Pass 2: Aggregate Child Sub-Devices into Parent Device Groups
-      state.inventory.forEach(p => {
-        if (!p.isParent) return;
-        const children = state.inventory.filter(c => !c.isParent && String(c.parentId) === String(p.itemId));
-        let sumMain = 0, sumRetail = 0, sumBuffer = 0, sumTotal = 0;
-        let sumChildHo = 0, sumPoChildTotal = 0, sumFreeTotal = 0;
-        children.forEach(c => {
-          const m = Number(c.mainStock) || 0;
-          const r = Number(c.retailStock) || 0;
-          const b = Number(c.bufferStock) || 0;
-          const tot = m + r;
-          sumMain   += m;
-          sumRetail += r;
-          sumBuffer += b;
-          sumTotal  += tot;
-          if (c.isFreeItem) {
-            sumFreeTotal += tot;
+      // Rule 2.2: Auto-group ungrouped items (not manually removed) sharing the same non-empty HO Item ID
+      const ungroupedByHo = {};
+      state.inventory.forEach(item => {
+        const rawGid = String(item.groupId || '').trim();
+        if (rawGid.toUpperCase() === 'UNGROUPED') {
+          item.groupId = '';
+          item.ungroupedManual = true;
+          return;
+        }
+        if (item.ungroupedManual) {
+          item.groupId = '';
+          return;
+        }
+        if (rawGid && groupById[rawGid]) {
+          item.groupId = rawGid;
+          return;
+        }
+        item.groupId = '';
+        const hoId = String(item.hoItemId || '').trim();
+        if (!hoId) return;
+        if (!ungroupedByHo[hoId]) ungroupedByHo[hoId] = [];
+        ungroupedByHo[hoId].push(item);
+      });
+
+      Object.keys(ungroupedByHo).forEach(hoId => {
+        const list = ungroupedByHo[hoId];
+        let targetGrp = groupByHoId[hoId] || null;
+        if (!targetGrp && list.length >= 2) {
+          const first = list[0];
+          const newGid = 'GRP-' + Date.now() + '-' + Math.floor(Math.random() * 90 + 10);
+          let maxHo = 0;
+          list.forEach(it => {
+            const h = Number(it.ownHoStock !== undefined ? it.ownHoStock : it.hoStock) || 0;
+            if (h > maxHo) maxHo = h;
+          });
+          targetGrp = {
+            groupId: newGid,
+            groupName: first.deviceName || hoId,
+            hoItemId: hoId,
+            buyPrice: Number(first.buyPrice) || 0,
+            sellPrice: Number(first.sellPrice) || 0,
+            hoStock: maxHo,
+            hoLastChecked: first.hoLastChecked || '',
+            mainStock: 0,
+            retailStock: 0,
+            bufferStock: 0,
+            totalStock: 0,
+            safetyStock: 0,
+            orderEstimate: 0,
+            category: first.category || '',
+            company: first.company || ''
+          };
+          state.groups.push(targetGrp);
+          groupById[newGid] = targetGrp;
+          groupByHoId[hoId] = targetGrp;
+        }
+        if (targetGrp) {
+          list.forEach(it => {
+            it.groupId = targetGrp.groupId;
+          });
+        }
+      });
+
+      // Rule 2.3: Compute Sub-Item and Standalone Item metrics, and accumulate Group totals
+      state.inventory.forEach(item => {
+        item.isFreeItem = Boolean(item.isFreeItem);
+        const grp = (item.groupId && groupById[item.groupId]) ? groupById[item.groupId] : null;
+        if (!grp) item.groupId = '';
+
+        const m = Number(item.mainStock) || 0;
+        const r = Number(item.retailStock) || 0;
+        const b = Number(item.bufferStock) || 0;
+        const tot = m + r;
+        const safety = Number(item.safetyStock) || 0;
+        const orderEst = Number(item.orderEstimate) || 0;
+
+        item.mainStock = m;
+        item.retailStock = r;
+        item.bufferStock = b;
+        item.totalStock = tot;
+        item.safetyStock = safety;
+        item.orderEstimate = orderEst;
+        item.buyPoint = safety * 2;
+        item.stockMonth = safety > 0 ? Number((tot / safety).toFixed(2)) : 0;
+        item.exceedPercent = orderEst > 0 ? Math.round(((tot - orderEst) / orderEst) * 100) : 0;
+
+        if (grp) {
+          item.buyPrice = grp.buyPrice;
+          item.sellPrice = grp.sellPrice;
+          item.hoStock = 0;
+          item.stockDiff = null; // Blank / "-" on Sub-Item Row
+          grp.mainStock += m;
+          grp.retailStock += r;
+          grp.bufferStock += b;
+          grp.totalStock += tot;
+          grp.safetyStock += safety;
+          grp.orderEstimate += orderEst;
+          if (!grp.category && item.category) grp.category = item.category;
+          if (!grp.company && item.company) grp.company = item.company;
+        } else {
+          if (item.isFreeItem) {
+            item.buyPrice = 0;
+            item.hoStock = 0;
+            item.stockDiff = 0;
           } else {
-            sumPoChildTotal += tot;
-            sumChildHo += (Number(c.hoStock) || 0);
+            const ownHo = Number(item.ownHoStock !== undefined ? item.ownHoStock : item.hoStock) || 0;
+            item.ownHoStock = ownHo;
+            item.hoStock = ownHo;
+            item.stockDiff = tot - ownHo;
           }
-        });
-        const ownHo = Number(p.ownHoStock !== undefined ? p.ownHoStock : p.hoStock) || 0;
-        const effectiveHo = ownHo > 0 ? ownHo : sumChildHo;
-        p.ownHoStock     = ownHo;
-        p.mainStock      = sumMain;
-        p.retailStock    = sumRetail;
-        p.bufferStock    = sumBuffer;
-        p.totalStock     = sumTotal;
-        p.hoStock        = effectiveHo;
-        p.stockDiff      = p.isFreeItem ? 0 : (sumPoChildTotal - effectiveHo);
-        p.freeStockCount = sumFreeTotal;
-        p.childCount     = children.length;
+        }
+      });
+
+      // Finalize Group Summary Row metrics (Section 2.3)
+      state.groups.forEach(g => {
+        g.totalStock = g.mainStock + g.retailStock;
+        g.stockDiff = g.totalStock - g.hoStock;
+        g.buyPoint = g.safetyStock * 2;
+        g.stockMonth = g.safetyStock > 0 ? Number((g.totalStock / g.safetyStock).toFixed(2)) : 0;
+        g.exceedPercent = g.orderEstimate > 0 ? Math.round(((g.totalStock - g.orderEstimate) / g.orderEstimate) * 100) : 0;
       });
     }
 
@@ -730,6 +911,9 @@ window.__INR_MAIN_PARSED = true;
           case 'loan':
             renderLoanTab();
             break;
+          case 'procurement':
+            renderProcurementTab();
+            break;
           case 'transactions':
             renderTransactions();
             break;
@@ -769,20 +953,91 @@ window.__INR_MAIN_PARSED = true;
       { id: 'inv-col-exceed', cls: 'col-inv-exceed' },
       { id: 'inv-col-orderest', cls: 'col-inv-orderest' },
       { id: 'inv-col-buypoint', cls: 'col-inv-buypoint' },
-      { id: 'inv-col-safetystock', cls: 'col-inv-safetystock' }
+      { id: 'inv-col-safetystock', cls: 'col-inv-safetystock' },
+      { id: 'inv-col-company', cls: 'col-inv-company' }
     ];
 
     function openModal(id) {
       document.getElementById('modal-overlay').classList.remove('hidden');
       document.querySelectorAll('.modal').forEach(m => m.classList.add('hidden'));
       document.getElementById(id).classList.remove('hidden');
-      if (id === 'modal-adjust') renderAdjustmentTab();
-      if (id === 'modal-stock') renderStockTab();
+      if (id === 'modal-adjust') {
+        populateUserNicknameSelect('adj-modal-user');
+        renderAdjustmentTab();
+      }
+      if (id === 'modal-stock') {
+        populateUserNicknameSelect('stock-modal-user');
+        renderStockTab();
+      }
     }
     function closeModal() {
       stopQrScannerInstance();
       document.getElementById('modal-overlay').classList.add('hidden');
     }
+
+    // ===== MODAL ENTER KEY SUBMISSION =====
+    document.addEventListener('keydown', function(e) {
+      if (e.key !== 'Enter') return;
+      // Allow normal Enter behavior inside multiline textarea
+      if (e.target && e.target.tagName === 'TEXTAREA') return;
+
+      // Check if modal overlay is visible
+      const overlay = document.getElementById('modal-overlay');
+      if (!overlay || overlay.classList.contains('hidden')) return;
+
+      // Find the currently active modal
+      const activeModal = document.querySelector('.modal:not(.hidden)');
+      if (!activeModal) return;
+
+      // Ensure the target is inside the active modal
+      if (!activeModal.contains(e.target)) return;
+
+      // Specific sub-form actions inside modals:
+      // In Procedure Edit modal, if pressing Enter in the Add Supply Item inputs, trigger Add Item
+      if (activeModal.id === 'modal-proc-edit' && (e.target.id === 'proc-edit-add-item' || e.target.id === 'proc-edit-add-qty' || e.target.id === 'proc-edit-add-vol' || e.target.id === 'proc-edit-add-piece')) {
+        e.preventDefault();
+        if (typeof addProcEditDevice === 'function') addProcEditDevice();
+        return;
+      }
+
+      // In QR scanner modal manual code input
+      if (e.target && e.target.id === 'qr-manual-code') {
+        e.preventDefault();
+        if (typeof handleManualQrLookup === 'function') handleManualQrLookup();
+        return;
+      }
+
+      // In Passcode confirm modal
+      if (e.target && e.target.id === 'passcode-input') {
+        e.preventDefault();
+        if (typeof submitPasscodeConfirm === 'function') submitPasscodeConfirm();
+        return;
+      }
+
+      // In Procurement item search/allocation pickers, do not submit the whole modal on Enter
+      if (e.target && (e.target.id === 'eb-item-picker-input' || e.target.id === 'sp-item-picker-input' || e.target.id === 'rc-alloc-search-input')) {
+        e.preventDefault();
+        return;
+      }
+
+      // In Stock Adjustment modal
+      if (activeModal.id === 'modal-adjust') {
+        e.preventDefault();
+        const submitAdjBtn = document.getElementById('btn-submit-adjustments');
+        if (submitAdjBtn) submitAdjBtn.click();
+        return;
+      }
+
+      // Find the primary Save / Submit / OK action button in the modal
+      // Usually the rightmost button with .btn-brand or .btn-danger in the modal footer or body
+      const actionButtons = Array.from(activeModal.querySelectorAll('button.btn-brand, button.btn-danger'));
+      const primaryBtn = actionButtons.length > 0 ? actionButtons[actionButtons.length - 1] : null;
+
+      if (primaryBtn && !primaryBtn.disabled && typeof primaryBtn.click === 'function') {
+        e.preventDefault();
+        primaryBtn.click();
+      }
+    });
 
     // ===== UNIVERSAL DELETION PASSCODE =====
     function getDeletePasscode() {
@@ -1058,51 +1313,6 @@ window.__INR_MAIN_PARSED = true;
       if (diffInput) diffInput.value = isFree ? 0 : (tot - ho);
     }
 
-    function populateParentSelectOptions(selectEl, excludeItemId, selectedParentId) {
-      if (!selectEl) return;
-      const parents = (state.inventory || []).filter(i => i.isParent && String(i.itemId) !== String(excludeItemId || ''));
-      selectEl.innerHTML = `<option value="">-- Standalone (ไม่อยู่ภายใต้กลุ่มใด) --</option>` +
-        parents.map(p => `<option value="${escapeHtml(String(p.itemId))}" ${String(p.itemId) === String(selectedParentId || '') ? 'selected' : ''}>${escapeHtml(p.deviceName)} (${escapeHtml(p.category || '—')})</option>`).join('');
-    }
-
-    function onInvModalFreeOrParentChange() {
-      const isFreeEl   = document.getElementById('inv-modal-is-free');
-      const isParentEl = document.getElementById('inv-modal-is-parent');
-      const parentWrap = document.getElementById('inv-modal-parent-select-wrap');
-      const parentSel  = document.getElementById('inv-modal-parent-id');
-      const buyInput   = document.getElementById('inv-modal-buy');
-      const hoInput    = document.getElementById('inv-modal-hostock');
-      const mainInput  = document.getElementById('inv-modal-main');
-      const retInput   = document.getElementById('inv-modal-retail');
-
-      const isFree   = isFreeEl ? (isFreeEl.type === 'checkbox' ? isFreeEl.checked : isFreeEl.value === 'true') : false;
-      const isParent = isParentEl ? (isParentEl.type === 'checkbox' ? isParentEl.checked : isParentEl.value === 'true') : false;
-
-      if (isFree) {
-        if (buyInput) { buyInput.value = '0'; }
-        if (hoInput)  { hoInput.value = '0'; }
-      }
-      if (parentWrap) {
-        parentWrap.style.display = isParent ? 'none' : '';
-      }
-      if (isParent) {
-        if (parentSel) parentSel.value = '';
-        if (mainInput) { mainInput.value = '0'; mainInput.disabled = true; mainInput.title = 'Aggregated automatically from Child Sub-Devices'; }
-        if (retInput)  { retInput.value  = '0'; retInput.disabled  = true; retInput.title  = 'Aggregated automatically from Child Sub-Devices'; }
-      } else {
-        if (mainInput) { mainInput.disabled = false; mainInput.title = ''; }
-        if (retInput)  { retInput.disabled  = false; retInput.title  = ''; }
-      }
-      calcModalStock();
-    }
-
-    function toggleParentCollapse(parentId, event) {
-      if (event) event.stopPropagation();
-      if (!state.collapsedParents) state.collapsedParents = {};
-      state.collapsedParents[parentId] = !state.collapsedParents[parentId];
-      renderInventoryTab();
-    }
-
     function renderInventoryTab() {
       recalculateInventoryHierarchy();
 
@@ -1125,7 +1335,7 @@ window.__INR_MAIN_PARSED = true;
         catDatalist.innerHTML = allCats.map(c => `<option value="${c}">`).join('');
       }
 
-      function matchesFilter(i) {
+      function matchesItemFilter(i) {
         if (catVal && (i.category || '').toLowerCase() !== catVal) return false;
         if (!searchVal) return true;
         return (
@@ -1133,8 +1343,20 @@ window.__INR_MAIN_PARSED = true;
           String(i.hoItemId || '').toLowerCase().includes(searchVal) ||
           String(i.deviceName || '').toLowerCase().includes(searchVal) ||
           String(i.category || '').toLowerCase().includes(searchVal) ||
-          (i.isFreeItem && 'free ของแถม'.includes(searchVal)) ||
-          (i.isParent && 'parent group'.includes(searchVal))
+          String(i.company || '').toLowerCase().includes(searchVal) ||
+          (i.isFreeItem && 'free ของแถม'.includes(searchVal))
+        );
+      }
+
+      function matchesGroupFilter(g) {
+        if (catVal && (g.category || '').toLowerCase() !== catVal) return false;
+        if (!searchVal) return true;
+        return (
+          String(g.groupId || '').toLowerCase().includes(searchVal) ||
+          String(g.hoItemId || '').toLowerCase().includes(searchVal) ||
+          String(g.groupName || '').toLowerCase().includes(searchVal) ||
+          String(g.category || '').toLowerCase().includes(searchVal) ||
+          String(g.company || '').toLowerCase().includes(searchVal)
         );
       }
 
@@ -1143,7 +1365,9 @@ window.__INR_MAIN_PARSED = true;
       const sortKey = state.invSort.key || 'category';
       const sortDir = state.invSort.dir === 'desc' ? -1 : 1;
 
-      function compareItems(a, b) {
+      function compareEntries(a, b) {
+        const nameA = a.isGroupSummary ? (a.groupName || '') : (a.deviceName || '');
+        const nameB = b.isGroupSummary ? (b.groupName || '') : (b.deviceName || '');
         if (sortKey === 'category') {
           const catOrder = getAllCategories().map(c => c.toLowerCase());
           const catA = String(a.category || '').trim().toLowerCase();
@@ -1155,7 +1379,9 @@ window.__INR_MAIN_PARSED = true;
           if (idxA !== idxB) {
             return (idxA - idxB) * sortDir;
           }
-          return String(a.deviceName || '').toLowerCase().localeCompare(String(b.deviceName || '').toLowerCase());
+          return nameA.toLowerCase().localeCompare(nameB.toLowerCase());
+        } else if (sortKey === 'deviceName') {
+          return nameA.toLowerCase().localeCompare(nameB.toLowerCase()) * sortDir;
         } else if (numCols.includes(sortKey)) {
           const valA = Number(a[sortKey]) || 0;
           const valB = Number(b[sortKey]) || 0;
@@ -1167,48 +1393,56 @@ window.__INR_MAIN_PARSED = true;
         }
       }
 
-      // Organize Parent-Child tree for display
-      const parentMap = new Map();
-      state.inventory.forEach(i => {
-        if (i.isParent) parentMap.set(String(i.itemId), i);
+      // Organize Groups and Standalone items (Section 2.3 & 4.1)
+      const groupMap = new Map();
+      (state.groups || []).forEach(g => {
+        if (g && g.groupId) groupMap.set(String(g.groupId), g);
       });
 
-      const childrenByParent = new Map();
-      const topLevelItems = [];
-      state.inventory.forEach(i => {
-        const pid = String(i.parentId || '').trim();
-        if (!i.isParent && pid && parentMap.has(pid)) {
-          if (!childrenByParent.has(pid)) childrenByParent.set(pid, []);
-          childrenByParent.get(pid).push(i);
+      const membersByGroup = new Map();
+      const topLevelEntries = [];
+
+      (state.inventory || []).forEach(i => {
+        const gid = String(i.groupId || '').trim();
+        if (gid && groupMap.has(gid)) {
+          if (!membersByGroup.has(gid)) membersByGroup.set(gid, []);
+          membersByGroup.get(gid).push(i);
         } else {
-          topLevelItems.push(i);
+          topLevelEntries.push(Object.assign({}, i, { isGroupSummary: false }));
         }
       });
 
-      topLevelItems.sort(compareItems);
-      childrenByParent.forEach(list => list.sort(compareItems));
+      groupMap.forEach((g, gid) => {
+        const members = membersByGroup.get(gid) || [];
+        if (members.length > 0) {
+          topLevelEntries.push(Object.assign({}, g, { isGroupSummary: true }));
+        }
+      });
+
+      topLevelEntries.sort(compareEntries);
+      membersByGroup.forEach(list => list.sort(compareEntries));
 
       const displayRows = [];
-      topLevelItems.forEach(item => {
-        if (item.isParent) {
-          const kids = childrenByParent.get(String(item.itemId)) || [];
-          const matchingKids = kids.filter(matchesFilter);
-          const parentMatches = matchesFilter(item);
-          if (parentMatches || matchingKids.length > 0) {
-            displayRows.push({ item, isParentRow: true, isChildRow: false, childCount: kids.length });
-            const isCollapsed = Boolean(state.collapsedParents && state.collapsedParents[item.itemId]) && !searchVal;
-            if (!isCollapsed) {
-              const kidsToShow = searchVal ? matchingKids : kids;
-              kidsToShow.forEach(k => displayRows.push({ item: k, isParentRow: false, isChildRow: true }));
-            }
+      topLevelEntries.forEach(entry => {
+        if (entry.isGroupSummary) {
+          const members = membersByGroup.get(String(entry.groupId)) || [];
+          const matchingMembers = members.filter(matchesItemFilter);
+          const groupMatches = matchesGroupFilter(entry);
+          if (groupMatches || matchingMembers.length > 0) {
+            // Section 4.1: Always expanded; show Group Summary Row followed by all Sub-Item Rows
+            displayRows.push({ rowType: 'group', group: entry });
+            const subItemsToShow = (searchVal && !groupMatches) ? matchingMembers : members;
+            subItemsToShow.forEach(sub => {
+              displayRows.push({ rowType: 'sub', item: sub, group: entry });
+            });
           }
-        } else if (matchesFilter(item)) {
-          displayRows.push({ item, isParentRow: false, isChildRow: false });
+        } else if (matchesItemFilter(entry)) {
+          displayRows.push({ rowType: 'standalone', item: entry });
         }
       });
 
       // Update sort indicators in header
-      const allSortKeys = ['itemId', 'hoItemId', 'deviceName', 'category', 'buyPrice', 'sellPrice', 'mainStock', 'retailStock', 'bufferStock', 'totalStock', 'hoStock', 'stockDiff', 'stockMonth', 'exceedPercent', 'orderEstimate', 'buyPoint', 'safetyStock'];
+      const allSortKeys = ['itemId', 'hoItemId', 'deviceName', 'category', 'buyPrice', 'sellPrice', 'mainStock', 'retailStock', 'bufferStock', 'totalStock', 'hoStock', 'stockDiff', 'stockMonth', 'exceedPercent', 'orderEstimate', 'buyPoint', 'safetyStock', 'company'];
       allSortKeys.forEach(k => {
         const icon = document.getElementById('sort-' + k);
         if (icon) {
@@ -1224,59 +1458,90 @@ window.__INR_MAIN_PARSED = true;
         }
       });
 
-      // Render Rows
+      // Render Rows (Section 2.3 & Section 4.1)
       body.innerHTML = displayRows.map(rowObj => {
-        const i = rowObj.item;
-        const isFree = Boolean(i.isFreeItem);
-        const isParent = Boolean(i.isParent);
-        const diffVal = isFree ? 0 : (i.stockDiff !== undefined ? Number(i.stockDiff) : (Number(i.totalStock || 0) - Number(i.hoStock || 0)));
-        let diffColor = 'inherit';
-        let diffDisplay = diffVal;
-        if (!isFree) {
+        if (rowObj.rowType === 'group') {
+          const g = rowObj.group;
+          const diffVal = Number(g.stockDiff) || 0;
+          let diffColor = 'inherit';
+          let diffDisplay = String(diffVal);
           if (diffVal < 0) { diffColor = 'var(--red)'; }
           else if (diffVal > 0) { diffColor = 'var(--brand)'; diffDisplay = '+' + diffVal; }
-        } else {
-          diffColor = '#15803d';
-          diffDisplay = '0 (Free)';
+
+          const exceedVal = Number(g.exceedPercent) || 0;
+          const exceedDisplay = exceedVal > 0 ? ('+' + exceedVal + '%') : (exceedVal + '%');
+
+          return `
+            <tr class="inv-parent-row">
+              <td class="col-inv-name">
+                <a href="javascript:void(0)" class="device-name-link font-bold" onclick="openGroupModal('${escapeHtml(String(g.groupId))}')">${escapeHtml(g.groupName || '')}</a>
+              </td>
+              <td class="col-inv-hoid text-gray text-xs font-mono">${escapeHtml(g.hoItemId || '-')}</td>
+              <td class="col-inv-itemid text-gray text-xs font-mono">-</td>
+              <td class="col-inv-cat text-gray">${escapeHtml(g.category || '')}</td>
+              <td class="col-inv-buyprice num">฿${(Number(g.buyPrice) || 0).toLocaleString()}</td>
+              <td class="col-inv-sellprice num">฿${(Number(g.sellPrice) || 0).toLocaleString()}</td>
+              <td class="col-inv-main num font-bold">${Number(g.mainStock) || 0}</td>
+              <td class="col-inv-retail num font-bold">${Number(g.retailStock) || 0}</td>
+              <td class="col-inv-buffer num" style="color:#6d28d9;">${Number(g.bufferStock) || 0}</td>
+              <td class="col-inv-total num font-bold">${Number(g.totalStock) || 0}</td>
+              <td class="col-inv-ho num font-semibold">${Number(g.hoStock) || 0}</td>
+              <td class="col-inv-diff num font-semibold" style="color:${diffColor}">${diffDisplay}</td>
+              <td class="col-inv-stockmonth num">${Number(g.stockMonth) || 0}</td>
+              <td class="col-inv-exceed num">${exceedDisplay}</td>
+              <td class="col-inv-orderest num">${Number(g.orderEstimate) || 0}</td>
+              <td class="col-inv-buypoint num">${Number(g.buyPoint) || 0}</td>
+              <td class="col-inv-safetystock num">${Number(g.safetyStock) || 0}</td>
+              <td class="col-inv-company text-gray text-sm">${escapeHtml(g.company || '—')}</td>
+            </tr>
+          `;
         }
 
-        const exceedVal = i.exceedPercent !== undefined ? Number(i.exceedPercent) : 0;
+        const i = rowObj.item;
+        const isSub = rowObj.rowType === 'sub';
+        const isFree = Boolean(i.isFreeItem);
+        const exceedVal = Number(i.exceedPercent) || 0;
         const exceedDisplay = exceedVal > 0 ? ('+' + exceedVal + '%') : (exceedVal + '%');
 
-        const isCollapsed = Boolean(state.collapsedParents && state.collapsedParents[i.itemId]);
-        const toggleBtnHtml = isParent
-          ? `<button type="button" class="inv-parent-toggle no-print" onclick="toggleParentCollapse('${escapeHtml(String(i.itemId))}', event)" title="${isCollapsed ? 'Expand Sub-Devices' : 'Collapse Sub-Devices'}">${isCollapsed ? '▶' : '▼'}</button>`
-          : '';
-        const badgesHtml = [
-          isParent ? `<span class="badge-parent" title="Parent Device Group (Aggregates stock from ${rowObj.childCount || 0} sub-devices)">GROUP (${rowObj.childCount || 0})</span>` : '',
-          isFree ? `<span class="badge-free" title="Free Item / ของแถม (Buy Price = 0, No HO Stock Error)">FREE</span>` : ''
-        ].filter(Boolean).join(' ');
+        // Sub-Item Row inside a Group: HO Stock and Stock Diff are Blank / "-"
+        let hoDisplay = '-';
+        let diffDisplay = '-';
+        let diffColor = 'var(--gray-400)';
 
-        const rowCls = isParent ? 'inv-parent-row' : (rowObj.isChildRow ? 'inv-child-row' : '');
+        if (!isSub) {
+          hoDisplay = isFree ? '-' : String(Number(i.hoStock) || 0);
+          if (!isFree) {
+            const diffVal = i.stockDiff !== undefined && i.stockDiff !== null ? Number(i.stockDiff) : (Number(i.totalStock || 0) - Number(i.hoStock || 0));
+            diffDisplay = diffVal > 0 ? ('+' + diffVal) : String(diffVal);
+            diffColor = diffVal < 0 ? 'var(--red)' : (diffVal > 0 ? 'var(--brand)' : 'inherit');
+          }
+        }
+
+        const displayName = isSub ? (`- ${i.deviceName || ''}`) : (i.deviceName || '');
+        const freeBadgeHtml = isFree ? ` <span class="badge-free" title="Free Item">FREE</span>` : '';
 
         return `
-          <tr class="${rowCls}">
+          <tr class="${isSub ? 'inv-child-row' : ''}">
             <td class="col-inv-name">
-              ${toggleBtnHtml}
-              <a href="javascript:void(0)" class="device-name-link ${isParent ? 'font-bold' : 'font-medium'}" onclick="openDeviceDetailModal('${escapeHtml(String(i.itemId))}')">${escapeHtml(i.deviceName || '')}</a>
-              ${badgesHtml ? `<span style="margin-left:6px;">${badgesHtml}</span>` : ''}
+              <a href="javascript:void(0)" class="device-name-link font-medium" onclick="openDeviceDetailModal('${escapeHtml(String(i.itemId))}')">${escapeHtml(displayName)}</a>${freeBadgeHtml}
             </td>
-            <td class="col-inv-hoid text-gray text-xs font-mono">${escapeHtml(i.hoItemId || (isFree ? '— (Free)' : ''))}</td>
-            <td class="col-inv-itemid hidden text-gray text-xs font-mono">${escapeHtml(i.itemId || '')}</td>
+            <td class="col-inv-hoid text-gray text-xs font-mono">${escapeHtml(i.hoItemId || '-')}</td>
+            <td class="col-inv-itemid text-gray text-xs font-mono">${escapeHtml(i.itemId || '-')}</td>
             <td class="col-inv-cat text-gray">${escapeHtml(i.category || '')}</td>
             <td class="col-inv-buyprice num">฿${(Number(i.buyPrice) || 0).toLocaleString()}</td>
             <td class="col-inv-sellprice num">฿${(Number(i.sellPrice) || 0).toLocaleString()}</td>
             <td class="col-inv-main num">${Number(i.mainStock) || 0}</td>
             <td class="col-inv-retail num font-bold">${Number(i.retailStock) || 0}</td>
-            <td class="col-inv-buffer num" style="color:#6d28d9;" title="Consignment & Quarantine Hold (Excluded from Total Stock)">${Number(i.bufferStock) || 0}</td>
+            <td class="col-inv-buffer num" style="color:#6d28d9;">${Number(i.bufferStock) || 0}</td>
             <td class="col-inv-total num font-bold">${Number(i.totalStock) || 0}</td>
-            <td class="col-inv-ho num text-gray">${isFree ? '—' : (Number(i.hoStock) || 0)}</td>
+            <td class="col-inv-ho num text-gray">${hoDisplay}</td>
             <td class="col-inv-diff num font-semibold" style="color:${diffColor}">${diffDisplay}</td>
             <td class="col-inv-stockmonth num">${Number(i.stockMonth) || 0}</td>
             <td class="col-inv-exceed num">${exceedDisplay}</td>
             <td class="col-inv-orderest num">${Number(i.orderEstimate) || 0}</td>
             <td class="col-inv-buypoint num">${Number(i.buyPoint) || 0}</td>
             <td class="col-inv-safetystock num">${Number(i.safetyStock) || 0}</td>
+            <td class="col-inv-company text-gray text-sm">${escapeHtml(i.company || '—')}</td>
           </tr>
         `;
       }).join('');
@@ -1297,6 +1562,8 @@ window.__INR_MAIN_PARSED = true;
     }
 
     function openAddDeviceModal() {
+      if (typeof refreshCompanyDatalist === 'function') refreshCompanyDatalist();
+      populateUserNicknameSelect('inv-modal-user', '');
       document.getElementById('modal-device-title').innerText = 'Add New Device';
       document.getElementById('inv-modal-is-edit').value = 'false';
       document.getElementById('inv-modal-orig-id').value = '';
@@ -1318,29 +1585,21 @@ window.__INR_MAIN_PARSED = true;
       document.getElementById('inv-modal-safety').value = '0';
 
       const freeEl = document.getElementById('inv-modal-is-free');
-      const parEl  = document.getElementById('inv-modal-is-parent');
-      const parSel = document.getElementById('inv-modal-parent-id');
+      const grpEl  = document.getElementById('inv-modal-group-id');
       const noteEl = document.getElementById('inv-modal-notes');
+      const compEl = document.getElementById('inv-modal-company');
       if (freeEl) { if (freeEl.type === 'checkbox') freeEl.checked = false; else freeEl.value = 'false'; }
-      if (parEl)  { if (parEl.type === 'checkbox')  parEl.checked  = false; else parEl.value  = 'false'; }
-      if (parSel) { parSel.value = ''; }
+      if (grpEl)  { grpEl.value = ''; }
       if (noteEl) { noteEl.value = ''; }
-      populateParentSelectOptions(parSel, '', '');
-      onInvModalFreeOrParentChange();
+      if (compEl) { compEl.value = ''; }
 
       document.querySelectorAll('#modal-device .inv-edit-only').forEach(el => el.style.display = 'none');
       openModal('modal-device');
     }
 
-    function openAddParentDeviceModal() {
-      openAddDeviceModal();
-      document.getElementById('modal-device-title').innerText = 'Add New Parent Device Group (Device หลัก)';
-      const parEl = document.getElementById('inv-modal-is-parent');
-      if (parEl) { if (parEl.type === 'checkbox') parEl.checked = true; else parEl.value = 'true'; }
-      onInvModalFreeOrParentChange();
-    }
-
     function openEditDeviceModal(itemId) {
+      if (typeof refreshCompanyDatalist === 'function') refreshCompanyDatalist();
+      populateUserNicknameSelect('inv-modal-user', '');
       const item = state.inventory.find(i => String(i.itemId) === String(itemId));
       if (!item) return;
       document.getElementById('modal-device-title').innerText = 'Edit Device: ' + (item.deviceName || '');
@@ -1356,7 +1615,7 @@ window.__INR_MAIN_PARSED = true;
       document.getElementById('inv-modal-retail').value = item.retailStock !== undefined ? item.retailStock : 0;
       document.getElementById('inv-modal-total').value = item.totalStock !== undefined ? item.totalStock : 0;
       document.getElementById('inv-modal-hostock').value = (item.ownHoStock !== undefined ? item.ownHoStock : item.hoStock) || 0;
-      document.getElementById('inv-modal-diff').value = item.stockDiff !== undefined ? item.stockDiff : 0;
+      document.getElementById('inv-modal-diff').value = item.stockDiff !== undefined && item.stockDiff !== null ? item.stockDiff : 0;
       document.getElementById('inv-modal-stockmonth').value = item.stockMonth !== undefined ? item.stockMonth : 0;
       document.getElementById('inv-modal-exceed').value = item.exceedPercent !== undefined ? item.exceedPercent : 0;
       document.getElementById('inv-modal-orderest').value = item.orderEstimate !== undefined ? item.orderEstimate : 0;
@@ -1364,15 +1623,13 @@ window.__INR_MAIN_PARSED = true;
       document.getElementById('inv-modal-safety').value = item.safetyStock !== undefined ? item.safetyStock : 0;
 
       const freeEl = document.getElementById('inv-modal-is-free');
-      const parEl  = document.getElementById('inv-modal-is-parent');
-      const parSel = document.getElementById('inv-modal-parent-id');
+      const grpEl  = document.getElementById('inv-modal-group-id');
       const noteEl = document.getElementById('inv-modal-notes');
+      const compEl = document.getElementById('inv-modal-company');
       if (freeEl) { if (freeEl.type === 'checkbox') freeEl.checked = Boolean(item.isFreeItem); else freeEl.value = item.isFreeItem ? 'true' : 'false'; }
-      if (parEl)  { if (parEl.type === 'checkbox')  parEl.checked  = Boolean(item.isParent);   else parEl.value  = item.isParent ? 'true' : 'false'; }
-      if (parSel) { parSel.value = item.parentId || ''; }
+      if (grpEl)  { grpEl.value = item.ungroupedManual ? 'UNGROUPED' : (item.groupId || ''); }
       if (noteEl) { noteEl.value = item.notes || ''; }
-      populateParentSelectOptions(parSel, item.itemId, item.parentId || '');
-      onInvModalFreeOrParentChange();
+      if (compEl) { compEl.value = item.company || ''; }
 
       document.querySelectorAll('#modal-device .inv-edit-only').forEach(el => el.style.display = '');
       openModal('modal-device');
@@ -1387,60 +1644,45 @@ window.__INR_MAIN_PARSED = true;
       if (titleEl) titleEl.innerText = i.deviceName || 'Device Details';
 
       const isFree = Boolean(i.isFreeItem);
-      const isParent = Boolean(i.isParent);
-      const diffVal = isFree ? 0 : (i.stockDiff !== undefined ? Number(i.stockDiff) : (Number(i.totalStock || 0) - Number(i.hoStock || 0)));
-      let diffDisplay = isFree ? '0 (Free Item — No HO Stock Tracking)' : (diffVal > 0 ? ('+' + diffVal) : String(diffVal));
-      let diffColor = isFree ? '#15803d' : (diffVal < 0 ? 'var(--red)' : (diffVal > 0 ? 'var(--brand)' : 'inherit'));
+      const grp = i.groupId ? (state.groups || []).find(g => String(g.groupId) === String(i.groupId)) : null;
+      const diffVal = grp ? null : (isFree ? 0 : (i.stockDiff !== undefined && i.stockDiff !== null ? Number(i.stockDiff) : (Number(i.totalStock || 0) - Number(i.hoStock || 0))));
+      let diffDisplay = grp ? `— (Tracked on Group: ${grp.groupName})` : (isFree ? '0 (Free Item)' : (diffVal > 0 ? ('+' + diffVal) : String(diffVal)));
+      let diffColor = grp ? 'var(--gray-600)' : (isFree ? '#15803d' : (diffVal < 0 ? 'var(--red)' : (diffVal > 0 ? 'var(--brand)' : 'inherit')));
       const exceedVal = i.exceedPercent !== undefined ? Number(i.exceedPercent) : 0;
       const exceedDisplay = exceedVal > 0 ? ('+' + exceedVal + '%') : (exceedVal + '%');
 
-      const parentObj = (!isParent && i.parentId) ? state.inventory.find(p => String(p.itemId) === String(i.parentId)) : null;
-      const children = isParent ? state.inventory.filter(c => !c.isParent && String(c.parentId) === String(i.itemId)) : [];
-
-      let hierarchyHtml = '';
-      if (isParent) {
-        hierarchyHtml = `
-          <tr>
-            <th>Hierarchy Role</th>
-            <td>
-              <span class="badge-parent">PARENT DEVICE GROUP</span>
-              <div class="text-xs text-gray mt-1">Aggregates live stock from <strong>${children.length}</strong> Child Sub-Device(s). Direct stock deduction on Parent is disabled.</div>
-              ${children.length > 0 ? `<div class="mt-2 space-y-sm">${children.map(c => `<div class="text-xs">• <strong>${escapeHtml(c.deviceName)}</strong> ${c.isFreeItem ? '<span class="badge-free">FREE</span>' : ''} — Main: ${c.mainStock || 0}, Retail: ${c.retailStock || 0}, Total: <strong>${c.totalStock || 0}</strong></div>`).join('')}</div>` : ''}
-            </td>
-          </tr>
-        `;
-      } else if (parentObj || isFree) {
-        hierarchyHtml = `
-          <tr>
-            <th>Item Classification</th>
-            <td>
-              ${isFree ? `<span class="badge-free">FREE ITEM (ของแถม / ใช้ได้ฟรี)</span> ` : `<span class="badge badge-blue">Standard PO Item</span> `}
-              ${parentObj ? `<div class="text-xs mt-1">Sub-Device under Parent Group: <strong>${escapeHtml(parentObj.deviceName)}</strong> (<code>${escapeHtml(parentObj.itemId)}</code>)</div>` : ''}
-            </td>
-          </tr>
-        `;
-      }
+      const groupRowHtml = grp ? `
+        <tr>
+          <th>Assigned Group</th>
+          <td>
+            <strong>${escapeHtml(grp.groupName)}</strong> <span class="text-xs font-mono text-gray">(${escapeHtml(grp.groupId)})</span>
+            <div class="text-xs text-gray mt-1">Group HO Stock: <strong>${grp.hoStock || 0}</strong> | Group Total Stock: <strong>${grp.totalStock || 0}</strong> | Group Stock Diff: <strong>${grp.stockDiff > 0 ? ('+' + grp.stockDiff) : (grp.stockDiff || 0)}</strong></div>
+          </td>
+        </tr>
+      ` : '';
 
       if (contentEl) {
         contentEl.innerHTML = `
           <table class="device-detail-table">
             <tbody>
-              <tr><th>Device Name</th><td><strong>${escapeHtml(i.deviceName || '')}</strong></td></tr>
-              ${hierarchyHtml}
-              <tr><th>HO Item ID</th><td><span class="font-mono">${escapeHtml(i.hoItemId || (isFree ? '— (Optional for Free Item)' : '—'))}</span></td></tr>
+              <tr><th>Device Name</th><td><strong>${escapeHtml(i.deviceName || '')}</strong> ${isFree ? '<span class="badge-free">FREE</span>' : ''}</td></tr>
+              ${groupRowHtml}
+              <tr><th>HO Item ID</th><td><span class="font-mono">${escapeHtml(i.hoItemId || '—')}</span></td></tr>
               <tr><th>Permanent Item ID</th><td><span class="font-mono text-gray">${escapeHtml(i.itemId || '—')}</span></td></tr>
               <tr><th>Category</th><td><span class="badge badge-gray">${escapeHtml(i.category || '—')}</span></td></tr>
+              <tr><th>Company / Vendor</th><td>${i.company ? `<strong>${escapeHtml(i.company)}</strong>` : '<span class="text-gray text-xs">—</span>'}</td></tr>
               <tr><th>Note / Remarks</th><td style="white-space:pre-wrap;">${i.notes ? escapeHtml(i.notes) : '<span class="text-gray text-xs">No notes recorded</span>'}</td></tr>
-              <tr><th>Pricing</th><td>Buy: <strong>฿${(Number(i.buyPrice)||0).toLocaleString()}</strong> &nbsp;|&nbsp; Sell: <strong>฿${(Number(i.sellPrice)||0).toLocaleString()}</strong></td></tr>
+              <tr><th>Pricing ${grp ? '(Shared from Group)' : ''}</th><td>Buy: <strong>฿${(Number(i.buyPrice)||0).toLocaleString()}</strong> &nbsp;|&nbsp; Sell: <strong>฿${(Number(i.sellPrice)||0).toLocaleString()}</strong></td></tr>
               <tr style="background:#f0fdf4;">
-                <th>Stock Breakdown ${isParent ? '(Aggregated)' : ''}</th>
+                <th>Stock Breakdown</th>
                 <td>
                   <div>Main Stock: <strong>${Number(i.mainStock)||0}</strong></div>
                   <div>Retail Stock: <strong>${Number(i.retailStock)||0}</strong></div>
                   <div style="color:#6d28d9;">Buffer Stock: <strong>${Number(i.bufferStock)||0}</strong> <span class="text-xs text-gray">(Consignment/Quarantine)</span></div>
                   <div>Total Clinical Stock: <strong style="color:var(--brand-dark);">${Number(i.totalStock)||0}</strong></div>
-                  <div>HO Stock: <strong>${isFree ? '— (Free)' : (Number(i.hoStock)||0)}</strong></div>
-                  <div>Available / Stock Diff: <strong style="color:${diffColor};">${diffDisplay}</strong></div>
+                  <div>HO Stock: <strong>${grp ? '— (Group Level)' : (isFree ? '— (Free)' : (Number(i.hoStock)||0))}</strong></div>
+                  <div>Stock Diff: <strong style="color:${diffColor};">${diffDisplay}</strong></div>
+                  ${!grp ? `<div class="text-xs text-gray mt-1">HO Last Checked: <strong>${formatDateDDMMYYYY(i.hoLastChecked)}</strong></div>` : ''}
                 </td>
               </tr>
               <tr><th>Stock / Month</th><td>${Number(i.stockMonth)||0}</td></tr>
@@ -1486,10 +1728,6 @@ window.__INR_MAIN_PARSED = true;
             appContent.classList.remove('hidden');
           }
         } else {
-          // Detach children if deleting a parent
-          state.inventory.forEach(c => {
-            if (String(c.parentId) === String(itemId)) c.parentId = '';
-          });
           state.inventory = state.inventory.filter(i => String(i.itemId) !== String(itemId));
           recalculateInventoryHierarchy();
           showToast('Device removed (mock)');
@@ -1504,13 +1742,17 @@ window.__INR_MAIN_PARSED = true;
       let customId = document.getElementById('inv-modal-itemid').value.trim();
       const name = document.getElementById('inv-modal-name').value.trim();
       const cat = document.getElementById('inv-modal-cat').value.trim();
+      const userNick = (document.getElementById('inv-modal-user')?.value || '').trim();
 
+      if (!userNick) {
+        showToast('Please select User (Nickname)');
+        return;
+      }
       if (!name || !cat) {
         showToast('Device Name and Category are required');
         return;
       }
 
-      // Always enforce permanent [PREFIX]-[YYMMDDHHMMSS] Item ID on new items
       if (!customId) {
         if (isEdit && origId) {
           customId = origId;
@@ -1520,17 +1762,16 @@ window.__INR_MAIN_PARSED = true;
       }
 
       const isFreeEl   = document.getElementById('inv-modal-is-free');
-      const isParentEl = document.getElementById('inv-modal-is-parent');
       const isFreeItem = isFreeEl ? (isFreeEl.type === 'checkbox' ? isFreeEl.checked : isFreeEl.value === 'true') : false;
-      const isParent   = isParentEl ? (isParentEl.type === 'checkbox' ? isParentEl.checked : isParentEl.value === 'true') : false;
-      const parentId   = isParent ? '' : String(document.getElementById('inv-modal-parent-id')?.value || '').trim();
+      const groupId    = String(document.getElementById('inv-modal-group-id')?.value || '').trim();
       const notes      = String(document.getElementById('inv-modal-notes')?.value || '').trim();
+      const company    = String(document.getElementById('inv-modal-company')?.value || '').trim();
 
-      const mainStock = isParent ? 0 : (Number(document.getElementById('inv-modal-main').value) || 0);
-      const retailStock = isParent ? 0 : (Number(document.getElementById('inv-modal-retail').value) || 0);
+      const mainStock = Number(document.getElementById('inv-modal-main').value) || 0;
+      const retailStock = Number(document.getElementById('inv-modal-retail').value) || 0;
       const hoStock = isFreeItem ? 0 : (Number(document.getElementById('inv-modal-hostock').value) || 0);
       let totalStock = Number(document.getElementById('inv-modal-total').value);
-      if (isNaN(totalStock) || isParent) totalStock = mainStock + retailStock;
+      if (isNaN(totalStock)) totalStock = mainStock + retailStock;
       let stockDiff = isFreeItem ? 0 : Number(document.getElementById('inv-modal-diff').value);
       if (isNaN(stockDiff) && !isFreeItem) stockDiff = totalStock - hoStock;
 
@@ -1553,16 +1794,20 @@ window.__INR_MAIN_PARSED = true;
         buyPoint: Number(document.getElementById('inv-modal-buypoint').value) || 0,
         safetyStock: Number(document.getElementById('inv-modal-safety').value) || 0,
         isFreeItem: isFreeItem,
-        isParent: isParent,
-        parentId: parentId,
-        notes: notes
+        groupId: groupId === 'UNGROUPED' ? 'UNGROUPED' : groupId,
+        ungroupedManual: groupId === 'UNGROUPED',
+        notes: notes,
+        company: company,
+        user: userNick,
+        tech: userNick
       };
 
+      let origItem = null;
       if (isEdit) {
-        const orig = state.inventory.find(i => String(i.itemId) === String(origId));
-        if (orig) {
-          data.currentMain = orig.mainStock;
-          data.currentRetail = orig.retailStock;
+        origItem = state.inventory.find(i => String(i.itemId) === String(origId));
+        if (origItem) {
+          data.currentMain = origItem.mainStock;
+          data.currentRetail = origItem.retailStock;
         }
       }
 
@@ -1582,15 +1827,244 @@ window.__INR_MAIN_PARSED = true;
             appContent.classList.remove('hidden');
           });
       } else {
+        const todayStr = getToday();
         if (isEdit) {
+          const changes = [];
+          if (origItem) {
+            if (origItem.deviceName !== data.deviceName) changes.push(`Name: ${origItem.deviceName} -> ${data.deviceName}`);
+            if ((origItem.hoItemId || '') !== data.hoItemId) changes.push(`HO ID: ${origItem.hoItemId || '-'} -> ${data.hoItemId || '-'}`);
+            if ((Number(origItem.buyPrice) || 0) !== data.buyPrice) changes.push(`Buy Price: ${origItem.buyPrice || 0} -> ${data.buyPrice}`);
+            if ((Number(origItem.sellPrice) || 0) !== data.sellPrice) changes.push(`Sell Price: ${origItem.sellPrice || 0} -> ${data.sellPrice}`);
+            if ((Number(origItem.ownHoStock ?? origItem.hoStock) || 0) !== data.hoStock) changes.push(`HO Stock: ${origItem.ownHoStock ?? origItem.hoStock ?? 0} -> ${data.hoStock}`);
+            if ((Number(origItem.safetyStock) || 0) !== data.safetyStock) changes.push(`Safety Stock: ${origItem.safetyStock || 0} -> ${data.safetyStock}`);
+            if ((Number(origItem.orderEstimate) || 0) !== data.orderEstimate) changes.push(`Order Estimate: ${origItem.orderEstimate || 0} -> ${data.orderEstimate}`);
+          }
+          const summary = changes.length > 0 ? ('Updated ' + changes.join(', ')) : ('Edited Device: ' + data.deviceName);
+          state.transactions.push({
+            id: 'EDT-' + Date.now(),
+            date: todayStr,
+            type: 'Edit Device',
+            hn: '',
+            itemId: data.itemId,
+            qty: 0,
+            fromLoc: '',
+            toLoc: '',
+            disease: '',
+            procedure: '',
+            shift: '',
+            tech: userNick,
+            complication: summary,
+            contrast: ''
+          });
           const idx = state.inventory.findIndex(i => String(i.itemId) === String(origId || customId));
           if (idx >= 0) state.inventory[idx] = Object.assign({}, state.inventory[idx], data);
         } else {
+          state.transactions.push({
+            id: 'ADD-' + Date.now(),
+            date: todayStr,
+            type: 'Add Device',
+            hn: '',
+            itemId: data.itemId,
+            qty: 0,
+            fromLoc: '',
+            toLoc: '',
+            disease: '',
+            procedure: '',
+            shift: '',
+            tech: userNick,
+            complication: `Added Device: ${data.deviceName} (HO ID: ${data.hoItemId || '-'}, Safety: ${data.safetyStock})`,
+            contrast: ''
+          });
           state.inventory.push(data);
         }
         recalculateInventoryHierarchy();
         showToast(isEdit ? 'Device updated (mock)' : 'Device added (mock)');
         closeModal();
+        renderCurrentTab();
+      }
+    }
+
+    // ════════════════════════════════════════════════════════════════
+    // HO STOCK RECONCILIATION ("กระทบยอด HO")
+    // ════════════════════════════════════════════════════════════════
+    function openHoReconcileModal() {
+      recalculateInventoryHierarchy();
+      state.hoReconcileDraft = {};
+      populateUserNicknameSelect('ho-rec-user', '');
+      const dateEl = document.getElementById('ho-rec-date');
+      if (dateEl) dateEl.value = getToday();
+      const searchEl = document.getElementById('ho-rec-search');
+      if (searchEl) searchEl.value = '';
+      renderHoReconcileTable();
+      openModal('modal-ho-reconcile');
+    }
+
+    function onHoRecInput(key, val) {
+      if (!state.hoReconcileDraft) state.hoReconcileDraft = {};
+      if (val === '' || val === null || val === undefined) {
+        delete state.hoReconcileDraft[key];
+      } else {
+        state.hoReconcileDraft[key] = val;
+      }
+    }
+
+    function renderHoReconcileTable() {
+      recalculateInventoryHierarchy();
+      const tbody = document.getElementById('ho-rec-table-body');
+      if (!tbody) return;
+      const q = (document.getElementById('ho-rec-search')?.value || '').trim().toLowerCase();
+
+      // Section 5: 1 row per Group and 1 row per standalone item (sub-items inside a Group are NOT listed separately)
+      const rows = [];
+      (state.groups || []).forEach(g => {
+        if (!g || !g.groupId) return;
+        rows.push({
+          key: 'group::' + g.groupId,
+          targetType: 'group',
+          id: g.groupId,
+          name: g.groupName || g.groupId,
+          hoItemId: g.hoItemId || '-',
+          hoStock: Number(g.hoStock) || 0,
+          hoLastChecked: g.hoLastChecked || ''
+        });
+      });
+
+      (state.inventory || []).forEach(i => {
+        if (i.groupId) return; // skip sub-items inside a Group
+        rows.push({
+          key: 'item::' + i.itemId,
+          targetType: 'item',
+          id: i.itemId,
+          name: i.deviceName || i.itemId,
+          hoItemId: i.hoItemId || '-',
+          hoStock: Number(i.hoStock) || 0,
+          hoLastChecked: i.hoLastChecked || ''
+        });
+      });
+
+      const filtered = rows.filter(r => {
+        if (!q) return true;
+        return r.name.toLowerCase().includes(q) || String(r.hoItemId).toLowerCase().includes(q) || String(r.id).toLowerCase().includes(q);
+      });
+
+      if (filtered.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" class="empty-state">No groups or standalone items match your filter.</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = filtered.map(r => {
+        const draftVal = (state.hoReconcileDraft && state.hoReconcileDraft[r.key] !== undefined) ? state.hoReconcileDraft[r.key] : '';
+        const typeTag = r.targetType === 'group' ? ` <span class="badge badge-blue" style="font-size:10px; margin-left:4px;">GROUP</span>` : '';
+        return `
+          <tr>
+            <td class="font-medium">${escapeHtml(r.name)}${typeTag}</td>
+            <td class="font-mono text-xs text-gray">${escapeHtml(r.hoItemId || '-')}</td>
+            <td class="center font-semibold">${r.hoStock}</td>
+            <td class="center">
+              <input type="number" class="adj-input" min="0" value="${escapeHtml(String(draftVal))}" placeholder="—" oninput="onHoRecInput('${escapeHtml(r.key)}', this.value)">
+            </td>
+            <td class="center text-sm text-gray">${escapeHtml(formatDateDDMMYYYY(r.hoLastChecked))}</td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function submitHoReconciliationModal() {
+      const userNick = (document.getElementById('ho-rec-user')?.value || '').trim();
+      const recDate  = (document.getElementById('ho-rec-date')?.value || '').trim() || getToday();
+      if (!userNick) {
+        showToast('Please select User (Nickname)');
+        return;
+      }
+
+      const draft = state.hoReconcileDraft || {};
+      const items = [];
+      Object.keys(draft).forEach(k => {
+        const rawVal = draft[k];
+        if (rawVal === '' || rawVal === null || rawVal === undefined) return;
+        const num = Number(rawVal);
+        if (isNaN(num) || num < 0) return;
+        const parts = k.split('::');
+        const targetType = parts[0];
+        const id = parts.slice(1).join('::');
+        if (id) items.push({ targetType, id, newHoStock: num });
+      });
+
+      if (items.length === 0) {
+        showToast('Please enter New HO Stock for at least one row');
+        return;
+      }
+
+      closeModal();
+      setSyncIndicator(true);
+
+      if (isApiConfigured()) {
+        callApi('submitHoReconciliation', { user: userNick, date: recDate, items })
+          .then(res => {
+            setSyncIndicator(false);
+            showToast(`HO Stock reconciled (${res.updatedCount || items.length} item(s))!`);
+            fetchDataFromServer();
+          })
+          .catch(err => {
+            setSyncIndicator(false);
+            showToast('Failed: ' + (err.message || err));
+          });
+      } else {
+        setSyncIndicator(false);
+        const baseTxn = 'HOC-' + Date.now();
+        items.forEach((entry, idx) => {
+          const txnId = items.length > 1 ? `${baseTxn}-${idx + 1}` : baseTxn;
+          if (entry.targetType === 'group') {
+            const grp = (state.groups || []).find(g => String(g.groupId) === String(entry.id));
+            if (grp) {
+              const oldHo = Number(grp.hoStock) || 0;
+              grp.hoStock = entry.newHoStock;
+              grp.hoLastChecked = recDate;
+              state.transactions.push({
+                id: txnId,
+                date: recDate,
+                type: 'HO Check',
+                hn: '',
+                itemId: grp.groupId,
+                qty: 0,
+                fromLoc: '',
+                toLoc: '',
+                disease: '',
+                procedure: '',
+                shift: '',
+                tech: userNick,
+                complication: `HO Stock: ${oldHo} -> ${entry.newHoStock}`,
+                contrast: ''
+              });
+            }
+          } else {
+            const inv = (state.inventory || []).find(i => String(i.itemId) === String(entry.id));
+            if (inv) {
+              const oldHo = Number(inv.hoStock) || 0;
+              inv.hoStock = entry.newHoStock;
+              inv.ownHoStock = entry.newHoStock;
+              inv.hoLastChecked = recDate;
+              state.transactions.push({
+                id: txnId,
+                date: recDate,
+                type: 'HO Check',
+                hn: '',
+                itemId: inv.itemId,
+                qty: 0,
+                fromLoc: '',
+                toLoc: '',
+                disease: '',
+                procedure: '',
+                shift: '',
+                tech: userNick,
+                complication: `HO Stock: ${oldHo} -> ${entry.newHoStock}`,
+                contrast: ''
+              });
+            }
+          }
+        });
+        recalculateInventoryHierarchy();
+        showToast(`HO Stock reconciled (${items.length} item(s)) (Mock)`);
         renderCurrentTab();
       }
     }
@@ -2090,6 +2564,9 @@ window.__INR_MAIN_PARSED = true;
       if (type === 'Stock In') return state.currentLang === 'th' ? 'นำเข้า' : 'Stock In';
       if (type === 'Stock Out') return state.currentLang === 'th' ? 'จ่ายออก' : 'Stock Out';
       if (type === 'Adjustment') return t('btn_adjustment', 'Adjustment');
+      if (type === 'HO Check') return state.currentLang === 'th' ? 'กระทบยอด HO' : 'HO Check';
+      if (type === 'Add Device') return state.currentLang === 'th' ? 'เพิ่มอุปกรณ์' : 'Add Device';
+      if (type === 'Edit Device') return state.currentLang === 'th' ? 'แก้ไขอุปกรณ์' : 'Edit Device';
       return type;
     }
 
@@ -2111,21 +2588,34 @@ window.__INR_MAIN_PARSED = true;
         const devName = getDeviceName(t.itemId).toLowerCase();
         const matchesSearch = !searchFilter || 
           (t.hn || '').toLowerCase().includes(searchFilter) || 
+          (t.tech || '').toLowerCase().includes(searchFilter) ||
+          (t.complication || '').toLowerCase().includes(searchFilter) ||
           devName.includes(searchFilter);
         return matchesType && matchesSearch;
       }).reverse(); // Newest first
 
-      body.innerHTML = filtered.map(t => `
+      body.innerHTML = filtered.map(t => {
+        const typeColor = t.type === 'Procedure Use' ? 'var(--red)'
+          : t.type === 'Stock In' ? 'var(--brand)'
+          : t.type === 'HO Check' ? '#7c3aed'
+          : (t.type === 'Add Device' || t.type === 'Edit Device') ? '#d97706'
+          : 'var(--blue)';
+        const detailPrimary = t.hn ? escapeHtml(t.hn) : (t.complication ? `<span class="text-xs">${escapeHtml(t.complication)}</span>` : '');
+        const detailSub = t.procedure ? `<span class="text-xs text-gray" style="display:block;">${escapeHtml(t.procedure)}</span>` : '';
+        const userTag = t.tech ? `<span class="text-xs text-gray" style="display:block;">User: <strong>${escapeHtml(t.tech)}</strong></span>` : '';
+        const locStr = `${formatLoc(t.fromLoc)}${t.toLoc ? ' → ' + formatLoc(t.toLoc) : ''}` || '—';
+        return `
         <tr>
           <td>${formatDate(t.date)}</td>
-          <td class="font-medium" style="color:${t.type==='Procedure Use' ? 'var(--red)' : t.type==='Stock In' ? 'var(--brand)' : 'var(--blue)'}">${formatTxType(t.type)}</td>
-          <td>${t.hn || ''} <span class="text-xs text-gray" style="display:block;">${t.procedure || ''}</span></td>
-          <td>${getDeviceName(t.itemId)}</td>
+          <td class="font-medium" style="color:${typeColor}">${formatTxType(t.type)}</td>
+          <td>${detailPrimary}${detailSub}${userTag}</td>
+          <td>${escapeHtml(getDeviceName(t.itemId))}</td>
           <td class="num font-bold">${t.qty}</td>
-          <td class="text-gray text-sm">${formatLoc(t.fromLoc)}${t.toLoc ? ' → ' + formatLoc(t.toLoc) : ''}</td>
+          <td class="text-gray text-sm">${locStr}</td>
           <td class="center"><button class="btn-ghost" onclick="handleDeleteTx('${t.id}')" style="color:var(--red);" title="${t('btn_delete', 'Delete')}">${ICONS.trash}</button></td>
         </tr>
-      `).join('');
+      `;
+      }).join('');
     }
 
     function handleDeleteTx(txId) {
@@ -2229,7 +2719,7 @@ window.__INR_MAIN_PARSED = true;
         shiftSelect.innerHTML = shiftsList.map(s => `<option value="${s}" ${s === curShift ? 'selected' : ''}>${s}</option>`).join('');
       }
 
-      // Techs checkboxes (preserve checked state)
+      // Techs checkboxes (preserve checked state, using unified Nicknames)
       const techContainer = document.getElementById('proc-techs');
       const checkedTechs = new Set(Array.from(techContainer.querySelectorAll('input[type="checkbox"]:checked')).map(cb => cb.value));
       const users = getUsersList();
@@ -2237,10 +2727,9 @@ window.__INR_MAIN_PARSED = true;
         techContainer.innerHTML = '<div class="text-xs text-gray" style="padding:4px;">No users configured in Settings.</div>';
       } else {
         techContainer.innerHTML = users.map(u => {
-          const fullName = `${u.name || ''} ${u.surname || ''}`.trim();
-          const label = u.nickname ? `${u.nickname} (${u.name || ''})` : fullName;
-          const isChecked = checkedTechs.has(fullName) ? 'checked' : '';
-          return `<label><input type="checkbox" name="proc-tech-cb" value="${escapeHtml(fullName)}" ${isChecked}> <span>${label}${u.position ? ` <span class="text-xs text-gray">· ${u.position}</span>` : ''}</span></label>`;
+          const nick = String(u.nickname || u.name || '').trim();
+          const isChecked = checkedTechs.has(nick) ? 'checked' : '';
+          return `<label><input type="checkbox" name="proc-tech-cb" value="${escapeHtml(nick)}" ${isChecked}> <span>${escapeHtml(nick)}</span></label>`;
         }).join('');
       }
 
@@ -2654,6 +3143,17 @@ window.__INR_MAIN_PARSED = true;
       if (!isHidden) renderProcHistory();
     }
 
+    function formatLongDate(dateStr) {
+      if (!dateStr) return '—';
+      try {
+        const d = new Date(dateStr);
+        if (isNaN(d.getTime())) return dateStr;
+        return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+      } catch (e) {
+        return dateStr;
+      }
+    }
+
     function renderProcHistory() {
       const body = document.getElementById('proc-history-body');
       if (!body) return;
@@ -2673,33 +3173,31 @@ window.__INR_MAIN_PARSED = true;
           String(g.disease).toLowerCase().includes(q) ||
           String(g.tech).toLowerCase().includes(q) ||
           String(g.shift).toLowerCase().includes(q) ||
+          String(g.complication || '').toLowerCase().includes(q) ||
           itemNames.includes(q)
         );
       });
 
       if (groups.length === 0) {
-        body.innerHTML = '<tr><td colspan="8" class="empty-state">No procedure records found.</td></tr>';
+        body.innerHTML = '<tr><td colspan="7" class="empty-state">No procedure records found.</td></tr>';
         return;
       }
 
       body.innerHTML = groups.map(g => {
-        const totalQty = g.items.reduce((s, i) => s + i.qty, 0);
+        const notes = [g.complication, g.contrast ? `Contrast: ${g.contrast}` : ''].filter(Boolean).join(' | ');
         return `
           <tr>
             <td>${formatDate(g.date)}</td>
-            <td class="font-semibold">${g.hn || '—'}</td>
-            <td>${g.procedure || '—'}</td>
-            <td>${g.disease || '—'}</td>
-            <td><span class="badge badge-blue">${g.shift || '—'}</span></td>
-            <td class="text-sm text-gray">${g.tech || '—'}</td>
-            <td class="center"><span class="badge ${g.items.length === 0 ? 'badge-amber' : 'badge-ok'}">${g.items.length === 0 ? '0 (No Supply)' : `${g.items.length} (${totalQty})`}</span></td>
-            <td class="center" style="white-space:nowrap;">
-              <div style="display:inline-flex; align-items:center; gap:6px; white-space:nowrap;">
-                <button type="button" class="btn-ghost" onclick="openProcViewModal('${escapeHtml(g.id)}')" title="View Details">${ICONS.eye}<span>View</span></button>
-                <button type="button" class="btn-ghost" onclick="openProcEditModal('${escapeHtml(g.id)}')" title="Edit Procedure">${ICONS.edit}<span>Edit</span></button>
-                <button type="button" class="btn-ghost" onclick="printProcedureCase('${escapeHtml(g.id)}')" title="Print Slip">${ICONS.print}<span>Print</span></button>
-              </div>
+            <td>
+              <button type="button" class="btn-link font-semibold" style="color:var(--brand-dark); text-decoration:underline; cursor:pointer; background:none; border:none; padding:0; font-size:inherit; text-align:left;" onclick="openProcViewModal('${escapeHtml(g.id)}')" title="View Procedure Details">
+                ${escapeHtml(g.hn || '—')}
+              </button>
             </td>
+            <td>${escapeHtml(g.procedure || '—')}</td>
+            <td>${escapeHtml(g.disease || '—')}</td>
+            <td><span class="badge badge-blue">${escapeHtml(g.shift || '—')}</span></td>
+            <td class="text-sm text-gray">${escapeHtml(g.tech || '—')}</td>
+            <td class="text-sm text-gray">${escapeHtml(notes || '—')}</td>
           </tr>
         `;
       }).join('');
@@ -2707,64 +3205,108 @@ window.__INR_MAIN_PARSED = true;
 
     function buildProcDetailHtml(g) {
       let totalCost = 0;
-      const rowsHtml = g.items.map((it, idx) => {
-        const inv = state.inventory.find(i => String(i.itemId) === String(it.itemId));
-        const sellPrice = inv ? (Number(inv.sellPrice) || 0) : 0;
-        const lineTotal = sellPrice * it.qty;
-        totalCost += lineTotal;
-        let metaHtml = '';
-        if (it.pieceNo) {
-          metaHtml += ` <span class="badge badge-purple" style="font-size:10px; margin-left:4px;">Piece ${it.pieceNo}</span>`;
-        }
-        if (it.volumeMl) {
-          metaHtml += ` <span class="badge badge-blue" style="font-size:10px; margin-left:4px;">${it.volumeMl} ml</span>`;
-        }
-        return `
-          <tr>
-            <td class="center">${idx + 1}</td>
-            <td class="font-mono text-xs text-gray">${it.itemId}</td>
-            <td class="font-medium">${it.deviceName}${metaHtml}</td>
-            <td class="text-gray">${it.category || ''}</td>
-            <td class="center font-bold">${it.qty}</td>
-            <td class="num">฿${sellPrice.toLocaleString()}</td>
-            <td class="num font-semibold">฿${lineTotal.toLocaleString()}</td>
-          </tr>
-        `;
-      }).join('');
+      let totalQty = 0;
+      const rowsHtml = (!g.items || g.items.length === 0)
+        ? `<tr><td colspan="5" class="empty-state text-sm">No supply items logged for this case (e.g. Activate INR Code / Off case).</td></tr>`
+        : g.items.map((it, idx) => {
+            const inv = state.inventory.find(i => String(i.itemId) === String(it.itemId));
+            const sellPrice = inv ? (Number(inv.sellPrice) || 0) : 0;
+            const lineTotal = sellPrice * it.qty;
+            totalCost += lineTotal;
+            totalQty += it.qty;
+            let metaHtml = '';
+            if (it.pieceNo) {
+              metaHtml += ` <span class="badge badge-purple" style="font-size:10px; margin-left:4px;">Piece #${it.pieceNo}</span>`;
+            }
+            if (it.volumeMl) {
+              metaHtml += ` <span class="badge badge-blue" style="font-size:10px; margin-left:4px;">${it.volumeMl} ml</span>`;
+            }
+            if (inv && inv.isFreeItem) {
+              metaHtml += ` <span class="badge-free" style="margin-left:4px;">FREE</span>`;
+            }
+            return `
+              <tr>
+                <td class="center">${idx + 1}</td>
+                <td class="font-medium">${escapeHtml(it.deviceName)}${metaHtml}</td>
+                <td class="center font-bold">${it.qty}</td>
+                <td class="num">฿${sellPrice.toLocaleString()}</td>
+                <td class="num font-semibold">฿${lineTotal.toLocaleString()}</td>
+              </tr>
+            `;
+          }).join('');
+
+      // Procedure names: primary on top, secondary indented / stacked below
+      const procs = String(g.procedure || '').split(',').map(s => s.trim()).filter(Boolean);
+      let procHtml = '—';
+      if (procs.length > 0) {
+        procHtml = procs.map((p, idx) => {
+          if (idx === 0) {
+            return `<div>${escapeHtml(p)}</div>`;
+          }
+          return `<div class="text-gray text-xs" style="padding-left:14px; margin-top:3px;">↳ ${escapeHtml(p)}</div>`;
+        }).join('');
+      }
+
+      // Notes content
+      const notesContent = [
+        g.complication ? escapeHtml(g.complication) : '',
+        g.contrast ? `<span class="text-gray" style="font-size:12px;">(Contrast: ${escapeHtml(g.contrast)})</span>` : ''
+      ].filter(Boolean).join(' ');
 
       return `
-        <div class="space-y-sm">
-          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px; background:var(--gray-50); padding:12px; border-radius:6px; border:1px solid var(--gray-200); font-size:13px;">
-            <div><span class="text-gray">Transaction ID:</span> <strong class="font-mono text-xs">${g.id}</strong></div>
-            <div><span class="text-gray">Date:</span> <strong>${formatDate(g.date)}</strong></div>
-            <div><span class="text-gray">Patient HN:</span> <strong>${g.hn || '—'}</strong></div>
-            <div><span class="text-gray">Shift:</span> <strong>${g.shift || '—'}</strong></div>
-            <div><span class="text-gray">Disease:</span> <strong>${g.disease || '—'}</strong></div>
-            <div><span class="text-gray">Procedure:</span> <strong>${g.procedure || '—'}</strong></div>
-            <div style="grid-column: span 2;"><span class="text-gray">Techs / Staff:</span> <strong>${g.tech || '—'}</strong></div>
-            ${g.contrast ? `<div style="grid-column: span 2;"><span class="text-gray">Contrast Media:</span> <strong style="color:var(--brand-dark);">${escapeHtml(g.contrast)}</strong></div>` : ''}
-            ${g.complication ? `<div style="grid-column: span 2;"><span class="text-gray">Complications / Notes:</span> <strong>${g.complication}</strong></div>` : ''}
+        <div class="space-y">
+          <!-- Metadata Header: Two-Column Alignment (Transaction ID Hidden) -->
+          <div class="proc-detail-header-card">
+            <!-- Left Column -->
+            <div style="display:flex; flex-direction:column; gap:8px;">
+              <div style="font-size:1.2em; font-weight:700; color:var(--gray-900); line-height:1.3;">
+                <span class="text-gray" style="font-weight:600;">Patient HN:</span> ${escapeHtml(g.hn || '—')}
+              </div>
+              <div>
+                <span class="text-gray font-medium">Date:</span> <strong>${formatLongDate(g.date)}</strong>
+              </div>
+              <div>
+                <span class="text-gray font-medium">Procedure:</span>
+                <div class="font-medium" style="margin-top:2px;">${procHtml}</div>
+              </div>
+              <div>
+                <span class="text-gray font-medium">Disease:</span> <strong>${escapeHtml(g.disease || '—')}</strong>
+              </div>
+            </div>
+
+            <!-- Right Column -->
+            <div style="display:flex; flex-direction:column; gap:8px;">
+              <div>
+                <span class="text-gray font-medium">Shift:</span> <span class="badge badge-blue font-semibold">${escapeHtml(g.shift || '—')}</span>
+              </div>
+              <div>
+                <span class="text-gray font-medium">Tech/Staff:</span> <strong>${escapeHtml(g.tech || '—')}</strong>
+              </div>
+              <div>
+                <span class="text-gray font-medium">Notes:</span> <strong>${notesContent || '—'}</strong>
+              </div>
+            </div>
           </div>
+
+          <!-- Devices & Billing Table: Exactly 5 Columns (No., Device Name, Qty., Unit Price, Total) -->
           <div class="table-wrap" style="max-height:none;">
             <table class="data-table">
               <thead>
                 <tr>
-                  <th class="center">#</th>
-                  <th>Item ID</th>
+                  <th class="center" style="width:45px;">No.</th>
                   <th>Device Name</th>
-                  <th>Category</th>
-                  <th class="center">Qty</th>
-                  <th class="num">Unit Price</th>
-                  <th class="num">Total</th>
+                  <th class="center" style="width:70px;">Qty.</th>
+                  <th class="num" style="width:115px;">Unit Price</th>
+                  <th class="num" style="width:125px;">Total</th>
                 </tr>
               </thead>
               <tbody>${rowsHtml}</tbody>
               <tfoot>
                 <tr style="background:var(--gray-50); font-weight:700;">
-                  <td colspan="4" style="text-align:right;">Total</td>
-                  <td class="center">${g.items.reduce((s, i) => s + i.qty, 0)}</td>
+                  <td colspan="2" style="text-align:right;">Total</td>
+                  <td class="center font-bold">${totalQty}</td>
                   <td></td>
-                  <td class="num">฿${totalCost.toLocaleString()}</td>
+                  <td class="num font-bold">฿${totalCost.toLocaleString()}</td>
                 </tr>
               </tfoot>
             </table>
@@ -2844,20 +3386,19 @@ window.__INR_MAIN_PARSED = true;
       document.getElementById('proc-edit-shift').innerHTML =
         shifts.map(s => `<option value="${s}" ${s === g.shift ? 'selected' : ''}>${s}</option>`).join('');
 
-      // Populate Techs checkboxes
+      // Populate Techs checkboxes (unified Nicknames)
       const existingTechs = String(g.tech || '').split(',').map(s => s.trim()).filter(Boolean);
       const users = getUsersList();
-      const allTechNames = new Set(users.map(u => `${u.name || ''} ${u.surname || ''}`.trim()));
+      const allTechNames = new Set(users.map(u => String(u.nickname || u.name || '').trim()));
       let techHtml = users.map(u => {
-        const fullName = `${u.name || ''} ${u.surname || ''}`.trim();
-        const label = u.nickname ? `${u.nickname} (${u.name || ''})` : fullName;
-        const checked = existingTechs.includes(fullName) ? 'checked' : '';
-        return `<label><input type="checkbox" name="proc-edit-tech-cb" value="${escapeHtml(fullName)}" ${checked}> <span>${label}</span></label>`;
+        const nick = String(u.nickname || u.name || '').trim();
+        const checked = existingTechs.includes(nick) ? 'checked' : '';
+        return `<label><input type="checkbox" name="proc-edit-tech-cb" value="${escapeHtml(nick)}" ${checked}> <span>${escapeHtml(nick)}</span></label>`;
       }).join('');
       // Also include any historic tech names not in current user list
       existingTechs.forEach(tName => {
         if (!allTechNames.has(tName)) {
-          techHtml += `<label><input type="checkbox" name="proc-edit-tech-cb" value="${escapeHtml(tName)}" checked> <span>${tName}</span></label>`;
+          techHtml += `<label><input type="checkbox" name="proc-edit-tech-cb" value="${escapeHtml(tName)}" checked> <span>${escapeHtml(tName)}</span></label>`;
         }
       });
       document.getElementById('proc-edit-techs').innerHTML = techHtml || '<div class="text-xs text-gray">No users configured</div>';
@@ -2903,7 +3444,7 @@ window.__INR_MAIN_PARSED = true;
       const cat = (document.getElementById('proc-edit-add-cat')?.value || '').toLowerCase().trim();
       const itemSelect = document.getElementById('proc-edit-add-item');
       if (!itemSelect) return;
-      const items = state.inventory.filter(i => !i.isParent && !isConsignmentOnlyItem(i) && (!cat || String(i.category || '').toLowerCase() === cat));
+      const items = state.inventory.filter(i => !isConsignmentOnlyItem(i) && (!cat || String(i.category || '').toLowerCase() === cat));
       itemSelect.innerHTML = items.map(i => {
         const r = Number(i.retailStock) || 0;
         const freeTag = i.isFreeItem ? ' [FREE]' : '';
@@ -3299,7 +3840,7 @@ window.__INR_MAIN_PARSED = true;
           ` : ''}
           <div class="device-modal-grid">
             <div class="form-group col-span-2">
-              <label class="form-label"><span>Device Name (Sub-Device / Standalone Only)</span> <span style="color:var(--red);">*</span></label>
+              <label class="form-label"><span>Device Name</span> <span style="color:var(--red);">*</span></label>
               <select class="form-select" onchange="updateStockItem(${idx}, this.value)">
                 <option value="">Select Device...</option>
                 ${getTransactableInventory().map(item => `<option value="${item.itemId}" ${line.itemId === item.itemId ? 'selected' : ''}>${item.deviceName}${item.isFreeItem ? ' [FREE]' : ''}</option>`).join('')}
@@ -6874,8 +7415,16 @@ function exportStatisticsCSV() {
       state.loans = Array.isArray(res.loans) ? res.loans : [];
       state.assets = Array.isArray(res.assets) ? res.assets : [];
       state.announcements = Array.isArray(res.announcements) ? res.announcements : [];
+      state.ebiddings = Array.isArray(res.ebiddings) ? res.ebiddings : [];
+      state.contracts = Array.isArray(res.contracts) ? res.contracts : [];
+      state.contractPOs = Array.isArray(res.contractPOs) ? res.contractPOs : [];
+      state.specificPurchases = Array.isArray(res.specificPurchases) ? res.specificPurchases : [];
+      state.receivings = Array.isArray(res.receivings) ? res.receivings : [];
+      state.companyList = Array.isArray(res.companyList) ? res.companyList : [];
+      state.fiscalYearList = Array.isArray(res.fiscalYearList) ? res.fiscalYearList : [];
       state.settingsDirty = { diseases: false, procedures: false, shifts: false, categories: false, departments: false, users: false };
       recalculateInventoryHierarchy();
+      if (typeof recalculateProcurementState === 'function') recalculateProcurementState();
     }
 
     function fetchDataFromServer() {
@@ -6962,18 +7511,18 @@ function exportStatisticsCSV() {
       setTimeout(() => {
         if (!state.inventory || state.inventory.length === 0) {
           state.inventory = [
-            {itemId:'1', hoItemId:'42203403INT00001', deviceName:'Introducer sheath 4', category:'Sheath', buyPrice:450, sellPrice:650, mainStock:10, retailStock:4, bufferStock:0, totalStock:14, hoStock:118, stockDiff:-104, stockMonth:25, exceedPercent:-88, orderEstimate:104, buyPoint:20, safetyStock:2},
-            {itemId:'2', hoItemId:'42203403INT00004', deviceName:'Introducer sheath 5', category:'Sheath', buyPrice:480, sellPrice:700, mainStock:300, retailStock:7, bufferStock:2, totalStock:307, hoStock:255, stockDiff:52, stockMonth:40, exceedPercent:20, orderEstimate:0, buyPoint:50, safetyStock:22},
-            {itemId:'3', hoItemId:'42203404SMO00006', deviceName:'Guidewire 0.038" 150 cm', category:'Guidewire', buyPrice:1200, sellPrice:1800, mainStock:120, retailStock:54, bufferStock:0, totalStock:174, hoStock:609, stockDiff:-435, stockMonth:60, exceedPercent:-71, orderEstimate:435, buyPoint:100, safetyStock:45},
-            {itemId:'4', hoItemId:'42221604YSI00001', deviceName:'Y-side arm adapter', category:'Accessory', buyPrice:350, sellPrice:500, mainStock:475, retailStock:19, bufferStock:0, totalStock:494, hoStock:527, stockDiff:-33, stockMonth:80, exceedPercent:-6, orderEstimate:33, buyPoint:60, safetyStock:43},
-            {itemId:'5', hoItemId:'42203402IMA00004', deviceName:'Sim2 5 F 100 cm', category:'Catheter', buyPrice:850, sellPrice:1300, mainStock:490, retailStock:12, bufferStock:0, totalStock:502, hoStock:475, stockDiff:27, stockMonth:55, exceedPercent:5, orderEstimate:0, buyPoint:70, safetyStock:48},
-            {itemId:'6', hoItemId:'CM-IOP300', deviceName:'Iopamiro 300 (100 ml)', category:'Contrast Media', buyPrice:600, sellPrice:900, mainStock:20, retailStock:6, bufferStock:0, totalStock:26, hoStock:26, stockDiff:0, stockMonth:15, exceedPercent:0, orderEstimate:0, buyPoint:10, safetyStock:5},
-            {itemId:'7', hoItemId:'CM-VIS320', deviceName:'Visipaque 320 (100 ml)', category:'Contrast Media', buyPrice:950, sellPrice:1400, mainStock:3, retailStock:1, bufferStock:0, totalStock:4, hoStock:4, stockDiff:0, stockMonth:10, exceedPercent:0, orderEstimate:6, buyPoint:8, safetyStock:5},
-            {itemId:'STENT-260601090000', hoItemId:'42203405SOL00001', deviceName:'Solitaire Platinum Stent Retriever (Group)', category:'Stent', buyPrice:85000, sellPrice:95000, mainStock:0, retailStock:0, bufferStock:0, totalStock:0, hoStock:6, ownHoStock:6, stockDiff:0, stockMonth:4, exceedPercent:0, orderEstimate:0, buyPoint:2, safetyStock:1, isFreeItem:false, isParent:true, parentId:''},
-            {itemId:'STENT-260601090001', hoItemId:'42203405SOL00001', deviceName:'Solitaire Platinum 4x40 mm', category:'Stent', buyPrice:85000, sellPrice:95000, mainStock:2, retailStock:2, bufferStock:0, totalStock:4, hoStock:0, stockDiff:4, stockMonth:2, exceedPercent:0, orderEstimate:0, buyPoint:1, safetyStock:1, isFreeItem:false, isParent:false, parentId:'STENT-260601090000'},
-            {itemId:'STENT-260601090002', hoItemId:'42203405SOL00001', deviceName:'Solitaire Platinum 6x40 mm', category:'Stent', buyPrice:85000, sellPrice:95000, mainStock:1, retailStock:1, bufferStock:0, totalStock:2, hoStock:0, stockDiff:2, stockMonth:2, exceedPercent:0, orderEstimate:0, buyPoint:1, safetyStock:1, isFreeItem:false, isParent:false, parentId:'STENT-260601090000'},
-            {itemId:'MICRO-260601090010', hoItemId:'42203406REB00018', deviceName:'Rebar 18 Microcatheter (PO)', category:'Microcatheter', buyPrice:18500, sellPrice:22000, mainStock:3, retailStock:2, bufferStock:0, totalStock:5, hoStock:5, stockDiff:0, stockMonth:4, exceedPercent:0, orderEstimate:0, buyPoint:2, safetyStock:1, isFreeItem:false, isParent:false, parentId:''},
-            {itemId:'MICRO-260601090011', hoItemId:'', deviceName:'Rebar 18 Microcatheter (Free)', category:'Microcatheter', buyPrice:0, sellPrice:0, mainStock:2, retailStock:2, bufferStock:0, totalStock:4, hoStock:0, stockDiff:0, stockMonth:0, exceedPercent:0, orderEstimate:0, buyPoint:0, safetyStock:0, isFreeItem:true, isParent:false, parentId:''}
+            {itemId:'1', hoItemId:'42203403INT00001', deviceName:'Introducer sheath 4', category:'Sheath', buyPrice:450, sellPrice:650, mainStock:10, retailStock:4, bufferStock:0, totalStock:14, hoStock:118, stockDiff:-104, stockMonth:25, exceedPercent:-88, orderEstimate:104, buyPoint:20, safetyStock:2, company:'Terumo Thailand'},
+            {itemId:'2', hoItemId:'42203403INT00004', deviceName:'Introducer sheath 5', category:'Sheath', buyPrice:480, sellPrice:700, mainStock:300, retailStock:7, bufferStock:2, totalStock:307, hoStock:255, stockDiff:52, stockMonth:40, exceedPercent:20, orderEstimate:0, buyPoint:50, safetyStock:22, company:'Terumo Thailand'},
+            {itemId:'3', hoItemId:'42203404SMO00006', deviceName:'Guidewire 0.038" 150 cm', category:'Guidewire', buyPrice:1200, sellPrice:1800, mainStock:120, retailStock:54, bufferStock:0, totalStock:174, hoStock:609, stockDiff:-435, stockMonth:60, exceedPercent:-71, orderEstimate:435, buyPoint:100, safetyStock:45, company:'Terumo Thailand'},
+            {itemId:'4', hoItemId:'42221604YSI00001', deviceName:'Y-side arm adapter', category:'Accessory', buyPrice:350, sellPrice:500, mainStock:475, retailStock:19, bufferStock:0, totalStock:494, hoStock:527, stockDiff:-33, stockMonth:80, exceedPercent:-6, orderEstimate:33, buyPoint:60, safetyStock:43, company:'Cordis Medical'},
+            {itemId:'5', hoItemId:'42203402IMA00004', deviceName:'Sim2 5 F 100 cm', category:'Catheter', buyPrice:850, sellPrice:1300, mainStock:490, retailStock:12, bufferStock:0, totalStock:502, hoStock:475, stockDiff:27, stockMonth:55, exceedPercent:5, orderEstimate:0, buyPoint:70, safetyStock:48, company:'Cordis Medical'},
+            {itemId:'6', hoItemId:'CM-IOP300', deviceName:'Iopamiro 300 (100 ml)', category:'Contrast Media', buyPrice:600, sellPrice:900, mainStock:20, retailStock:6, bufferStock:0, totalStock:26, hoStock:26, stockDiff:0, stockMonth:15, exceedPercent:0, orderEstimate:0, buyPoint:10, safetyStock:5, company:'Bracco Imaging'},
+            {itemId:'7', hoItemId:'CM-VIS320', deviceName:'Visipaque 320 (100 ml)', category:'Contrast Media', buyPrice:950, sellPrice:1400, mainStock:3, retailStock:1, bufferStock:0, totalStock:4, hoStock:4, stockDiff:0, stockMonth:10, exceedPercent:0, orderEstimate:6, buyPoint:8, safetyStock:5, company:'GE Healthcare'},
+            {itemId:'STENT-260601090000', hoItemId:'42203405SOL00001', deviceName:'Solitaire Platinum Stent Retriever (Group)', category:'Stent', buyPrice:85000, sellPrice:95000, mainStock:0, retailStock:0, bufferStock:0, totalStock:0, hoStock:6, ownHoStock:6, stockDiff:0, stockMonth:4, exceedPercent:0, orderEstimate:0, buyPoint:2, safetyStock:1, isFreeItem:false, isParent:true, parentId:'', company:'Medtronic Thailand'},
+            {itemId:'STENT-260601090001', hoItemId:'42203405SOL00001', deviceName:'Solitaire Platinum 4x40 mm', category:'Stent', buyPrice:85000, sellPrice:95000, mainStock:2, retailStock:2, bufferStock:0, totalStock:4, hoStock:0, stockDiff:4, stockMonth:2, exceedPercent:0, orderEstimate:0, buyPoint:1, safetyStock:1, isFreeItem:false, isParent:false, parentId:'STENT-260601090000', company:'Medtronic Thailand'},
+            {itemId:'STENT-260601090002', hoItemId:'42203405SOL00001', deviceName:'Solitaire Platinum 6x40 mm', category:'Stent', buyPrice:85000, sellPrice:95000, mainStock:1, retailStock:1, bufferStock:0, totalStock:2, hoStock:0, stockDiff:2, stockMonth:2, exceedPercent:0, orderEstimate:0, buyPoint:1, safetyStock:1, isFreeItem:false, isParent:false, parentId:'STENT-260601090000', company:'Medtronic Thailand'},
+            {itemId:'MICRO-260601090010', hoItemId:'42203406REB00018', deviceName:'Rebar 18 Microcatheter (PO)', category:'Microcatheter', buyPrice:18500, sellPrice:22000, mainStock:3, retailStock:2, bufferStock:0, totalStock:5, hoStock:5, stockDiff:0, stockMonth:4, exceedPercent:0, orderEstimate:0, buyPoint:2, safetyStock:1, isFreeItem:false, isParent:false, parentId:'', company:'Medtronic Thailand'},
+            {itemId:'MICRO-260601090011', hoItemId:'', deviceName:'Rebar 18 Microcatheter (Free)', category:'Microcatheter', buyPrice:0, sellPrice:0, mainStock:2, retailStock:2, bufferStock:0, totalStock:4, hoStock:0, stockDiff:0, stockMonth:0, exceedPercent:0, orderEstimate:0, buyPoint:0, safetyStock:0, isFreeItem:true, isParent:false, parentId:'', company:'Medtronic Thailand'}
           ];
           recalculateInventoryHierarchy();
         }
@@ -7176,10 +7725,2506 @@ function exportStatisticsCSV() {
             }
           ];
         }
+        const curFyStr = getCurrentFiscalYearClient();
+        if (!state.ebiddings || state.ebiddings.length === 0) {
+          state.ebiddings = [
+            {
+              ebiddingId: 'EB-20261005-090000',
+              fiscalYear: curFyStr,
+              manualStatus: 'In Progress',
+              hoItemId: '42203405SOL00001',
+              deviceName: 'Solitaire Platinum Stent Retriever (Group)',
+              unitPrice: 85000,
+              budgetPlanQty: 20,
+              company: 'Medtronic Thailand',
+              remarks: 'Annual neuro-thrombectomy stent retriever e-bidding plan'
+            },
+            {
+              ebiddingId: 'EB-20261010-103000',
+              fiscalYear: curFyStr,
+              manualStatus: 'In Progress',
+              hoItemId: '42203403INT00004',
+              deviceName: 'Introducer sheath 5',
+              unitPrice: 480,
+              budgetPlanQty: 300,
+              company: 'Terumo Thailand',
+              remarks: 'Standard femoral access sheath annual plan'
+            },
+            {
+              ebiddingId: 'EB-20261012-141500',
+              fiscalYear: curFyStr,
+              manualStatus: 'Planned',
+              hoItemId: '42203404SMO00006',
+              deviceName: 'Guidewire 0.038" 150 cm',
+              unitPrice: 1200,
+              budgetPlanQty: 150,
+              company: 'Terumo Thailand',
+              remarks: 'Awaiting TOR committee approval'
+            }
+          ];
+        }
+        if (!state.contracts || state.contracts.length === 0) {
+          state.contracts = [
+            {
+              contractId: 'CT-20261020-110000',
+              linkedEBiddingId: 'EB-20261005-090000',
+              fiscalYear: curFyStr,
+              contractNumber: 'สัญญาที่ 018/' + curFyStr,
+              contractStartDate: '2026-10-20',
+              contractEndDate: '2027-09-30',
+              hoItemId: '42203405SOL00001',
+              deviceName: 'Solitaire Platinum Stent Retriever (Group)',
+              unitPrice: 84000,
+              company: 'Medtronic Thailand',
+              totalContractQty: 20,
+              manualStatus: '',
+              remarks: 'Covers both 4x40 mm and 6x40 mm sizes under group HO Item ID'
+            },
+            {
+              contractId: 'CT-20261025-150000',
+              linkedEBiddingId: 'EB-20261010-103000',
+              fiscalYear: curFyStr,
+              contractNumber: 'สัญญาที่ 024/' + curFyStr,
+              contractStartDate: '2026-10-25',
+              contractEndDate: '2027-09-30',
+              hoItemId: '42203403INT00004',
+              deviceName: 'Introducer sheath 5',
+              unitPrice: 480,
+              company: 'Terumo Thailand',
+              totalContractQty: 300,
+              manualStatus: '',
+              remarks: 'Deliverable in multiple PO lots'
+            }
+          ];
+        }
+        if (!state.contractPOs || state.contractPOs.length === 0) {
+          state.contractPOs = [
+            {
+              poId: 'PO-20261101-093000',
+              linkedContractId: 'CT-20261020-110000',
+              poIssueDate: '2026-11-01',
+              unitPrice: 84000,
+              orderedQty: 6,
+              manualStatus: '',
+              remarks: 'Lot 1 order (4x40mm x 4, 6x40mm x 2)'
+            },
+            {
+              poId: 'PO-20261105-134500',
+              linkedContractId: 'CT-20261025-150000',
+              poIssueDate: '2026-11-05',
+              unitPrice: 480,
+              orderedQty: 100,
+              manualStatus: '',
+              remarks: 'Lot 1 order (100 pcs)'
+            }
+          ];
+        }
+        if (!state.specificPurchases || state.specificPurchases.length === 0) {
+          state.specificPurchases = [
+            {
+              spId: 'SP-20261103-101500',
+              poIssueDate: '2026-11-03',
+              fiscalYear: curFyStr,
+              hoItemId: '42203406REB00018',
+              deviceName: 'Rebar 18 Microcatheter (PO)',
+              unitPrice: 18500,
+              company: 'Medtronic Thailand',
+              budgetPlanQty: 15,
+              orderedQty: 5,
+              manualStatus: '',
+              remarks: 'Specific method purchase Q1 lot'
+            }
+          ];
+        }
+        if (!state.receivings || state.receivings.length === 0) {
+          state.receivings = [
+            {
+              receivingId: 'RC-20261108-140000',
+              sourceType: 'Contract PO',
+              sourceRecordId: 'PO-20261105-134500',
+              receivingDate: '2026-11-08',
+              hoItemId: '42203403INT00004',
+              deviceName: 'Introducer sheath 5',
+              unitPrice: 480,
+              quantity: 100,
+              company: 'Terumo Thailand',
+              allocations: [{ itemId: '2', quantity: 100 }],
+              stockInTxnId: 'RCV-20261108-140500',
+              manualStatus: '',
+              remarks: 'INV-TRM-2026-8812 inspected and posted to Main Stock'
+            },
+            {
+              receivingId: 'RC-20261110-110000',
+              sourceType: 'Contract PO',
+              sourceRecordId: 'PO-20261101-093000',
+              receivingDate: '2026-11-10',
+              hoItemId: '42203405SOL00001',
+              deviceName: 'Solitaire Platinum Stent Retriever (Group)',
+              unitPrice: 84000,
+              quantity: 6,
+              company: 'Medtronic Thailand',
+              allocations: [
+                { itemId: 'STENT-260601090001', quantity: 4 },
+                { itemId: 'STENT-260601090002', quantity: 2 }
+              ],
+              stockInTxnId: '',
+              manualStatus: '',
+              remarks: 'Awaiting committee sign-off to post stock-in'
+            }
+          ];
+        }
+        recalculateProcurementState();
         if (appLoading) appLoading.classList.add('hidden');
         if (appContent) appContent.classList.remove('hidden');
         renderCurrentTab();
       }, 150);
+    }
+
+    // ════════════════════════════════════════════════════════════════════════
+    // MODULE 6: PROCUREMENT (E-Bidding, Contracts, Contract POs, Specific Purchase, Receiving)
+    // ════════════════════════════════════════════════════════════════════════
+
+    function escHtml(val) {
+      if (val === null || val === undefined) return '';
+      return String(val)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    function deriveFiscalYearClient(dateVal) {
+      let d = null;
+      if (dateVal instanceof Date && !isNaN(dateVal.getTime())) {
+        d = dateVal;
+      } else if (dateVal) {
+        const s = String(dateVal).trim();
+        const m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+        if (m) {
+          const yr = parseInt(m[1], 10);
+          const mo = parseInt(m[2], 10);
+          return String((mo >= 10 ? yr + 1 : yr) + 543);
+        }
+        const parsed = new Date(s);
+        if (!isNaN(parsed.getTime())) d = parsed;
+      }
+      if (!d) d = new Date();
+      const year = d.getFullYear();
+      const month = d.getMonth() + 1;
+      return String((month >= 10 ? year + 1 : year) + 543);
+    }
+
+    function getCurrentFiscalYearClient() {
+      return deriveFiscalYearClient(getToday());
+    }
+
+    function generateClientProcurementId(prefix) {
+      const now = new Date();
+      const pad = n => String(n).padStart(2, '0');
+      const dPart = String(now.getFullYear()) + pad(now.getMonth() + 1) + pad(now.getDate());
+      const tPart = pad(now.getHours()) + pad(now.getMinutes()) + pad(now.getSeconds());
+      return `${prefix}-${dPart}-${tPart}`;
+    }
+
+    function refreshCompanyDatalist() {
+      const dl = document.getElementById('company-datalist');
+      if (!dl) return;
+      const set = new Set();
+      (state.companyList || []).forEach(c => { if (c && String(c).trim()) set.add(String(c).trim()); });
+      (state.inventory || []).forEach(i => { if (i && i.company && String(i.company).trim()) set.add(String(i.company).trim()); });
+      (state.ebiddings || []).forEach(r => { if (r && r.company && String(r.company).trim()) set.add(String(r.company).trim()); });
+      (state.contracts || []).forEach(r => { if (r && r.company && String(r.company).trim()) set.add(String(r.company).trim()); });
+      (state.contractPOs || []).forEach(r => { if (r && r.company && String(r.company).trim()) set.add(String(r.company).trim()); });
+      (state.specificPurchases || []).forEach(r => { if (r && r.company && String(r.company).trim()) set.add(String(r.company).trim()); });
+      (state.receivings || []).forEach(r => { if (r && r.company && String(r.company).trim()) set.add(String(r.company).trim()); });
+      const sorted = Array.from(set).sort((a, b) => a.localeCompare(b));
+      state.companyList = sorted;
+      dl.innerHTML = sorted.map(c => `<option value="${escHtml(c)}"></option>`).join('');
+    }
+
+    function recalculateProcurementState() {
+      const curFy = Number(getCurrentFiscalYearClient());
+      const fySet = new Set([String(curFy - 1), String(curFy), String(curFy + 1)]);
+      if (!state.procurementFy) {
+        state.procurementFy = String(curFy);
+      }
+
+      if (!Array.isArray(state.ebiddings)) state.ebiddings = [];
+      if (!Array.isArray(state.contracts)) state.contracts = [];
+      if (!Array.isArray(state.contractPOs)) state.contractPOs = [];
+      if (!Array.isArray(state.specificPurchases)) state.specificPurchases = [];
+      if (!Array.isArray(state.receivings)) state.receivings = [];
+
+      // 1. Receivings pass 1
+      const activeReceiptBySourceKey = {};
+      state.receivings.forEach(rec => {
+        rec.unitPrice = Number(rec.unitPrice) || 0;
+        rec.quantity = Number(rec.quantity) || 0;
+        rec.totalValue = rec.unitPrice * rec.quantity;
+        rec.manualStatus = String(rec.manualStatus || '').trim() === 'Cancelled' ? 'Cancelled' : '';
+        rec.stockInTxnId = String(rec.stockInTxnId || '').trim();
+        if (!Array.isArray(rec.allocations)) rec.allocations = [];
+        if (rec.manualStatus === 'Cancelled') {
+          rec.effectiveStatus = 'Cancelled';
+        } else if (rec.stockInTxnId) {
+          rec.effectiveStatus = 'Completed';
+        } else {
+          rec.effectiveStatus = 'Awaiting Delivery';
+        }
+        rec.status = rec.effectiveStatus;
+        if (rec.effectiveStatus !== 'Cancelled' && rec.sourceType && rec.sourceRecordId) {
+          activeReceiptBySourceKey[`${rec.sourceType}::${rec.sourceRecordId}`] = rec;
+        }
+      });
+
+      // 2. E-Biddings pass 1
+      const ebById = {};
+      state.ebiddings.forEach(eb => {
+        eb.fiscalYear = String(eb.fiscalYear || curFy).trim();
+        fySet.add(eb.fiscalYear);
+        eb.unitPrice = Number(eb.unitPrice) || 0;
+        eb.budgetPlanQty = Number(eb.budgetPlanQty) || 0;
+        eb.totalValue = eb.unitPrice * eb.budgetPlanQty;
+        const ms = String(eb.manualStatus || eb.status || 'Planned').trim();
+        eb.manualStatus = (ms === 'Cancelled' || ms === 'In Progress' || ms === 'Planned') ? ms : 'Planned';
+        eb.linkedContractIds = [];
+        ebById[eb.ebiddingId] = eb;
+      });
+
+      // 3. Contracts pass 1
+      const ctById = {};
+      state.contracts.forEach(ct => {
+        const eb = ebById[ct.linkedEBiddingId];
+        ct.fiscalYear = String(ct.fiscalYear || (eb ? eb.fiscalYear : curFy)).trim();
+        fySet.add(ct.fiscalYear);
+        if (!ct.hoItemId && eb) ct.hoItemId = eb.hoItemId;
+        if (!ct.deviceName && eb) ct.deviceName = eb.deviceName;
+        if ((ct.unitPrice === undefined || ct.unitPrice === null || ct.unitPrice === '') && eb) ct.unitPrice = eb.unitPrice;
+        if (!ct.company && eb) ct.company = eb.company;
+        ct.unitPrice = Number(ct.unitPrice) || 0;
+        ct.totalContractQty = Number(ct.totalContractQty) || 0;
+        ct.totalValue = ct.unitPrice * ct.totalContractQty;
+        ct.orderedQty = 0;
+        ct.remainingQty = ct.totalContractQty;
+        ct.manualStatus = String(ct.manualStatus || '').trim() === 'Cancelled' ? 'Cancelled' : '';
+        ct.poLots = [];
+        ctById[ct.contractId] = ct;
+        if (ct.manualStatus !== 'Cancelled' && eb) {
+          eb.linkedContractIds.push(ct.contractId);
+        }
+      });
+
+      // Finalize E-Bidding effectiveStatus
+      state.ebiddings.forEach(eb => {
+        if (eb.manualStatus === 'Cancelled') {
+          eb.effectiveStatus = 'Cancelled';
+        } else if (eb.linkedContractIds.length > 0) {
+          eb.effectiveStatus = 'Contract Awarded';
+        } else {
+          eb.effectiveStatus = eb.manualStatus || 'Planned';
+        }
+        eb.status = eb.effectiveStatus;
+      });
+
+      // 4. Contract POs
+      const poById = {};
+      state.contractPOs.forEach(po => {
+        const ct = ctById[po.linkedContractId];
+        po.fiscalYear = ct ? ct.fiscalYear : deriveFiscalYearClient(po.poIssueDate);
+        if (po.fiscalYear) fySet.add(String(po.fiscalYear));
+        po.contractNumber = ct ? ct.contractNumber : (po.contractNumber || '');
+        po.contractStartDate = ct ? ct.contractStartDate : (po.contractStartDate || '');
+        po.contractEndDate = ct ? ct.contractEndDate : (po.contractEndDate || '');
+        po.hoItemId = ct ? ct.hoItemId : (po.hoItemId || '');
+        po.deviceName = ct ? ct.deviceName : (po.deviceName || '');
+        po.company = ct ? ct.company : (po.company || '');
+        if ((po.unitPrice === undefined || po.unitPrice === null || po.unitPrice === '') && ct) po.unitPrice = ct.unitPrice;
+        po.unitPrice = Number(po.unitPrice) || 0;
+        po.orderedQty = Number(po.orderedQty) || 0;
+        po.orderValue = po.unitPrice * po.orderedQty;
+        po.totalContractQty = ct ? ct.totalContractQty : 0;
+        po.manualStatus = String(po.manualStatus || '').trim() === 'Cancelled' ? 'Cancelled' : '';
+
+        const linkedRec = activeReceiptBySourceKey[`Contract PO::${po.poId}`] || null;
+        if (po.manualStatus === 'Cancelled') {
+          po.effectiveStatus = 'Cancelled';
+        } else if (linkedRec && linkedRec.effectiveStatus === 'Completed') {
+          po.effectiveStatus = 'Completed';
+        } else {
+          po.effectiveStatus = 'Pending PO';
+        }
+        po.status = po.effectiveStatus;
+        po.linkedReceivingId = linkedRec ? linkedRec.receivingId : '';
+        po.receivingStatus = linkedRec ? linkedRec.effectiveStatus : '';
+        poById[po.poId] = po;
+
+        if (ct) {
+          ct.poLots.push(po);
+          if (po.effectiveStatus !== 'Cancelled') {
+            ct.orderedQty += po.orderedQty;
+          }
+        }
+      });
+
+      // Finalize Contracts remainingQty & effectiveStatus
+      state.contracts.forEach(ct => {
+        ct.remainingQty = ct.totalContractQty - ct.orderedQty;
+        if (ct.manualStatus === 'Cancelled') {
+          ct.effectiveStatus = 'Cancelled';
+        } else if (ct.remainingQty <= 0 && ct.totalContractQty > 0) {
+          ct.effectiveStatus = 'Completed';
+        } else {
+          ct.effectiveStatus = 'In Progress';
+        }
+        ct.status = ct.effectiveStatus;
+
+        let runningOrd = 0;
+        ct.poLots.forEach(lot => {
+          if (lot.effectiveStatus !== 'Cancelled') {
+            runningOrd += lot.orderedQty;
+          }
+          lot.remainingAfterLot = ct.totalContractQty - runningOrd;
+          lot.remainingContractQty = ct.remainingQty;
+        });
+      });
+
+      // 5. Specific Purchases
+      const spById = {};
+      const spOrderedByFyItem = {};
+      state.specificPurchases.forEach(sp => {
+        sp.fiscalYear = String(sp.fiscalYear || deriveFiscalYearClient(sp.poIssueDate)).trim();
+        if (sp.fiscalYear) fySet.add(sp.fiscalYear);
+        sp.unitPrice = Number(sp.unitPrice) || 0;
+        sp.budgetPlanQty = Number(sp.budgetPlanQty) || 0;
+        sp.budgetPlanValue = sp.unitPrice * sp.budgetPlanQty;
+        sp.orderedQty = Number(sp.orderedQty) || 0;
+        sp.orderValue = sp.unitPrice * sp.orderedQty;
+        sp.manualStatus = String(sp.manualStatus || '').trim() === 'Cancelled' ? 'Cancelled' : '';
+
+        const linkedRec = activeReceiptBySourceKey[`Specific Purchase::${sp.spId}`] || null;
+        if (sp.manualStatus === 'Cancelled') {
+          sp.effectiveStatus = 'Cancelled';
+        } else if (linkedRec && linkedRec.effectiveStatus === 'Completed') {
+          sp.effectiveStatus = 'Completed';
+        } else {
+          sp.effectiveStatus = 'Pending PO';
+        }
+        sp.status = sp.effectiveStatus;
+        sp.linkedReceivingId = linkedRec ? linkedRec.receivingId : '';
+        sp.receivingStatus = linkedRec ? linkedRec.effectiveStatus : '';
+
+        const key = `${sp.fiscalYear}::${String(sp.hoItemId || sp.deviceName || '').trim().toLowerCase()}`;
+        sp._itemKey = key;
+        if (sp.effectiveStatus !== 'Cancelled') {
+          spOrderedByFyItem[key] = (spOrderedByFyItem[key] || 0) + sp.orderedQty;
+        }
+        spById[sp.spId] = sp;
+      });
+
+      state.specificPurchases.forEach(sp => {
+        const tot = spOrderedByFyItem[sp._itemKey] || 0;
+        sp.totalOrderedSameFyItem = tot;
+        sp.remainingQty = sp.budgetPlanQty - tot;
+        delete sp._itemKey;
+      });
+
+      // 6. Enrich Receivings from source order
+      state.receivings.forEach(rec => {
+        if (rec.sourceType === 'Contract PO') {
+          const src = poById[rec.sourceRecordId];
+          if (src) {
+            rec.sourceOrderedQty = src.orderedQty;
+            rec.fiscalYear = src.fiscalYear || rec.fiscalYear;
+            if (!rec.hoItemId) rec.hoItemId = src.hoItemId;
+            if (!rec.deviceName) rec.deviceName = src.deviceName;
+            if (!rec.company) rec.company = src.company;
+          }
+        } else if (rec.sourceType === 'Specific Purchase') {
+          const src = spById[rec.sourceRecordId];
+          if (src) {
+            rec.sourceOrderedQty = src.orderedQty;
+            rec.fiscalYear = src.fiscalYear || rec.fiscalYear;
+            if (!rec.hoItemId) rec.hoItemId = src.hoItemId;
+            if (!rec.deviceName) rec.deviceName = src.deviceName;
+            if (!rec.company) rec.company = src.company;
+          }
+        }
+        if (!rec.fiscalYear) rec.fiscalYear = deriveFiscalYearClient(rec.receivingDate);
+        if (rec.fiscalYear) fySet.add(String(rec.fiscalYear));
+      });
+
+      state.fiscalYearList = Array.from(fySet).filter(Boolean).sort((a, b) => Number(a) - Number(b));
+      refreshCompanyDatalist();
+    }
+
+    function formatProcMoney(val) {
+      const n = Number(val) || 0;
+      return '฿' + n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    function getProcStatusBadgeHtml(status) {
+      const s = String(status || '').trim();
+      let cls = 'proc-badge-planned';
+      if (s === 'In Progress') cls = 'proc-badge-inprogress';
+      else if (s === 'Contract Awarded') cls = 'proc-badge-awarded';
+      else if (s === 'Pending PO') cls = 'proc-badge-pending';
+      else if (s === 'Awaiting Delivery') cls = 'proc-badge-awaiting';
+      else if (s === 'Completed') cls = 'proc-badge-completed';
+      else if (s === 'Cancelled') cls = 'proc-badge-cancelled';
+      return `<span class="proc-badge ${cls}">${escHtml(s || '-')}</span>`;
+    }
+
+    function getContractExpiryTagHtml(ct) {
+      if (!ct || ct.effectiveStatus !== 'In Progress' || !ct.contractEndDate) return '';
+      const today = new Date(getToday() + 'T00:00:00');
+      const end = new Date(ct.contractEndDate + 'T00:00:00');
+      if (isNaN(end.getTime())) return '';
+      const diffDays = Math.ceil((end.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+      if (diffDays < 0) {
+        return `<span class="proc-expiry-tag proc-expiry-expired">Expired (${Math.abs(diffDays)}d ago)</span>`;
+      } else if (diffDays <= 60) {
+        return `<span class="proc-expiry-tag proc-expiry-warn">Expiring in ${diffDays}d</span>`;
+      }
+      return `<span class="proc-expiry-tag proc-expiry-ok">${diffDays}d left</span>`;
+    }
+
+    function switchProcurementSubTab(subTab) {
+      state.procurementSubTab = subTab || 'ebidding';
+      const stFilter = document.getElementById('proc-status-filter');
+      if (stFilter) stFilter.value = '';
+      renderProcurementTab();
+    }
+
+    function onProcurementFyChange(fy) {
+      state.procurementFy = fy || 'All';
+      renderProcurementTab();
+    }
+
+    function resetProcurementFilters() {
+      state.procurementFy = getCurrentFiscalYearClient();
+      const fyEl = document.getElementById('proc-fy-select');
+      if (fyEl) fyEl.value = state.procurementFy;
+      const stEl = document.getElementById('proc-status-filter');
+      if (stEl) stEl.value = '';
+      const sEl = document.getElementById('proc-search-input');
+      if (sEl) sEl.value = '';
+      renderProcurementTab();
+    }
+
+    function openProcurementAddModal() {
+      const sub = state.procurementSubTab || 'ebidding';
+      if (sub === 'ebidding') openEBiddingModal('');
+      else if (sub === 'contracts') openContractModal('', '');
+      else if (sub === 'contract_po') openContractPOModal('', '');
+      else if (sub === 'specific_purchase') openSpecificPurchaseModal('');
+      else if (sub === 'receiving') openReceivingModal('', '', '');
+    }
+
+    function toggleContractExpand(contractId) {
+      if (!state.expandedContractIds) state.expandedContractIds = {};
+      state.expandedContractIds[contractId] = !state.expandedContractIds[contractId];
+      renderProcurementTab();
+    }
+
+    function renderProcurementTab() {
+      recalculateProcurementState();
+      const sub = state.procurementSubTab || 'ebidding';
+      if (!state.procurementFy) state.procurementFy = getCurrentFiscalYearClient();
+      const fy = state.procurementFy;
+
+      // Populate Fiscal Year selector
+      const fySelect = document.getElementById('proc-fy-select');
+      if (fySelect) {
+        const fyOptions = [`<option value="All"${fy === 'All' ? ' selected' : ''}>All Fiscal Years</option>`]
+          .concat((state.fiscalYearList || []).map(y => `<option value="${escHtml(y)}"${String(y) === String(fy) ? ' selected' : ''}>FY ${escHtml(y)}</option>`));
+        fySelect.innerHTML = fyOptions.join('');
+      }
+
+      // Highlight active sub-tab
+      document.querySelectorAll('#proc-subtabs .sub-tab').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.proc === sub);
+      });
+
+      // Update primary add button label
+      const addBtnLabel = document.getElementById('btn-proc-primary-add-label');
+      if (addBtnLabel) {
+        const labelMap = {
+          ebidding: t('proc_add_ebidding') || 'Add E-Bidding Plan',
+          contracts: t('proc_add_contract') || 'Create Contract',
+          contract_po: t('proc_add_po') || 'Create Contract PO (Lot)',
+          specific_purchase: t('proc_add_sp') || 'Add Specific Purchase',
+          receiving: t('proc_add_receiving') || 'Record Goods Receiving'
+        };
+        addBtnLabel.textContent = labelMap[sub] || 'Add Record';
+      }
+
+      const matchFy = (itemFy) => (fy === 'All' || !fy || String(itemFy) === String(fy));
+      const ebFyList = (state.ebiddings || []).filter(x => matchFy(x.fiscalYear));
+      const ctFyList = (state.contracts || []).filter(x => matchFy(x.fiscalYear));
+      const poFyList = (state.contractPOs || []).filter(x => matchFy(x.fiscalYear));
+      const spFyList = (state.specificPurchases || []).filter(x => matchFy(x.fiscalYear));
+      const rcFyList = (state.receivings || []).filter(x => matchFy(x.fiscalYear));
+
+      // Update sub-tab count badges
+      const setCnt = (id, n) => { const el = document.getElementById(id); if (el) el.textContent = n; };
+      setCnt('proc-count-ebidding', ebFyList.length);
+      setCnt('proc-count-contracts', ctFyList.length);
+      setCnt('proc-count-contract_po', poFyList.length);
+      setCnt('proc-count-specific_purchase', spFyList.length);
+      setCnt('proc-count-receiving', rcFyList.length);
+
+      // Populate status filter options for current sub-tab
+      const stSelect = document.getElementById('proc-status-filter');
+      const prevSt = stSelect ? stSelect.value : '';
+      const statusOptionsBySub = {
+        ebidding: ['Planned', 'In Progress', 'Contract Awarded', 'Cancelled'],
+        contracts: ['In Progress', 'Completed', 'Cancelled'],
+        contract_po: ['Pending PO', 'Completed', 'Cancelled'],
+        specific_purchase: ['Pending PO', 'Completed', 'Cancelled'],
+        receiving: ['Awaiting Delivery', 'Completed', 'Cancelled']
+      };
+      const validStatuses = statusOptionsBySub[sub] || [];
+      if (stSelect) {
+        const keepSt = validStatuses.includes(prevSt) ? prevSt : '';
+        stSelect.innerHTML = `<option value="">All Effective Statuses</option>` +
+          validStatuses.map(s => `<option value="${escHtml(s)}"${s === keepSt ? ' selected' : ''}>${escHtml(s)}</option>`).join('');
+      }
+      const activeStatusFilter = stSelect ? stSelect.value : '';
+      const searchQ = (document.getElementById('proc-search-input')?.value || '').trim().toLowerCase();
+
+      const kpiStrip = document.getElementById('proc-kpi-strip');
+      const thead = document.getElementById('proc-table-head');
+      const tbody = document.getElementById('proc-table-body');
+      if (!thead || !tbody) return;
+
+      // ── SUB-TAB 1: E-BIDDING ──
+      if (sub === 'ebidding') {
+        const nonCancelled = ebFyList.filter(x => x.effectiveStatus !== 'Cancelled');
+        const totalVal = nonCancelled.reduce((s, x) => s + (Number(x.totalValue) || 0), 0);
+        const plannedCnt = ebFyList.filter(x => x.effectiveStatus === 'Planned').length;
+        const inProgCnt = ebFyList.filter(x => x.effectiveStatus === 'In Progress').length;
+        const awardedCnt = ebFyList.filter(x => x.effectiveStatus === 'Contract Awarded').length;
+
+        if (kpiStrip) {
+          kpiStrip.innerHTML = `
+            <div class="proc-kpi-card">
+              <div class="proc-kpi-label">Active E-Bidding Plans (${fy === 'All' ? 'All FY' : 'FY ' + escHtml(fy)})</div>
+              <div class="proc-kpi-val">${nonCancelled.length}</div>
+              <div class="proc-kpi-sub">Planned: ${plannedCnt} | In Progress: ${inProgCnt}</div>
+            </div>
+            <div class="proc-kpi-card">
+              <div class="proc-kpi-label">Total Planned Budget Value</div>
+              <div class="proc-kpi-val" style="color:var(--brand-dark);">${formatProcMoney(totalVal)}</div>
+              <div class="proc-kpi-sub">Excludes Cancelled plans</div>
+            </div>
+            <div class="proc-kpi-card">
+              <div class="proc-kpi-label">Contract Awarded</div>
+              <div class="proc-kpi-val" style="color:#065f46;">${awardedCnt}</div>
+              <div class="proc-kpi-sub">Automatically updated when Contract is linked</div>
+            </div>
+          `;
+        }
+
+        thead.innerHTML = `
+          <tr>
+            <th>E-Bidding ID</th>
+            <th class="center">FY</th>
+            <th>HO Item ID</th>
+            <th>Device Name</th>
+            <th>Company / Vendor</th>
+            <th class="right">Unit Price</th>
+            <th class="center">Budget Plan Qty</th>
+            <th class="right">Total Value</th>
+            <th class="center">Effective Status</th>
+            <th>Remarks</th>
+            <th class="center no-print">Actions</th>
+          </tr>
+        `;
+
+        const filtered = ebFyList.filter(r => {
+          if (activeStatusFilter && r.effectiveStatus !== activeStatusFilter) return false;
+          if (searchQ) {
+            const hay = `${r.ebiddingId} ${r.hoItemId} ${r.deviceName} ${r.company} ${r.remarks} ${r.effectiveStatus}`.toLowerCase();
+            if (!hay.includes(searchQ)) return false;
+          }
+          return true;
+        });
+
+        if (filtered.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="11" class="empty">No E-Bidding records found for this filter.</td></tr>`;
+          return;
+        }
+
+        tbody.innerHTML = filtered.map(r => {
+          const isCancelled = r.effectiveStatus === 'Cancelled';
+          return `
+            <tr style="${isCancelled ? 'opacity:0.6;' : ''}">
+              <td class="mono text-xs font-semibold">${escHtml(r.ebiddingId)}</td>
+              <td class="center font-semibold">${escHtml(r.fiscalYear)}</td>
+              <td class="mono text-xs">${escHtml(r.hoItemId || '-')}</td>
+              <td class="font-semibold">${escHtml(r.deviceName)}</td>
+              <td>${escHtml(r.company || '-')}</td>
+              <td class="right">${formatProcMoney(r.unitPrice)}</td>
+              <td class="center font-semibold">${Number(r.budgetPlanQty || 0).toLocaleString()}</td>
+              <td class="right font-semibold" style="color:var(--brand-dark);">${formatProcMoney(r.totalValue)}</td>
+              <td class="center">${getProcStatusBadgeHtml(r.effectiveStatus)}</td>
+              <td class="text-xs text-gray">${escHtml(r.remarks || '-')}</td>
+              <td class="center no-print" style="white-space:nowrap;">
+                ${!isCancelled ? `<button class="btn btn-outline btn-xs" style="color:#065f46; border-color:#6ee7b7;" title="Create Contract from this E-Bidding" onclick="openContractModal('', '${escHtml(r.ebiddingId)}')">+ Contract</button>` : ''}
+                <button class="btn btn-outline btn-xs" onclick="openEBiddingModal('${escHtml(r.ebiddingId)}')">Edit</button>
+                ${!isCancelled ? `<button class="btn btn-outline btn-xs" style="color:#b45309;" onclick="handleCancelProcurementRecord('ebidding', '${escHtml(r.ebiddingId)}', '${escHtml(r.deviceName)}')">Cancel</button>` : ''}
+                <button class="btn btn-ghost-danger btn-xs" onclick="handleDeleteEBidding('${escHtml(r.ebiddingId)}')">Delete</button>
+              </td>
+            </tr>
+          `;
+        }).join('');
+        return;
+      }
+
+      // ── SUB-TAB 2: CONTRACTS ──
+      if (sub === 'contracts') {
+        const activeCts = ctFyList.filter(x => x.effectiveStatus === 'In Progress');
+        const nonCancelled = ctFyList.filter(x => x.effectiveStatus !== 'Cancelled');
+        const totalContractVal = nonCancelled.reduce((s, x) => s + (Number(x.totalValue) || 0), 0);
+        const totalRemVal = nonCancelled.reduce((s, x) => s + Math.max(0, Number(x.remainingQty) || 0) * (Number(x.unitPrice) || 0), 0);
+        const today = new Date(getToday() + 'T00:00:00');
+        const expiringSoonCnt = activeCts.filter(ct => {
+          if (!ct.contractEndDate) return false;
+          const end = new Date(ct.contractEndDate + 'T00:00:00');
+          if (isNaN(end.getTime())) return false;
+          const diffDays = Math.ceil((end.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+          return diffDays <= 60;
+        }).length;
+
+        if (kpiStrip) {
+          kpiStrip.innerHTML = `
+            <div class="proc-kpi-card">
+              <div class="proc-kpi-label">Active Contracts (In Progress)</div>
+              <div class="proc-kpi-val">${activeCts.length}</div>
+              <div class="proc-kpi-sub">Total non-cancelled: ${nonCancelled.length}</div>
+            </div>
+            <div class="proc-kpi-card">
+              <div class="proc-kpi-label">Total Contract Value</div>
+              <div class="proc-kpi-val" style="color:var(--brand-dark);">${formatProcMoney(totalContractVal)}</div>
+              <div class="proc-kpi-sub">Remaining Value: ${formatProcMoney(totalRemVal)}</div>
+            </div>
+            <div class="proc-kpi-card">
+              <div class="proc-kpi-label">Expiring Within 60 Days / Expired</div>
+              <div class="proc-kpi-val" style="color:${expiringSoonCnt > 0 ? '#d97706' : 'var(--gray-700)'};">${expiringSoonCnt}</div>
+              <div class="proc-kpi-sub">Active contracts requiring attention</div>
+            </div>
+          `;
+        }
+
+        thead.innerHTML = `
+          <tr>
+            <th>Contract ID &amp; No.</th>
+            <th class="center">FY</th>
+            <th>Contract Period</th>
+            <th>HO Item ID &amp; Device</th>
+            <th>Company</th>
+            <th class="right">Unit Price</th>
+            <th class="center">Total Qty</th>
+            <th class="center">Ordered Qty</th>
+            <th class="center">Remaining Qty</th>
+            <th class="center">Effective Status</th>
+            <th class="center no-print">Actions</th>
+          </tr>
+        `;
+
+        const filtered = ctFyList.filter(r => {
+          if (activeStatusFilter && r.effectiveStatus !== activeStatusFilter) return false;
+          if (searchQ) {
+            const hay = `${r.contractId} ${r.contractNumber} ${r.linkedEBiddingId} ${r.hoItemId} ${r.deviceName} ${r.company} ${r.remarks} ${r.effectiveStatus}`.toLowerCase();
+            if (!hay.includes(searchQ)) return false;
+          }
+          return true;
+        });
+
+        if (filtered.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="11" class="empty">No Contract records found for this filter.</td></tr>`;
+          return;
+        }
+
+        const rowsHtml = [];
+        filtered.forEach(ct => {
+          const isCancelled = ct.effectiveStatus === 'Cancelled';
+          const isExpanded = !!(state.expandedContractIds && state.expandedContractIds[ct.contractId]);
+          const lotsCount = (ct.poLots || []).length;
+          const remColor = ct.remainingQty < 0 ? 'color:var(--red); font-weight:700;' : (ct.remainingQty === 0 ? 'color:#065f46; font-weight:700;' : 'font-weight:700;');
+
+          rowsHtml.push(`
+            <tr style="${isCancelled ? 'opacity:0.6;' : ''}">
+              <td>
+                <div class="font-semibold">${escHtml(ct.contractNumber)}</div>
+                <div class="mono text-xs text-gray">${escHtml(ct.contractId)} (EB: ${escHtml(ct.linkedEBiddingId || '-')})</div>
+              </td>
+              <td class="center font-semibold">${escHtml(ct.fiscalYear)}</td>
+              <td class="text-xs">
+                <div>${escHtml(ct.contractStartDate || '-')} → ${escHtml(ct.contractEndDate || '-')}</div>
+                <div style="margin-top:2px;">${getContractExpiryTagHtml(ct)}</div>
+              </td>
+              <td>
+                <div class="font-semibold">${escHtml(ct.deviceName)}</div>
+                <div class="mono text-xs text-gray">${escHtml(ct.hoItemId || '-')}</div>
+              </td>
+              <td>${escHtml(ct.company || '-')}</td>
+              <td class="right">${formatProcMoney(ct.unitPrice)}</td>
+              <td class="center font-semibold">${Number(ct.totalContractQty || 0).toLocaleString()}</td>
+              <td class="center">${Number(ct.orderedQty || 0).toLocaleString()}</td>
+              <td class="center" style="${remColor}">${Number(ct.remainingQty || 0).toLocaleString()}</td>
+              <td class="center">${getProcStatusBadgeHtml(ct.effectiveStatus)}</td>
+              <td class="center no-print" style="white-space:nowrap;">
+                <button class="btn btn-outline btn-xs" onclick="toggleContractExpand('${escHtml(ct.contractId)}')">${isExpanded ? '▲' : '▼'} Lots (${lotsCount})</button>
+                ${ct.effectiveStatus === 'In Progress' ? `<button class="btn btn-outline btn-xs" style="color:var(--brand-dark); border-color:var(--brand);" onclick="openContractPOModal('', '${escHtml(ct.contractId)}')">+ PO Lot</button>` : ''}
+                <button class="btn btn-outline btn-xs" onclick="openContractModal('${escHtml(ct.contractId)}', '')">Edit</button>
+                ${!isCancelled ? `<button class="btn btn-outline btn-xs" style="color:#b45309;" onclick="handleCancelProcurementRecord('contract', '${escHtml(ct.contractId)}', '${escHtml(ct.contractNumber)}')">Cancel</button>` : ''}
+                <button class="btn btn-ghost-danger btn-xs" onclick="handleDeleteContract('${escHtml(ct.contractId)}')">Delete</button>
+              </td>
+            </tr>
+          `);
+
+          if (isExpanded) {
+            const lots = ct.poLots || [];
+            const lotsTableHtml = lots.length === 0
+              ? `<div class="text-xs text-gray">No Contract PO lots created under this contract yet.</div>`
+              : `
+                <table class="data-table" style="font-size:12px; background:#fff; border:1px solid var(--gray-200); border-radius:6px;">
+                  <thead>
+                    <tr>
+                      <th>PO ID</th>
+                      <th>PO Issue Date</th>
+                      <th class="right">Unit Price</th>
+                      <th class="center">Ordered Qty</th>
+                      <th class="right">Order Value</th>
+                      <th class="center">Rem. After Lot</th>
+                      <th class="center">Status</th>
+                      <th>Remarks</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${lots.map(l => `
+                      <tr>
+                        <td class="mono font-semibold">${escHtml(l.poId)}</td>
+                        <td>${escHtml(l.poIssueDate || '-')}</td>
+                        <td class="right">${formatProcMoney(l.unitPrice)}</td>
+                        <td class="center font-semibold">${Number(l.orderedQty || 0).toLocaleString()}</td>
+                        <td class="right">${formatProcMoney(l.orderValue)}</td>
+                        <td class="center">${Number(l.remainingAfterLot || 0).toLocaleString()}</td>
+                        <td class="center">${getProcStatusBadgeHtml(l.effectiveStatus)}</td>
+                        <td class="text-gray">${escHtml(l.remarks || '-')}</td>
+                      </tr>
+                    `).join('')}
+                  </tbody>
+                </table>
+              `;
+            rowsHtml.push(`
+              <tr class="proc-expand-row">
+                <td colspan="11">
+                  <div class="proc-expand-box">
+                    <div class="flex justify-between items-center mb-2">
+                      <strong class="text-xs">Purchase Order Lots under ${escHtml(ct.contractNumber)} (${escHtml(ct.deviceName)})</strong>
+                      ${ct.effectiveStatus === 'In Progress' ? `<button class="btn btn-brand btn-xs" onclick="openContractPOModal('', '${escHtml(ct.contractId)}')">+ Add PO Lot</button>` : ''}
+                    </div>
+                    ${lotsTableHtml}
+                  </div>
+                </td>
+              </tr>
+            `);
+          }
+        });
+
+        tbody.innerHTML = rowsHtml.join('');
+        return;
+      }
+
+      // ── SUB-TAB 3: CONTRACT PURCHASE ORDERS (PO LOTS) ──
+      if (sub === 'contract_po') {
+        const nonCancelled = poFyList.filter(x => x.effectiveStatus !== 'Cancelled');
+        const pendingCnt = poFyList.filter(x => x.effectiveStatus === 'Pending PO').length;
+        const completedCnt = poFyList.filter(x => x.effectiveStatus === 'Completed').length;
+        const totalPoVal = nonCancelled.reduce((s, x) => s + (Number(x.orderValue) || 0), 0);
+
+        if (kpiStrip) {
+          kpiStrip.innerHTML = `
+            <div class="proc-kpi-card">
+              <div class="proc-kpi-label">Pending PO Lots</div>
+              <div class="proc-kpi-val" style="color:#92400e;">${pendingCnt}</div>
+              <div class="proc-kpi-sub">Awaiting Goods Receiving completion</div>
+            </div>
+            <div class="proc-kpi-card">
+              <div class="proc-kpi-label">Completed PO Lots</div>
+              <div class="proc-kpi-val" style="color:#065f46;">${completedCnt}</div>
+              <div class="proc-kpi-sub">Received &amp; Stock-In posted</div>
+            </div>
+            <div class="proc-kpi-card">
+              <div class="proc-kpi-label">Total Contract PO Value</div>
+              <div class="proc-kpi-val" style="color:var(--brand-dark);">${formatProcMoney(totalPoVal)}</div>
+              <div class="proc-kpi-sub">Across ${nonCancelled.length} non-cancelled PO lot(s)</div>
+            </div>
+          `;
+        }
+
+        thead.innerHTML = `
+          <tr>
+            <th>PO ID</th>
+            <th>PO Issue Date</th>
+            <th>Contract No.</th>
+            <th>HO Item ID &amp; Device</th>
+            <th>Company</th>
+            <th class="right">Unit Price</th>
+            <th class="center">Ordered Qty</th>
+            <th class="right">Order Value</th>
+            <th class="center">Contract Rem. Qty</th>
+            <th class="center">Effective Status</th>
+            <th class="center no-print">Actions</th>
+          </tr>
+        `;
+
+        const filtered = poFyList.filter(r => {
+          if (activeStatusFilter && r.effectiveStatus !== activeStatusFilter) return false;
+          if (searchQ) {
+            const hay = `${r.poId} ${r.linkedContractId} ${r.contractNumber} ${r.hoItemId} ${r.deviceName} ${r.company} ${r.remarks} ${r.effectiveStatus}`.toLowerCase();
+            if (!hay.includes(searchQ)) return false;
+          }
+          return true;
+        });
+
+        if (filtered.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="11" class="empty">No Contract PO records found for this filter.</td></tr>`;
+          return;
+        }
+
+        tbody.innerHTML = filtered.map(po => {
+          const isCancelled = po.effectiveStatus === 'Cancelled';
+          const canCancel = !isCancelled && po.receivingStatus !== 'Completed';
+          let receiveBtnHtml = '';
+          if (!isCancelled) {
+            if (!po.linkedReceivingId) {
+              receiveBtnHtml = `<button class="btn btn-outline btn-xs" style="color:#065f46; border-color:#6ee7b7;" onclick="openReceivingModal('', 'Contract PO', '${escHtml(po.poId)}')">+ Receive</button>`;
+            } else if (po.receivingStatus !== 'Completed') {
+              receiveBtnHtml = `<button class="btn btn-outline btn-xs" style="color:#4338ca; border-color:#a5b4fc;" onclick="openReceivingModal('${escHtml(po.linkedReceivingId)}', '', '')">Open Receipt</button>`;
+            }
+          }
+          return `
+            <tr style="${isCancelled ? 'opacity:0.6;' : ''}">
+              <td class="mono text-xs font-semibold">${escHtml(po.poId)}</td>
+              <td>${escHtml(po.poIssueDate || '-')}</td>
+              <td>
+                <div class="font-semibold">${escHtml(po.contractNumber || po.linkedContractId)}</div>
+                <div class="mono text-xs text-gray">${escHtml(po.linkedContractId)}</div>
+              </td>
+              <td>
+                <div class="font-semibold">${escHtml(po.deviceName)}</div>
+                <div class="mono text-xs text-gray">${escHtml(po.hoItemId || '-')}</div>
+              </td>
+              <td>${escHtml(po.company || '-')}</td>
+              <td class="right">${formatProcMoney(po.unitPrice)}</td>
+              <td class="center font-semibold">${Number(po.orderedQty || 0).toLocaleString()}</td>
+              <td class="right font-semibold" style="color:var(--brand-dark);">${formatProcMoney(po.orderValue)}</td>
+              <td class="center" style="${po.remainingContractQty < 0 ? 'color:var(--red); font-weight:700;' : 'font-weight:600;'}">${Number(po.remainingContractQty || 0).toLocaleString()}</td>
+              <td class="center">${getProcStatusBadgeHtml(po.effectiveStatus)}</td>
+              <td class="center no-print" style="white-space:nowrap;">
+                ${receiveBtnHtml}
+                <button class="btn btn-outline btn-xs" onclick="openContractPOModal('${escHtml(po.poId)}', '')">Edit</button>
+                ${canCancel ? `<button class="btn btn-outline btn-xs" style="color:#b45309;" onclick="handleCancelProcurementRecord('contract_po', '${escHtml(po.poId)}', '${escHtml(po.poId)}')">Cancel</button>` : ''}
+                <button class="btn btn-ghost-danger btn-xs" onclick="handleDeleteContractPO('${escHtml(po.poId)}')">Delete</button>
+              </td>
+            </tr>
+          `;
+        }).join('');
+        return;
+      }
+
+      // ── SUB-TAB 4: SPECIFIC-METHOD PURCHASES ──
+      if (sub === 'specific_purchase') {
+        const nonCancelled = spFyList.filter(x => x.effectiveStatus !== 'Cancelled');
+        const pendingCnt = spFyList.filter(x => x.effectiveStatus === 'Pending PO').length;
+        const completedCnt = spFyList.filter(x => x.effectiveStatus === 'Completed').length;
+        const totalSpVal = nonCancelled.reduce((s, x) => s + (Number(x.orderValue) || 0), 0);
+
+        if (kpiStrip) {
+          kpiStrip.innerHTML = `
+            <div class="proc-kpi-card">
+              <div class="proc-kpi-label">Pending Specific Purchases</div>
+              <div class="proc-kpi-val" style="color:#92400e;">${pendingCnt}</div>
+              <div class="proc-kpi-sub">Awaiting Goods Receiving completion</div>
+            </div>
+            <div class="proc-kpi-card">
+              <div class="proc-kpi-label">Completed Specific Purchases</div>
+              <div class="proc-kpi-val" style="color:#065f46;">${completedCnt}</div>
+              <div class="proc-kpi-sub">Received &amp; Stock-In posted</div>
+            </div>
+            <div class="proc-kpi-card">
+              <div class="proc-kpi-label">Total Specific Purchase Value</div>
+              <div class="proc-kpi-val" style="color:var(--brand-dark);">${formatProcMoney(totalSpVal)}</div>
+              <div class="proc-kpi-sub">Across ${nonCancelled.length} non-cancelled order(s)</div>
+            </div>
+          `;
+        }
+
+        thead.innerHTML = `
+          <tr>
+            <th>Specific PO ID</th>
+            <th>PO Issue Date</th>
+            <th class="center">FY</th>
+            <th>HO Item ID &amp; Device</th>
+            <th>Company</th>
+            <th class="right">Unit Price</th>
+            <th class="center">Budget Plan Qty</th>
+            <th class="center">Ordered Qty</th>
+            <th class="right">Order Value</th>
+            <th class="center" title="Budget Plan Qty - Total Ordered Qty for same FY + HO Item ID">Remaining Qty</th>
+            <th class="center">Effective Status</th>
+            <th class="center no-print">Actions</th>
+          </tr>
+        `;
+
+        const filtered = spFyList.filter(r => {
+          if (activeStatusFilter && r.effectiveStatus !== activeStatusFilter) return false;
+          if (searchQ) {
+            const hay = `${r.spId} ${r.hoItemId} ${r.deviceName} ${r.company} ${r.remarks} ${r.effectiveStatus}`.toLowerCase();
+            if (!hay.includes(searchQ)) return false;
+          }
+          return true;
+        });
+
+        if (filtered.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="12" class="empty">No Specific-Method Purchase records found for this filter.</td></tr>`;
+          return;
+        }
+
+        tbody.innerHTML = filtered.map(sp => {
+          const isCancelled = sp.effectiveStatus === 'Cancelled';
+          const canCancel = !isCancelled && sp.receivingStatus !== 'Completed';
+          let receiveBtnHtml = '';
+          if (!isCancelled) {
+            if (!sp.linkedReceivingId) {
+              receiveBtnHtml = `<button class="btn btn-outline btn-xs" style="color:#065f46; border-color:#6ee7b7;" onclick="openReceivingModal('', 'Specific Purchase', '${escHtml(sp.spId)}')">+ Receive</button>`;
+            } else if (sp.receivingStatus !== 'Completed') {
+              receiveBtnHtml = `<button class="btn btn-outline btn-xs" style="color:#4338ca; border-color:#a5b4fc;" onclick="openReceivingModal('${escHtml(sp.linkedReceivingId)}', '', '')">Open Receipt</button>`;
+            }
+          }
+          return `
+            <tr style="${isCancelled ? 'opacity:0.6;' : ''}">
+              <td class="mono text-xs font-semibold">${escHtml(sp.spId)}</td>
+              <td>${escHtml(sp.poIssueDate || '-')}</td>
+              <td class="center font-semibold">${escHtml(sp.fiscalYear)}</td>
+              <td>
+                <div class="font-semibold">${escHtml(sp.deviceName)}</div>
+                <div class="mono text-xs text-gray">${escHtml(sp.hoItemId || '-')}</div>
+              </td>
+              <td>${escHtml(sp.company || '-')}</td>
+              <td class="right">${formatProcMoney(sp.unitPrice)}</td>
+              <td class="center">${Number(sp.budgetPlanQty || 0).toLocaleString()}</td>
+              <td class="center font-semibold">${Number(sp.orderedQty || 0).toLocaleString()}</td>
+              <td class="right font-semibold" style="color:var(--brand-dark);">${formatProcMoney(sp.orderValue)}</td>
+              <td class="center" style="${sp.remainingQty < 0 ? 'color:var(--red); font-weight:700;' : 'font-weight:600;'}">${Number(sp.remainingQty || 0).toLocaleString()}</td>
+              <td class="center">${getProcStatusBadgeHtml(sp.effectiveStatus)}</td>
+              <td class="center no-print" style="white-space:nowrap;">
+                ${receiveBtnHtml}
+                <button class="btn btn-outline btn-xs" onclick="openSpecificPurchaseModal('${escHtml(sp.spId)}')">Edit</button>
+                ${canCancel ? `<button class="btn btn-outline btn-xs" style="color:#b45309;" onclick="handleCancelProcurementRecord('specific_purchase', '${escHtml(sp.spId)}', '${escHtml(sp.spId)}')">Cancel</button>` : ''}
+                <button class="btn btn-ghost-danger btn-xs" onclick="handleDeleteSpecificPurchase('${escHtml(sp.spId)}')">Delete</button>
+              </td>
+            </tr>
+          `;
+        }).join('');
+        return;
+      }
+
+      // ── SUB-TAB 5: GOODS RECEIVING ──
+      if (sub === 'receiving') {
+        const awaitingCnt = rcFyList.filter(x => x.effectiveStatus === 'Awaiting Delivery').length;
+        const completedCnt = rcFyList.filter(x => x.effectiveStatus === 'Completed').length;
+        const completedVal = rcFyList.filter(x => x.effectiveStatus === 'Completed').reduce((s, x) => s + (Number(x.totalValue) || 0), 0);
+
+        if (kpiStrip) {
+          kpiStrip.innerHTML = `
+            <div class="proc-kpi-card">
+              <div class="proc-kpi-label">Awaiting Delivery / Inspection</div>
+              <div class="proc-kpi-val" style="color:#4338ca;">${awaitingCnt}</div>
+              <div class="proc-kpi-sub">Ready to Complete &amp; Post Stock-In</div>
+            </div>
+            <div class="proc-kpi-card">
+              <div class="proc-kpi-label">Completed Receipts (Stocked In)</div>
+              <div class="proc-kpi-val" style="color:#065f46;">${completedCnt}</div>
+              <div class="proc-kpi-sub">Posted to Raw_data (Main Stock)</div>
+            </div>
+            <div class="proc-kpi-card">
+              <div class="proc-kpi-label">Total Completed Receiving Value</div>
+              <div class="proc-kpi-val" style="color:var(--brand-dark);">${formatProcMoney(completedVal)}</div>
+              <div class="proc-kpi-sub">Verified &amp; locked receipts</div>
+            </div>
+          `;
+        }
+
+        thead.innerHTML = `
+          <tr>
+            <th>Receiving ID</th>
+            <th>Receiving Date</th>
+            <th>Source Order</th>
+            <th>HO Item ID &amp; Device</th>
+            <th>Company</th>
+            <th class="center">Recv Qty</th>
+            <th class="right">Total Value</th>
+            <th>Allocated Item IDs</th>
+            <th>Stock-In Txn ID</th>
+            <th class="center">Effective Status</th>
+            <th class="center no-print">Actions</th>
+          </tr>
+        `;
+
+        const filtered = rcFyList.filter(r => {
+          if (activeStatusFilter && r.effectiveStatus !== activeStatusFilter) return false;
+          if (searchQ) {
+            const hay = `${r.receivingId} ${r.sourceType} ${r.sourceRecordId} ${r.hoItemId} ${r.deviceName} ${r.company} ${r.stockInTxnId} ${r.remarks} ${r.effectiveStatus}`.toLowerCase();
+            if (!hay.includes(searchQ)) return false;
+          }
+          return true;
+        });
+
+        if (filtered.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="11" class="empty">No Goods Receiving records found for this filter.</td></tr>`;
+          return;
+        }
+
+        tbody.innerHTML = filtered.map(rec => {
+          const isCancelled = rec.effectiveStatus === 'Cancelled';
+          const isCompleted = rec.effectiveStatus === 'Completed';
+          const allocSummary = (rec.allocations || [])
+            .filter(a => a && Number(a.quantity) > 0)
+            .map(a => {
+              const inv = (state.inventory || []).find(i => String(i.itemId) === String(a.itemId));
+              const label = inv ? `${inv.deviceName} (${a.itemId})` : a.itemId;
+              return `<span class="badge" style="background:var(--gray-100); color:var(--gray-800); margin:1px 2px; display:inline-block;">${escHtml(label)}: <b>${a.quantity}</b></span>`;
+            }).join('') || '<span class="text-xs text-gray">Unallocated</span>';
+
+          return `
+            <tr style="${isCancelled ? 'opacity:0.6;' : ''}">
+              <td class="mono text-xs font-semibold">${escHtml(rec.receivingId)}</td>
+              <td>${escHtml(rec.receivingDate || '-')}</td>
+              <td>
+                <div class="text-xs font-semibold">${escHtml(rec.sourceType)}</div>
+                <div class="mono text-xs text-gray">${escHtml(rec.sourceRecordId)}</div>
+              </td>
+              <td>
+                <div class="font-semibold">${escHtml(rec.deviceName)}</div>
+                <div class="mono text-xs text-gray">${escHtml(rec.hoItemId || '-')}</div>
+              </td>
+              <td>${escHtml(rec.company || '-')}</td>
+              <td class="center font-semibold">${Number(rec.quantity || 0).toLocaleString()}</td>
+              <td class="right font-semibold" style="color:var(--brand-dark);">${formatProcMoney(rec.totalValue)}</td>
+              <td>${allocSummary}</td>
+              <td class="mono text-xs">${rec.stockInTxnId ? `<span style="color:#065f46; font-weight:700;">${escHtml(rec.stockInTxnId)}</span>` : '<span class="text-gray">-</span>'}</td>
+              <td class="center">${getProcStatusBadgeHtml(rec.effectiveStatus)}</td>
+              <td class="center no-print" style="white-space:nowrap;">
+                <button class="btn ${isCompleted ? 'btn-outline' : 'btn-brand'} btn-xs" onclick="openReceivingModal('${escHtml(rec.receivingId)}', '', '')">
+                  ${isCompleted ? 'View' : (isCancelled ? 'Edit' : 'Complete / Edit')}
+                </button>
+                ${(!isCompleted && !isCancelled) ? `<button class="btn btn-outline btn-xs" style="color:#b45309;" onclick="handleCancelProcurementRecord('receiving', '${escHtml(rec.receivingId)}', '${escHtml(rec.receivingId)}')">Cancel</button>` : ''}
+                ${!isCompleted ? `<button class="btn btn-ghost-danger btn-xs" onclick="handleDeleteReceiving('${escHtml(rec.receivingId)}')">Delete</button>` : ''}
+              </td>
+            </tr>
+          `;
+        }).join('');
+      }
+    }
+
+    // ── Quick Item Picker (Rule 0.5) for E-Bidding & Specific Purchase ──
+    function filterProcItemPicker(prefix, query) {
+      const resultsEl = document.getElementById(`${prefix}-item-picker-results`);
+      if (!resultsEl) return;
+      const q = String(query || '').trim().toLowerCase();
+      if (!q) {
+        resultsEl.classList.add('hidden');
+        return;
+      }
+      const matches = (state.inventory || []).filter(item => {
+        const hay = `${item.deviceName || ''} ${item.hoItemId || ''} ${item.itemId || ''} ${item.company || ''}`.toLowerCase();
+        return hay.includes(q);
+      }).slice(0, 12);
+
+      if (matches.length === 0) {
+        resultsEl.innerHTML = `<div class="search-item text-xs text-gray">No matching inventory item found</div>`;
+        resultsEl.classList.remove('hidden');
+        return;
+      }
+
+      resultsEl.innerHTML = matches.map(item => {
+        const parentTag = item.isParent ? `<span class="badge" style="background:#e0e7ff; color:#3730a3; margin-left:4px;">GROUP</span>` : '';
+        return `
+          <div class="search-item" onclick="selectProcItemPicker('${escHtml(prefix)}', '${escHtml(item.itemId)}')">
+            <div>
+              <div class="font-semibold text-sm">${escHtml(item.deviceName)}${parentTag}</div>
+              <div class="text-xs text-gray">HO ID: <span class="mono">${escHtml(item.hoItemId || '-')}</span> | Company: ${escHtml(item.company || '-')}</div>
+            </div>
+            <div class="right text-xs font-semibold" style="color:var(--brand-dark);">฿${Number(item.buyPrice || 0).toLocaleString()}</div>
+          </div>
+        `;
+      }).join('');
+      resultsEl.classList.remove('hidden');
+    }
+
+    function selectProcItemPicker(prefix, itemId) {
+      const item = (state.inventory || []).find(i => String(i.itemId) === String(itemId));
+      const resultsEl = document.getElementById(`${prefix}-item-picker-results`);
+      if (resultsEl) resultsEl.classList.add('hidden');
+      const pickerInput = document.getElementById(`${prefix}-item-picker-input`);
+      if (pickerInput) pickerInput.value = '';
+      if (!item) return;
+
+      let hoId = item.hoItemId || '';
+      let company = item.company || '';
+      if ((!hoId || !company) && item.parentId) {
+        const parent = (state.inventory || []).find(p => String(p.itemId) === String(item.parentId));
+        if (parent) {
+          if (!hoId) hoId = parent.hoItemId || '';
+          if (!company) company = parent.company || '';
+        }
+      }
+
+      const hoidEl = document.getElementById(`${prefix}-modal-hoid`);
+      const devEl = document.getElementById(`${prefix}-modal-device`);
+      const priceEl = document.getElementById(`${prefix}-modal-price`);
+      const compEl = document.getElementById(`${prefix}-modal-company`);
+
+      if (hoidEl) hoidEl.value = hoId;
+      if (devEl) devEl.value = item.deviceName || '';
+      if (priceEl) priceEl.value = Number(item.buyPrice) || 0;
+      if (compEl) compEl.value = company;
+
+      if (prefix === 'eb') updateEBiddingModalCalc();
+      if (prefix === 'sp') updateSpecificPurchaseModalCalc();
+    }
+
+    // Hide item picker dropdowns when clicking outside
+    document.addEventListener('click', function(e) {
+      ['eb', 'sp'].forEach(prefix => {
+        const res = document.getElementById(`${prefix}-item-picker-results`);
+        const inp = document.getElementById(`${prefix}-item-picker-input`);
+        if (res && !res.classList.contains('hidden')) {
+          if (!res.contains(e.target) && e.target !== inp) {
+            res.classList.add('hidden');
+          }
+        }
+      });
+      const rcRes = document.getElementById('rc-alloc-search-results');
+      const rcInp = document.getElementById('rc-alloc-search-input');
+      if (rcRes && !rcRes.classList.contains('hidden')) {
+        if (!rcRes.contains(e.target) && e.target !== rcInp) {
+          rcRes.classList.add('hidden');
+        }
+      }
+    });
+
+    // ── 1. E-Bidding Modal Functions ──
+    function openEBiddingModal(ebiddingId) {
+      recalculateProcurementState();
+      const id = String(ebiddingId || '').trim();
+      const existing = id ? (state.ebiddings || []).find(x => x.ebiddingId === id) : null;
+
+      document.getElementById('eb-modal-id').value = existing ? existing.ebiddingId : '';
+      document.getElementById('eb-modal-title').textContent = existing ? `Edit E-Bidding Plan (${existing.ebiddingId})` : 'Add E-Bidding Plan';
+      document.getElementById('eb-item-picker-input').value = '';
+      document.getElementById('eb-item-picker-results').classList.add('hidden');
+
+      const defaultFy = (state.procurementFy && state.procurementFy !== 'All') ? state.procurementFy : getCurrentFiscalYearClient();
+      document.getElementById('eb-modal-fy').value = existing ? existing.fiscalYear : defaultFy;
+      document.getElementById('eb-modal-status').value = existing ? (existing.manualStatus || 'Planned') : 'Planned';
+      document.getElementById('eb-modal-hoid').value = existing ? (existing.hoItemId || '') : '';
+      document.getElementById('eb-modal-device').value = existing ? (existing.deviceName || '') : '';
+      document.getElementById('eb-modal-price').value = existing ? existing.unitPrice : '';
+      document.getElementById('eb-modal-qty').value = existing ? existing.budgetPlanQty : '';
+      document.getElementById('eb-modal-company').value = existing ? (existing.company || '') : '';
+      document.getElementById('eb-modal-remarks').value = existing ? (existing.remarks || '') : '';
+
+      updateEBiddingModalCalc();
+      openModal('modal-ebidding');
+    }
+
+    function updateEBiddingModalCalc() {
+      const price = Number(document.getElementById('eb-modal-price')?.value) || 0;
+      const qty = Number(document.getElementById('eb-modal-qty')?.value) || 0;
+      const totEl = document.getElementById('eb-modal-total');
+      if (totEl) totEl.value = formatProcMoney(price * qty);
+    }
+
+    function saveEBiddingModal() {
+      const ebiddingId = document.getElementById('eb-modal-id').value.trim();
+      const fiscalYear = document.getElementById('eb-modal-fy').value.trim() || getCurrentFiscalYearClient();
+      const manualStatus = document.getElementById('eb-modal-status').value;
+      const hoItemId = document.getElementById('eb-modal-hoid').value.trim();
+      const deviceName = document.getElementById('eb-modal-device').value.trim();
+      const unitPrice = Number(document.getElementById('eb-modal-price').value) || 0;
+      const budgetPlanQty = Number(document.getElementById('eb-modal-qty').value) || 0;
+      const company = document.getElementById('eb-modal-company').value.trim();
+      const remarks = document.getElementById('eb-modal-remarks').value.trim();
+
+      if (!deviceName) { showToast('Device Name is required'); return; }
+      if (budgetPlanQty <= 0) { showToast('Budget Plan Quantity must be greater than 0'); return; }
+
+      if (ebiddingId && manualStatus === 'Cancelled') {
+        const existing = (state.ebiddings || []).find(x => x.ebiddingId === ebiddingId);
+        if (existing && existing.linkedContractIds && existing.linkedContractIds.length > 0) {
+          showToast('Cannot cancel E-Bidding while a non-cancelled Contract is linked to it.');
+          return;
+        }
+      }
+
+      const payload = {
+        ebiddingId,
+        fiscalYear,
+        manualStatus,
+        hoItemId,
+        deviceName,
+        unitPrice,
+        budgetPlanQty,
+        company,
+        remarks
+      };
+
+      closeModal();
+      setSyncIndicator(true);
+      const action = ebiddingId ? 'editEBidding' : 'addEBidding';
+
+      if (isApiConfigured()) {
+        callApi(action, payload)
+          .then(() => {
+            setSyncIndicator(false);
+            showToast(ebiddingId ? 'E-Bidding updated!' : 'E-Bidding added!');
+            fetchDataFromServer();
+          })
+          .catch(err => {
+            setSyncIndicator(false);
+            showToast('Failed: ' + (err.message || err));
+          });
+      } else {
+        setSyncIndicator(false);
+        if (ebiddingId) {
+          const idx = state.ebiddings.findIndex(x => x.ebiddingId === ebiddingId);
+          if (idx !== -1) Object.assign(state.ebiddings[idx], payload);
+        } else {
+          payload.ebiddingId = generateClientProcurementId('EB');
+          state.ebiddings.unshift(payload);
+        }
+        recalculateProcurementState();
+        renderProcurementTab();
+        showToast(ebiddingId ? 'E-Bidding updated (Mock)' : 'E-Bidding added (Mock)');
+      }
+    }
+
+    function handleDeleteEBidding(ebiddingId) {
+      const linkedCts = (state.contracts || []).filter(c => c.linkedEBiddingId === ebiddingId);
+      if (linkedCts.length > 0) {
+        showToast(`Cannot delete E-Bidding because Contract (${linkedCts[0].contractId}) is linked to it.`);
+        return;
+      }
+      requireDeletePasscode(`Delete E-Bidding record "${ebiddingId}"?`, () => {
+        setSyncIndicator(true);
+        if (isApiConfigured()) {
+          callApi('deleteEBidding', { ebiddingId })
+            .then(() => {
+              setSyncIndicator(false);
+              showToast('E-Bidding deleted');
+              fetchDataFromServer();
+            })
+            .catch(err => {
+              setSyncIndicator(false);
+              showToast('Failed: ' + (err.message || err));
+            });
+        } else {
+          setSyncIndicator(false);
+          state.ebiddings = (state.ebiddings || []).filter(x => x.ebiddingId !== ebiddingId);
+          recalculateProcurementState();
+          renderProcurementTab();
+          showToast('E-Bidding deleted (Mock)');
+        }
+      });
+    }
+
+    // ── 2. Contract Modal Functions ──
+    function openContractModal(contractId, prefillEBiddingId) {
+      recalculateProcurementState();
+      const id = String(contractId || '').trim();
+      const existing = id ? (state.contracts || []).find(x => x.contractId === id) : null;
+      const targetEbId = existing ? existing.linkedEBiddingId : String(prefillEBiddingId || '').trim();
+
+      document.getElementById('ct-modal-id').value = existing ? existing.contractId : '';
+      document.getElementById('ct-modal-title').textContent = existing ? `Edit Contract (${existing.contractId})` : 'Create Contract';
+
+      const ebSelect = document.getElementById('ct-modal-ebidding-id');
+      const eligibleEbs = (state.ebiddings || []).filter(eb => eb.effectiveStatus !== 'Cancelled' || eb.ebiddingId === targetEbId);
+      ebSelect.innerHTML = `<option value="">-- Select E-Bidding Record --</option>` +
+        eligibleEbs.map(eb => `<option value="${escHtml(eb.ebiddingId)}"${eb.ebiddingId === targetEbId ? ' selected' : ''}>${escHtml(eb.ebiddingId)} — [FY ${escHtml(eb.fiscalYear)}] ${escHtml(eb.deviceName)} (Qty: ${eb.budgetPlanQty})</option>`).join('');
+
+      if (existing) {
+        document.getElementById('ct-modal-fy').value = existing.fiscalYear || '';
+        document.getElementById('ct-modal-hoid').value = existing.hoItemId || '';
+        document.getElementById('ct-modal-device').value = existing.deviceName || '';
+        document.getElementById('ct-modal-number').value = existing.contractNumber || '';
+        document.getElementById('ct-modal-start').value = existing.contractStartDate || getToday();
+        document.getElementById('ct-modal-end').value = existing.contractEndDate || '';
+        document.getElementById('ct-modal-price').value = existing.unitPrice;
+        document.getElementById('ct-modal-qty').value = existing.totalContractQty;
+        document.getElementById('ct-modal-company').value = existing.company || '';
+        document.getElementById('ct-modal-status').value = existing.manualStatus === 'Cancelled' ? 'Cancelled' : '';
+        document.getElementById('ct-modal-remarks').value = existing.remarks || '';
+      } else {
+        const todayStr = getToday();
+        const nextYr = new Date();
+        nextYr.setFullYear(nextYr.getFullYear() + 1);
+        const nextYrStr = nextYr.toISOString().slice(0, 10);
+        document.getElementById('ct-modal-number').value = '';
+        document.getElementById('ct-modal-start').value = todayStr;
+        document.getElementById('ct-modal-end').value = nextYrStr;
+        document.getElementById('ct-modal-status').value = '';
+        document.getElementById('ct-modal-remarks').value = '';
+        onContractEBiddingSelect(targetEbId);
+      }
+
+      updateContractModalCalc();
+      openModal('modal-contract');
+    }
+
+    function onContractEBiddingSelect(ebiddingId) {
+      const eb = (state.ebiddings || []).find(x => x.ebiddingId === String(ebiddingId || '').trim());
+      document.getElementById('ct-modal-fy').value = eb ? eb.fiscalYear : '';
+      document.getElementById('ct-modal-hoid').value = eb ? (eb.hoItemId || '') : '';
+      document.getElementById('ct-modal-device').value = eb ? (eb.deviceName || '') : '';
+      if (eb) {
+        document.getElementById('ct-modal-price').value = eb.unitPrice;
+        document.getElementById('ct-modal-qty').value = eb.budgetPlanQty;
+        document.getElementById('ct-modal-company').value = eb.company || '';
+      }
+      updateContractModalCalc();
+    }
+
+    function updateContractModalCalc() {
+      const contractId = document.getElementById('ct-modal-id').value.trim();
+      const totalQty = Number(document.getElementById('ct-modal-qty')?.value) || 0;
+      const existing = contractId ? (state.contracts || []).find(x => x.contractId === contractId) : null;
+      const orderedQty = existing ? (Number(existing.orderedQty) || 0) : 0;
+      const rem = totalQty - orderedQty;
+      const remEl = document.getElementById('ct-modal-remaining');
+      if (remEl) {
+        remEl.value = `${rem.toLocaleString()} (Ordered: ${orderedQty.toLocaleString()})`;
+        remEl.style.color = rem < 0 ? 'var(--red)' : 'var(--gray-900)';
+      }
+    }
+
+    function saveContractModal() {
+      const contractId = document.getElementById('ct-modal-id').value.trim();
+      const linkedEBiddingId = document.getElementById('ct-modal-ebidding-id').value.trim();
+      const contractNumber = document.getElementById('ct-modal-number').value.trim();
+      const contractStartDate = document.getElementById('ct-modal-start').value;
+      const contractEndDate = document.getElementById('ct-modal-end').value;
+      const unitPrice = Number(document.getElementById('ct-modal-price').value) || 0;
+      const totalContractQty = Number(document.getElementById('ct-modal-qty').value) || 0;
+      const company = document.getElementById('ct-modal-company').value.trim();
+      const manualStatus = document.getElementById('ct-modal-status').value;
+      const remarks = document.getElementById('ct-modal-remarks').value.trim();
+
+      if (!linkedEBiddingId) { showToast('Please select a Linked E-Bidding Record'); return; }
+      if (!contractNumber) { showToast('Contract Number is required'); return; }
+      if (!contractStartDate || !contractEndDate) { showToast('Contract Start Date and End Date are required'); return; }
+      if (contractEndDate < contractStartDate) { showToast('Contract End Date must be on or after Start Date'); return; }
+      if (totalContractQty <= 0) { showToast('Total Contract Quantity must be greater than 0'); return; }
+
+      if (contractId && manualStatus === 'Cancelled') {
+        const activeLots = (state.contractPOs || []).filter(po => po.linkedContractId === contractId && po.effectiveStatus !== 'Cancelled');
+        if (activeLots.length > 0) {
+          showToast(`Cannot cancel Contract while it has non-cancelled PO lots (${activeLots.length} active lot(s)).`);
+          return;
+        }
+      }
+
+      const payload = {
+        contractId,
+        linkedEBiddingId,
+        contractNumber,
+        contractStartDate,
+        contractEndDate,
+        unitPrice,
+        totalContractQty,
+        company,
+        manualStatus,
+        remarks
+      };
+
+      closeModal();
+      setSyncIndicator(true);
+      const action = contractId ? 'editContract' : 'addContract';
+
+      if (isApiConfigured()) {
+        callApi(action, payload)
+          .then(() => {
+            setSyncIndicator(false);
+            showToast(contractId ? 'Contract updated!' : 'Contract created!');
+            fetchDataFromServer();
+          })
+          .catch(err => {
+            setSyncIndicator(false);
+            showToast('Failed: ' + (err.message || err));
+          });
+      } else {
+        setSyncIndicator(false);
+        if (contractId) {
+          const idx = state.contracts.findIndex(x => x.contractId === contractId);
+          if (idx !== -1) Object.assign(state.contracts[idx], payload);
+        } else {
+          payload.contractId = generateClientProcurementId('CT');
+          state.contracts.unshift(payload);
+        }
+        recalculateProcurementState();
+        renderProcurementTab();
+        showToast(contractId ? 'Contract updated (Mock)' : 'Contract created (Mock)');
+      }
+    }
+
+    function handleDeleteContract(contractId) {
+      const linkedLots = (state.contractPOs || []).filter(po => po.linkedContractId === contractId);
+      if (linkedLots.length > 0) {
+        showToast(`Cannot delete Contract because PO lot (${linkedLots[0].poId}) is linked to it.`);
+        return;
+      }
+      requireDeletePasscode(`Delete Contract "${contractId}"?`, () => {
+        setSyncIndicator(true);
+        if (isApiConfigured()) {
+          callApi('deleteContract', { contractId })
+            .then(() => {
+              setSyncIndicator(false);
+              showToast('Contract deleted');
+              fetchDataFromServer();
+            })
+            .catch(err => {
+              setSyncIndicator(false);
+              showToast('Failed: ' + (err.message || err));
+            });
+        } else {
+          setSyncIndicator(false);
+          state.contracts = (state.contracts || []).filter(x => x.contractId !== contractId);
+          recalculateProcurementState();
+          renderProcurementTab();
+          showToast('Contract deleted (Mock)');
+        }
+      });
+    }
+
+    // ── 3. Contract Purchase Order (PO Lot) Modal Functions ──
+    function openContractPOModal(poId, prefillContractId) {
+      recalculateProcurementState();
+      const id = String(poId || '').trim();
+      const existing = id ? (state.contractPOs || []).find(x => x.poId === id) : null;
+      const targetCtId = existing ? existing.linkedContractId : String(prefillContractId || '').trim();
+
+      document.getElementById('po-modal-id').value = existing ? existing.poId : '';
+      document.getElementById('po-modal-title').textContent = existing ? `Edit Contract PO Lot (${existing.poId})` : 'Create Contract Purchase Order (Lot)';
+
+      const ctSelect = document.getElementById('po-modal-contract-id');
+      const eligibleCts = (state.contracts || []).filter(ct => ct.effectiveStatus === 'In Progress' || ct.contractId === targetCtId);
+      ctSelect.innerHTML = `<option value="">-- Select Active Contract --</option>` +
+        eligibleCts.map(ct => `<option value="${escHtml(ct.contractId)}"${ct.contractId === targetCtId ? ' selected' : ''}>${escHtml(ct.contractNumber)} (${escHtml(ct.contractId)}) — ${escHtml(ct.deviceName)} [Rem: ${ct.remainingQty}/${ct.totalContractQty}]</option>`).join('');
+
+      document.getElementById('po-modal-date').value = existing ? (existing.poIssueDate || getToday()) : getToday();
+      document.getElementById('po-modal-status').value = existing && existing.manualStatus === 'Cancelled' ? 'Cancelled' : '';
+      document.getElementById('po-modal-remarks').value = existing ? (existing.remarks || '') : '';
+
+      if (existing) {
+        document.getElementById('po-modal-price').value = existing.unitPrice;
+        document.getElementById('po-modal-qty').value = existing.orderedQty;
+        onContractPOContractSelect(targetCtId, true);
+      } else {
+        document.getElementById('po-modal-qty').value = '';
+        onContractPOContractSelect(targetCtId, false);
+      }
+
+      openModal('modal-contract-po');
+    }
+
+    function onContractPOContractSelect(contractId, keepPrice) {
+      const ct = (state.contracts || []).find(x => x.contractId === String(contractId || '').trim());
+      document.getElementById('po-disp-contract-no').textContent = ct ? ct.contractNumber : '-';
+      document.getElementById('po-disp-period').textContent = ct ? `${ct.contractStartDate || '-'} to ${ct.contractEndDate || '-'}` : '-';
+      document.getElementById('po-disp-company').textContent = ct ? (ct.company || '-') : '-';
+      document.getElementById('po-disp-hoid').textContent = ct ? (ct.hoItemId || '-') : '-';
+      document.getElementById('po-disp-device').textContent = ct ? (ct.deviceName || '-') : '-';
+      document.getElementById('po-disp-total-qty').textContent = ct ? `${ct.totalContractQty} (Rem: ${ct.remainingQty})` : '0';
+
+      if (ct && !keepPrice) {
+        document.getElementById('po-modal-price').value = ct.unitPrice;
+      }
+      updateContractPOModalCalc();
+    }
+
+    function updateContractPOModalCalc() {
+      const editingPoId = document.getElementById('po-modal-id').value.trim();
+      const contractId = document.getElementById('po-modal-contract-id').value.trim();
+      const price = Number(document.getElementById('po-modal-price')?.value) || 0;
+      const qty = Number(document.getElementById('po-modal-qty')?.value) || 0;
+      const valEl = document.getElementById('po-modal-value');
+      const remEl = document.getElementById('po-modal-remaining');
+      const warnEl = document.getElementById('po-modal-neg-warning');
+
+      if (valEl) valEl.value = formatProcMoney(price * qty);
+
+      const ct = (state.contracts || []).find(x => x.contractId === contractId);
+      if (!ct) {
+        if (remEl) remEl.value = '0';
+        if (warnEl) warnEl.classList.add('hidden');
+        return;
+      }
+
+      const otherOrd = (state.contractPOs || [])
+        .filter(po => po.linkedContractId === contractId && po.poId !== editingPoId && po.effectiveStatus !== 'Cancelled')
+        .reduce((s, po) => s + (Number(po.orderedQty) || 0), 0);
+
+      const remBefore = ct.totalContractQty - otherOrd;
+      const remAfter = remBefore - qty;
+
+      if (remEl) {
+        remEl.value = `${remAfter.toLocaleString()} (Before: ${remBefore.toLocaleString()})`;
+        remEl.style.color = remAfter < 0 ? 'var(--red)' : 'var(--gray-900)';
+      }
+
+      if (warnEl) {
+        if (qty > 0 && remAfter < 0) {
+          warnEl.textContent = `Warning: Ordered quantity (${qty}) exceeds the contract's remaining quantity (${remBefore}), resulting in a negative balance (${remAfter}). Confirmation will be required on save.`;
+          warnEl.classList.remove('hidden');
+        } else {
+          warnEl.classList.add('hidden');
+        }
+      }
+    }
+
+    function saveContractPOModal() {
+      const poId = document.getElementById('po-modal-id').value.trim();
+      const linkedContractId = document.getElementById('po-modal-contract-id').value.trim();
+      const poIssueDate = document.getElementById('po-modal-date').value || getToday();
+      const unitPrice = Number(document.getElementById('po-modal-price').value) || 0;
+      const orderedQty = Number(document.getElementById('po-modal-qty').value) || 0;
+      const manualStatus = document.getElementById('po-modal-status').value;
+      const remarks = document.getElementById('po-modal-remarks').value.trim();
+
+      if (!linkedContractId) { showToast('Please select a Linked Contract'); return; }
+      if (orderedQty <= 0) { showToast('Ordered Quantity must be greater than 0'); return; }
+
+      const ct = (state.contracts || []).find(x => x.contractId === linkedContractId);
+      if (!ct) { showToast('Selected Contract not found'); return; }
+
+      if (poId && manualStatus === 'Cancelled') {
+        const existingPo = (state.contractPOs || []).find(x => x.poId === poId);
+        if (existingPo && existingPo.receivingStatus === 'Completed') {
+          showToast(`Cannot cancel this Contract PO because its Receiving (${existingPo.linkedReceivingId}) is already Completed.`);
+          return;
+        }
+      }
+
+      const otherOrd = (state.contractPOs || [])
+        .filter(po => po.linkedContractId === linkedContractId && po.poId !== poId && po.effectiveStatus !== 'Cancelled')
+        .reduce((s, po) => s + (Number(po.orderedQty) || 0), 0);
+      const remBefore = ct.totalContractQty - otherOrd;
+      const remAfter = remBefore - orderedQty;
+
+      const warnings = [];
+      if (remAfter < 0 && manualStatus !== 'Cancelled') {
+        warnings.push(`• Ordered quantity (${orderedQty}) exceeds remaining contract quantity (${remBefore}) by ${orderedQty - remBefore} (Remaining after lot: ${remAfter}).`);
+      }
+      if (ct.contractEndDate && poIssueDate > ct.contractEndDate && manualStatus !== 'Cancelled') {
+        warnings.push(`• PO Issue Date (${poIssueDate}) is after Contract End Date (${ct.contractEndDate}).`);
+      }
+
+      if (warnings.length > 0) {
+        if (!confirm(`Contract PO Warning:\n\n${warnings.join('\n')}\n\nDo you want to proceed?`)) {
+          return;
+        }
+      }
+
+      const payload = {
+        poId,
+        linkedContractId,
+        poIssueDate,
+        unitPrice,
+        orderedQty,
+        manualStatus,
+        remarks
+      };
+
+      closeModal();
+      setSyncIndicator(true);
+      const action = poId ? 'editContractPO' : 'submitContractPO';
+
+      if (isApiConfigured()) {
+        callApi(action, payload)
+          .then(() => {
+            setSyncIndicator(false);
+            showToast(poId ? 'Contract PO updated!' : 'Contract PO created!');
+            fetchDataFromServer();
+          })
+          .catch(err => {
+            setSyncIndicator(false);
+            showToast('Failed: ' + (err.message || err));
+          });
+      } else {
+        setSyncIndicator(false);
+        if (poId) {
+          const idx = state.contractPOs.findIndex(x => x.poId === poId);
+          if (idx !== -1) Object.assign(state.contractPOs[idx], payload);
+        } else {
+          payload.poId = generateClientProcurementId('PO');
+          state.contractPOs.unshift(payload);
+        }
+        recalculateProcurementState();
+        renderProcurementTab();
+        showToast(poId ? 'Contract PO updated (Mock)' : 'Contract PO created (Mock)');
+      }
+    }
+
+    function handleDeleteContractPO(poId) {
+      const linkedRecs = (state.receivings || []).filter(r => r.sourceType === 'Contract PO' && r.sourceRecordId === poId && r.effectiveStatus !== 'Cancelled');
+      if (linkedRecs.length > 0) {
+        showToast(`Cannot delete Contract PO because Receiving (${linkedRecs[0].receivingId}) is linked to it.`);
+        return;
+      }
+      requireDeletePasscode(`Delete Contract PO "${poId}"?`, () => {
+        setSyncIndicator(true);
+        if (isApiConfigured()) {
+          callApi('deleteContractPO', { poId })
+            .then(() => {
+              setSyncIndicator(false);
+              showToast('Contract PO deleted');
+              fetchDataFromServer();
+            })
+            .catch(err => {
+              setSyncIndicator(false);
+              showToast('Failed: ' + (err.message || err));
+            });
+        } else {
+          setSyncIndicator(false);
+          state.contractPOs = (state.contractPOs || []).filter(x => x.poId !== poId);
+          recalculateProcurementState();
+          renderProcurementTab();
+          showToast('Contract PO deleted (Mock)');
+        }
+      });
+    }
+
+    // ── 4. Specific-Method Purchase Modal Functions ──
+    function openSpecificPurchaseModal(spId) {
+      recalculateProcurementState();
+      const id = String(spId || '').trim();
+      const existing = id ? (state.specificPurchases || []).find(x => x.spId === id) : null;
+      const todayStr = getToday();
+
+      document.getElementById('sp-modal-id').value = existing ? existing.spId : '';
+      document.getElementById('sp-modal-title').textContent = existing ? `Edit Specific Purchase (${existing.spId})` : 'Add Specific-Method Purchase';
+      document.getElementById('sp-item-picker-input').value = '';
+      document.getElementById('sp-item-picker-results').classList.add('hidden');
+
+      document.getElementById('sp-modal-date').value = existing ? (existing.poIssueDate || todayStr) : todayStr;
+      document.getElementById('sp-modal-fy').value = existing ? existing.fiscalYear : deriveFiscalYearClient(todayStr);
+      document.getElementById('sp-modal-status').value = existing && existing.manualStatus === 'Cancelled' ? 'Cancelled' : '';
+      document.getElementById('sp-modal-hoid').value = existing ? (existing.hoItemId || '') : '';
+      document.getElementById('sp-modal-device').value = existing ? (existing.deviceName || '') : '';
+      document.getElementById('sp-modal-company').value = existing ? (existing.company || '') : '';
+      document.getElementById('sp-modal-price').value = existing ? existing.unitPrice : '';
+      document.getElementById('sp-modal-budget-qty').value = existing ? existing.budgetPlanQty : '';
+      document.getElementById('sp-modal-ordered-qty').value = existing ? existing.orderedQty : '';
+      document.getElementById('sp-modal-remarks').value = existing ? (existing.remarks || '') : '';
+
+      updateSpecificPurchaseModalCalc();
+      openModal('modal-specific-purchase');
+    }
+
+    function onSpecificPurchaseDateChange(dateStr) {
+      const fyEl = document.getElementById('sp-modal-fy');
+      if (fyEl && dateStr) {
+        fyEl.value = deriveFiscalYearClient(dateStr);
+      }
+      updateSpecificPurchaseModalCalc();
+    }
+
+    function updateSpecificPurchaseModalCalc() {
+      const editingSpId = document.getElementById('sp-modal-id').value.trim();
+      const fy = String(document.getElementById('sp-modal-fy')?.value || '').trim();
+      const hoId = String(document.getElementById('sp-modal-hoid')?.value || '').trim();
+      const dev = String(document.getElementById('sp-modal-device')?.value || '').trim();
+      const price = Number(document.getElementById('sp-modal-price')?.value) || 0;
+      const budgetQty = Number(document.getElementById('sp-modal-budget-qty')?.value) || 0;
+      const ordQty = Number(document.getElementById('sp-modal-ordered-qty')?.value) || 0;
+
+      const budgetValEl = document.getElementById('sp-modal-budget-val');
+      const ordValEl = document.getElementById('sp-modal-order-val');
+      const remEl = document.getElementById('sp-modal-remaining');
+      const warnEl = document.getElementById('sp-modal-neg-warning');
+
+      if (budgetValEl) budgetValEl.value = formatProcMoney(price * budgetQty);
+      if (ordValEl) ordValEl.value = formatProcMoney(price * ordQty);
+
+      const targetKey = (hoId || dev).toLowerCase();
+      const otherOrd = targetKey
+        ? (state.specificPurchases || [])
+            .filter(sp => sp.spId !== editingSpId && sp.effectiveStatus !== 'Cancelled' && String(sp.fiscalYear) === fy && String(sp.hoItemId || sp.deviceName || '').trim().toLowerCase() === targetKey)
+            .reduce((s, sp) => s + (Number(sp.orderedQty) || 0), 0)
+        : 0;
+
+      const totalOrdAfter = otherOrd + ordQty;
+      const remAfter = budgetQty - totalOrdAfter;
+
+      if (remEl) {
+        remEl.value = `${remAfter.toLocaleString()} (Prior FY Ord: ${otherOrd.toLocaleString()})`;
+        remEl.style.color = remAfter < 0 ? 'var(--red)' : 'var(--gray-900)';
+      }
+
+      if (warnEl) {
+        if (ordQty > 0 && remAfter < 0) {
+          warnEl.textContent = `Warning: Total ordered quantity (${totalOrdAfter}) for this item in FY ${fy} exceeds Budget Plan Quantity (${budgetQty}), resulting in a negative balance (${remAfter}). Confirmation will be required on save.`;
+          warnEl.classList.remove('hidden');
+        } else {
+          warnEl.classList.add('hidden');
+        }
+      }
+    }
+
+    function saveSpecificPurchaseModal() {
+      const spId = document.getElementById('sp-modal-id').value.trim();
+      const poIssueDate = document.getElementById('sp-modal-date').value || getToday();
+      const fiscalYear = document.getElementById('sp-modal-fy').value.trim() || deriveFiscalYearClient(poIssueDate);
+      const manualStatus = document.getElementById('sp-modal-status').value;
+      const hoItemId = document.getElementById('sp-modal-hoid').value.trim();
+      const deviceName = document.getElementById('sp-modal-device').value.trim();
+      const company = document.getElementById('sp-modal-company').value.trim();
+      const unitPrice = Number(document.getElementById('sp-modal-price').value) || 0;
+      const budgetPlanQty = Number(document.getElementById('sp-modal-budget-qty').value) || 0;
+      const orderedQty = Number(document.getElementById('sp-modal-ordered-qty').value) || 0;
+      const remarks = document.getElementById('sp-modal-remarks').value.trim();
+
+      if (!deviceName) { showToast('Device Name is required'); return; }
+      if (orderedQty <= 0) { showToast('Ordered Quantity must be greater than 0'); return; }
+
+      if (spId && manualStatus === 'Cancelled') {
+        const existingSp = (state.specificPurchases || []).find(x => x.spId === spId);
+        if (existingSp && existingSp.receivingStatus === 'Completed') {
+          showToast(`Cannot cancel this Specific Purchase because its Receiving (${existingSp.linkedReceivingId}) is already Completed.`);
+          return;
+        }
+      }
+
+      const targetKey = (hoItemId || deviceName).toLowerCase();
+      const otherOrd = (state.specificPurchases || [])
+        .filter(sp => sp.spId !== spId && sp.effectiveStatus !== 'Cancelled' && String(sp.fiscalYear) === fiscalYear && String(sp.hoItemId || sp.deviceName || '').trim().toLowerCase() === targetKey)
+        .reduce((s, sp) => s + (Number(sp.orderedQty) || 0), 0);
+
+      const totalOrdAfter = otherOrd + orderedQty;
+      const remAfter = budgetPlanQty - totalOrdAfter;
+
+      if (remAfter < 0 && manualStatus !== 'Cancelled') {
+        if (!confirm(`Warning: Total ordered quantity (${totalOrdAfter}) for "${deviceName}" in FY ${fiscalYear} exceeds the Budget Plan Quantity (${budgetPlanQty}), resulting in a negative remaining balance (${remAfter}).\n\nDo you want to proceed?`)) {
+          return;
+        }
+      }
+
+      const payload = {
+        spId,
+        poIssueDate,
+        fiscalYear,
+        hoItemId,
+        deviceName,
+        unitPrice,
+        company,
+        budgetPlanQty,
+        orderedQty,
+        manualStatus,
+        remarks
+      };
+
+      closeModal();
+      setSyncIndicator(true);
+      const action = spId ? 'editSpecificPurchase' : 'submitSpecificPurchase';
+
+      if (isApiConfigured()) {
+        callApi(action, payload)
+          .then(() => {
+            setSyncIndicator(false);
+            showToast(spId ? 'Specific Purchase updated!' : 'Specific Purchase created!');
+            fetchDataFromServer();
+          })
+          .catch(err => {
+            setSyncIndicator(false);
+            showToast('Failed: ' + (err.message || err));
+          });
+      } else {
+        setSyncIndicator(false);
+        if (spId) {
+          const idx = state.specificPurchases.findIndex(x => x.spId === spId);
+          if (idx !== -1) Object.assign(state.specificPurchases[idx], payload);
+        } else {
+          payload.spId = generateClientProcurementId('SP');
+          state.specificPurchases.unshift(payload);
+        }
+        recalculateProcurementState();
+        renderProcurementTab();
+        showToast(spId ? 'Specific Purchase updated (Mock)' : 'Specific Purchase created (Mock)');
+      }
+    }
+
+    function handleDeleteSpecificPurchase(spId) {
+      const linkedRecs = (state.receivings || []).filter(r => r.sourceType === 'Specific Purchase' && r.sourceRecordId === spId && r.effectiveStatus !== 'Cancelled');
+      if (linkedRecs.length > 0) {
+        showToast(`Cannot delete Specific Purchase because Receiving (${linkedRecs[0].receivingId}) is linked to it.`);
+        return;
+      }
+      requireDeletePasscode(`Delete Specific Purchase "${spId}"?`, () => {
+        setSyncIndicator(true);
+        if (isApiConfigured()) {
+          callApi('deleteSpecificPurchase', { spId })
+            .then(() => {
+              setSyncIndicator(false);
+              showToast('Specific Purchase deleted');
+              fetchDataFromServer();
+            })
+            .catch(err => {
+              setSyncIndicator(false);
+              showToast('Failed: ' + (err.message || err));
+            });
+        } else {
+          setSyncIndicator(false);
+          state.specificPurchases = (state.specificPurchases || []).filter(x => x.spId !== spId);
+          recalculateProcurementState();
+          renderProcurementTab();
+          showToast('Specific Purchase deleted (Mock)');
+        }
+      });
+    }
+
+    // ── 5. Goods Receiving & Item ID Allocation Modal Functions ──
+    function openReceivingModal(receivingId, prefillSourceType, prefillSourceId) {
+      recalculateProcurementState();
+      const id = String(receivingId || '').trim();
+      const existing = id ? (state.receivings || []).find(x => x.receivingId === id) : null;
+      const isLocked = !!(existing && (existing.effectiveStatus === 'Completed' || existing.stockInTxnId));
+
+      document.getElementById('rc-modal-id').value = existing ? existing.receivingId : '';
+      document.getElementById('rc-modal-title').textContent = existing
+        ? (isLocked ? `Goods Receiving (${existing.receivingId}) — Completed` : `Edit / Complete Goods Receiving (${existing.receivingId})`)
+        : 'Record Goods Receiving & Stock-In Allocation';
+
+      const lockedBanner = document.getElementById('rc-locked-banner');
+      if (lockedBanner) {
+        if (isLocked) {
+          lockedBanner.innerHTML = `<strong>✓ Completed &amp; Locked:</strong> Stock-In Transaction <span class="mono font-semibold">${escHtml(existing.stockInTxnId)}</span> has been posted to <b>Main Stock</b>. To adjust quantities, use the Inventory Adjustment form.`;
+          lockedBanner.classList.remove('hidden');
+        } else {
+          lockedBanner.classList.add('hidden');
+        }
+      }
+
+      const srcTypeEl = document.getElementById('rc-modal-source-type');
+      const srcIdEl = document.getElementById('rc-modal-source-id');
+      const dateEl = document.getElementById('rc-modal-date');
+      const compEl = document.getElementById('rc-modal-company');
+      const qtyEl = document.getElementById('rc-modal-qty');
+      const priceEl = document.getElementById('rc-modal-price');
+      const statusEl = document.getElementById('rc-modal-status');
+      const remarksEl = document.getElementById('rc-modal-remarks');
+      const addBarEl = document.getElementById('rc-alloc-add-bar');
+      const btnDraft = document.getElementById('btn-rc-save-draft');
+      const btnComplete = document.getElementById('btn-rc-complete');
+
+      const srcType = existing ? existing.sourceType : (prefillSourceType || 'Contract PO');
+      const srcId = existing ? existing.sourceRecordId : (prefillSourceId || '');
+      srcTypeEl.value = srcType;
+      srcTypeEl.disabled = !!existing;
+      srcIdEl.disabled = !!existing;
+
+      onReceivingSourceTypeChange(srcType, srcId, existing ? existing.receivingId : '');
+
+      dateEl.value = existing ? (existing.receivingDate || getToday()) : getToday();
+      dateEl.disabled = isLocked;
+      compEl.disabled = isLocked;
+      qtyEl.disabled = isLocked;
+      priceEl.disabled = isLocked;
+      statusEl.disabled = isLocked;
+      remarksEl.disabled = isLocked;
+      if (addBarEl) addBarEl.classList.toggle('hidden', isLocked);
+      if (btnDraft) btnDraft.classList.toggle('hidden', isLocked);
+      if (btnComplete) btnComplete.classList.toggle('hidden', isLocked);
+
+      if (existing) {
+        document.getElementById('rc-modal-hoid').value = existing.hoItemId || '';
+        document.getElementById('rc-modal-device').value = existing.deviceName || '';
+        compEl.value = existing.company || '';
+        document.getElementById('rc-modal-source-qty').value = existing.sourceOrderedQty || existing.quantity || 0;
+        qtyEl.value = existing.quantity || 0;
+        priceEl.value = existing.unitPrice || 0;
+        statusEl.value = existing.manualStatus === 'Cancelled' ? 'Cancelled' : '';
+        remarksEl.value = existing.remarks || '';
+        state.receivingDraftAllocations = buildInitialReceivingAllocations(
+          existing.hoItemId,
+          existing.deviceName,
+          existing.quantity,
+          existing.allocations
+        );
+        updateReceivingModalCalc();
+        renderReceivingAllocationRows(isLocked);
+      } else {
+        statusEl.value = '';
+        remarksEl.value = '';
+        onReceivingSourceIdChange(srcId);
+      }
+
+      openModal('modal-receiving');
+    }
+
+    function onReceivingSourceTypeChange(sourceType, keepSourceId, editingReceivingId) {
+      const srcIdEl = document.getElementById('rc-modal-source-id');
+      if (!srcIdEl) return;
+      const editRecId = editingReceivingId || document.getElementById('rc-modal-id')?.value || '';
+
+      // Find source IDs that already have a non-cancelled Receiving record (excluding the one being edited)
+      const takenSourceIds = new Set(
+        (state.receivings || [])
+          .filter(r => r.sourceType === sourceType && r.effectiveStatus !== 'Cancelled' && r.receivingId !== editRecId)
+          .map(r => r.sourceRecordId)
+      );
+
+      let optionsHtml = `<option value="">-- Select Order --</option>`;
+      if (sourceType === 'Contract PO') {
+        const list = (state.contractPOs || []).filter(po => po.effectiveStatus !== 'Cancelled' && (!takenSourceIds.has(po.poId) || po.poId === keepSourceId));
+        optionsHtml += list.map(po => `<option value="${escHtml(po.poId)}"${po.poId === keepSourceId ? ' selected' : ''}>${escHtml(po.poId)} (${escHtml(po.contractNumber)}) — ${escHtml(po.deviceName)} [Qty: ${po.orderedQty}]</option>`).join('');
+      } else {
+        const list = (state.specificPurchases || []).filter(sp => sp.effectiveStatus !== 'Cancelled' && (!takenSourceIds.has(sp.spId) || sp.spId === keepSourceId));
+        optionsHtml += list.map(sp => `<option value="${escHtml(sp.spId)}"${sp.spId === keepSourceId ? ' selected' : ''}>${escHtml(sp.spId)} [FY ${escHtml(sp.fiscalYear)}] — ${escHtml(sp.deviceName)} [Qty: ${sp.orderedQty}]</option>`).join('');
+      }
+      srcIdEl.innerHTML = optionsHtml;
+
+      if (!editRecId) {
+        onReceivingSourceIdChange(keepSourceId || '');
+      }
+    }
+
+    function onReceivingSourceIdChange(sourceId) {
+      const sourceType = document.getElementById('rc-modal-source-type')?.value || 'Contract PO';
+      const id = String(sourceId || '').trim();
+      let src = null;
+      if (sourceType === 'Contract PO') {
+        src = (state.contractPOs || []).find(x => x.poId === id);
+      } else {
+        src = (state.specificPurchases || []).find(x => x.spId === id);
+      }
+
+      document.getElementById('rc-modal-hoid').value = src ? (src.hoItemId || '') : '';
+      document.getElementById('rc-modal-device').value = src ? (src.deviceName || '') : '';
+      document.getElementById('rc-modal-company').value = src ? (src.company || '') : '';
+      document.getElementById('rc-modal-source-qty').value = src ? (src.orderedQty || 0) : 0;
+      document.getElementById('rc-modal-qty').value = src ? (src.orderedQty || '') : '';
+      document.getElementById('rc-modal-price').value = src ? (src.unitPrice || 0) : '';
+
+      if (src) {
+        state.receivingDraftAllocations = buildInitialReceivingAllocations(
+          src.hoItemId,
+          src.deviceName,
+          src.orderedQty,
+          []
+        );
+      } else {
+        state.receivingDraftAllocations = [];
+      }
+
+      updateReceivingModalCalc();
+      renderReceivingAllocationRows(false);
+    }
+
+    function buildInitialReceivingAllocations(hoItemId, deviceName, targetQty, existingAllocs) {
+      const cleanHo = String(hoItemId || '').trim();
+      const cleanDev = String(deviceName || '').trim().toLowerCase();
+      const parentIdsMatchingHo = new Set(
+        (state.inventory || [])
+          .filter(i => i.isParent && cleanHo && String(i.hoItemId || '').trim() === cleanHo)
+          .map(i => String(i.itemId))
+      );
+
+      // Candidate non-parent inventory items matching HO Item ID (directly or via Parent Group)
+      let candidates = (state.inventory || []).filter(i => {
+        if (i.isParent) return false;
+        if (cleanHo) {
+          if (String(i.hoItemId || '').trim() === cleanHo) return true;
+          if (i.parentId && parentIdsMatchingHo.has(String(i.parentId))) return true;
+          return false;
+        }
+        return cleanDev && String(i.deviceName || '').trim().toLowerCase() === cleanDev;
+      });
+
+      const allocMap = {};
+      const rows = [];
+
+      if (Array.isArray(existingAllocs) && existingAllocs.length > 0) {
+        existingAllocs.forEach(a => {
+          if (!a || !a.itemId) return;
+          allocMap[String(a.itemId)] = Number(a.quantity) || 0;
+        });
+      }
+
+      candidates.forEach(c => {
+        const id = String(c.itemId);
+        const q = allocMap[id] !== undefined ? allocMap[id] : 0;
+        rows.push({
+          itemId: id,
+          deviceName: c.deviceName || id,
+          hoItemId: c.hoItemId || cleanHo,
+          quantity: q,
+          isMatchedCandidate: true
+        });
+        delete allocMap[id];
+      });
+
+      // Also include any manually added items from existingAllocs
+      Object.keys(allocMap).forEach(id => {
+        const inv = (state.inventory || []).find(i => String(i.itemId) === id);
+        rows.push({
+          itemId: id,
+          deviceName: inv ? inv.deviceName : id,
+          hoItemId: inv ? (inv.hoItemId || '') : '',
+          quantity: allocMap[id],
+          isMatchedCandidate: false
+        });
+      });
+
+      // If there is exactly 1 candidate and no existing allocations, auto-fill full targetQty
+      if (rows.length === 1 && (!existingAllocs || existingAllocs.length === 0)) {
+        rows[0].quantity = Number(targetQty) || 0;
+      }
+
+      return rows;
+    }
+
+    function renderReceivingAllocationRows(isLocked) {
+      const container = document.getElementById('rc-alloc-rows-container');
+      if (!container) return;
+      const rows = state.receivingDraftAllocations || [];
+
+      if (rows.length === 0) {
+        container.innerHTML = `<div class="text-xs text-gray">No matching Inventory Item IDs found automatically. Use the search box below to select child/standalone Inventory items for Stock-In.</div>`;
+        updateReceivingAllocBadge();
+        return;
+      }
+
+      container.innerHTML = rows.map((r, idx) => {
+        const inv = (state.inventory || []).find(i => String(i.itemId) === String(r.itemId));
+        const curMain = inv ? (Number(inv.mainStock) || 0) : 0;
+        return `
+          <div class="rc-alloc-row">
+            <div class="rc-alloc-item-info">
+              <div class="rc-alloc-item-title">${escHtml(r.deviceName)}</div>
+              <div class="rc-alloc-item-meta">Item ID: <span class="mono font-semibold">${escHtml(r.itemId)}</span> | HO ID: <span class="mono">${escHtml(r.hoItemId || '-')}</span> | Current Main Stock: <b>${curMain}</b></div>
+            </div>
+            <div class="flex items-center gap-2">
+              <label class="text-xs font-semibold text-gray-dark">Alloc Qty:</label>
+              <input type="number" class="form-input form-input-sm" style="width:95px; text-align:center; font-weight:700;" min="0" value="${Number(r.quantity) || 0}" ${isLocked ? 'disabled' : ''} oninput="onReceivingAllocQtyChange(${idx}, this.value)">
+              ${!isLocked ? `<button type="button" class="btn btn-ghost-danger btn-xs" title="Remove item" onclick="removeReceivingAllocRow(${idx})">✕</button>` : ''}
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      updateReceivingAllocBadge();
+    }
+
+    function onReceivingAllocQtyChange(idx, val) {
+      if (!state.receivingDraftAllocations || !state.receivingDraftAllocations[idx]) return;
+      state.receivingDraftAllocations[idx].quantity = Math.max(0, Number(val) || 0);
+      updateReceivingAllocBadge();
+    }
+
+    function removeReceivingAllocRow(idx) {
+      if (!state.receivingDraftAllocations) return;
+      state.receivingDraftAllocations.splice(idx, 1);
+      renderReceivingAllocationRows(false);
+    }
+
+    function updateReceivingAllocBadge() {
+      const badge = document.getElementById('rc-alloc-sum-badge');
+      if (!badge) return;
+      const targetQty = Number(document.getElementById('rc-modal-qty')?.value) || 0;
+      const allocSum = (state.receivingDraftAllocations || []).reduce((s, r) => s + (Number(r.quantity) || 0), 0);
+      badge.textContent = `Allocated: ${allocSum} / ${targetQty}`;
+      if (targetQty > 0 && allocSum === targetQty) {
+        badge.style.background = '#d1fae5';
+        badge.style.color = '#065f46';
+      } else {
+        badge.style.background = '#fef3c7';
+        badge.style.color = '#92400e';
+      }
+    }
+
+    function filterReceivingManualAllocSearch(query) {
+      const resEl = document.getElementById('rc-alloc-search-results');
+      if (!resEl) return;
+      const q = String(query || '').trim().toLowerCase();
+      if (!q) {
+        resEl.classList.add('hidden');
+        return;
+      }
+      const existingIds = new Set((state.receivingDraftAllocations || []).map(r => String(r.itemId)));
+      const matches = (state.inventory || []).filter(i => {
+        if (i.isParent) return false;
+        if (existingIds.has(String(i.itemId))) return false;
+        const hay = `${i.deviceName || ''} ${i.itemId || ''} ${i.hoItemId || ''}`.toLowerCase();
+        return hay.includes(q);
+      }).slice(0, 10);
+
+      if (matches.length === 0) {
+        resEl.innerHTML = `<div class="search-item text-xs text-gray">No other non-parent Inventory items match</div>`;
+        resEl.classList.remove('hidden');
+        return;
+      }
+
+      resEl.innerHTML = matches.map(i => `
+        <div class="search-item" onclick="addReceivingManualAllocItem('${escHtml(i.itemId)}')">
+          <div>
+            <div class="font-semibold text-sm">${escHtml(i.deviceName)}</div>
+            <div class="text-xs text-gray">Item ID: <span class="mono">${escHtml(i.itemId)}</span> | HO ID: <span class="mono">${escHtml(i.hoItemId || '-')}</span></div>
+          </div>
+          <span class="btn btn-outline btn-xs">+ Add</span>
+        </div>
+      `).join('');
+      resEl.classList.remove('hidden');
+    }
+
+    function addReceivingManualAllocItem(itemId) {
+      const resEl = document.getElementById('rc-alloc-search-results');
+      if (resEl) resEl.classList.add('hidden');
+      const inpEl = document.getElementById('rc-alloc-search-input');
+      if (inpEl) inpEl.value = '';
+
+      const inv = (state.inventory || []).find(i => String(i.itemId) === String(itemId));
+      if (!inv || inv.isParent) return;
+      if (!Array.isArray(state.receivingDraftAllocations)) state.receivingDraftAllocations = [];
+      if (state.receivingDraftAllocations.some(r => String(r.itemId) === String(itemId))) return;
+
+      const targetQty = Number(document.getElementById('rc-modal-qty')?.value) || 0;
+      const curSum = state.receivingDraftAllocations.reduce((s, r) => s + (Number(r.quantity) || 0), 0);
+      const rem = Math.max(0, targetQty - curSum);
+
+      state.receivingDraftAllocations.push({
+        itemId: String(inv.itemId),
+        deviceName: inv.deviceName,
+        hoItemId: inv.hoItemId || '',
+        quantity: rem,
+        isMatchedCandidate: false
+      });
+      renderReceivingAllocationRows(false);
+    }
+
+    function updateReceivingModalCalc() {
+      const srcQty = Number(document.getElementById('rc-modal-source-qty')?.value) || 0;
+      const qty = Number(document.getElementById('rc-modal-qty')?.value) || 0;
+      const price = Number(document.getElementById('rc-modal-price')?.value) || 0;
+      const valEl = document.getElementById('rc-modal-value');
+      const warnEl = document.getElementById('rc-qty-mismatch-warn');
+
+      if (valEl) valEl.value = formatProcMoney(qty * price);
+
+      // If single allocation row and user changes receiving qty, keep it synced if it matched before
+      if (state.receivingDraftAllocations && state.receivingDraftAllocations.length === 1) {
+        state.receivingDraftAllocations[0].quantity = qty;
+        renderReceivingAllocationRows(false);
+      } else {
+        updateReceivingAllocBadge();
+      }
+
+      if (warnEl) {
+        if (srcQty > 0 && qty > 0 && qty !== srcQty) {
+          warnEl.textContent = `Notice: Quantity on Receiving Document (${qty}) differs from Source Ordered Quantity (${srcQty}). Confirmation will be requested before saving.`;
+          warnEl.classList.remove('hidden');
+        } else {
+          warnEl.classList.add('hidden');
+        }
+      }
+    }
+
+    function saveReceivingModal(doComplete) {
+      const receivingId = document.getElementById('rc-modal-id').value.trim();
+      const sourceType = document.getElementById('rc-modal-source-type').value;
+      const sourceRecordId = document.getElementById('rc-modal-source-id').value.trim();
+      const receivingDate = document.getElementById('rc-modal-date').value || getToday();
+      const hoItemId = document.getElementById('rc-modal-hoid').value.trim();
+      const deviceName = document.getElementById('rc-modal-device').value.trim();
+      const company = document.getElementById('rc-modal-company').value.trim();
+      const sourceOrderedQty = Number(document.getElementById('rc-modal-source-qty').value) || 0;
+      const quantity = Number(document.getElementById('rc-modal-qty').value) || 0;
+      const unitPrice = Number(document.getElementById('rc-modal-price').value) || 0;
+      const manualStatus = document.getElementById('rc-modal-status').value;
+      const remarks = document.getElementById('rc-modal-remarks').value.trim();
+
+      if (!sourceRecordId) { showToast('Please select a Source Order'); return; }
+      if (quantity <= 0) { showToast('Quantity on Receiving Document must be greater than 0'); return; }
+
+      // Rule 5: One receipt per order check
+      const duplicateReceipt = (state.receivings || []).find(
+        r => r.sourceType === sourceType && r.sourceRecordId === sourceRecordId && r.effectiveStatus !== 'Cancelled' && r.receivingId !== receivingId
+      );
+      if (duplicateReceipt) {
+        showToast(`Order ${sourceRecordId} already has an active Receiving record (${duplicateReceipt.receivingId}). Only one receipt per order is allowed.`);
+        return;
+      }
+
+      const allocations = (state.receivingDraftAllocations || [])
+        .filter(a => a && a.itemId && Number(a.quantity) > 0)
+        .map(a => ({ itemId: String(a.itemId), quantity: Number(a.quantity) }));
+
+      if (doComplete) {
+        if (manualStatus === 'Cancelled') {
+          showToast('Cannot Complete & Post Stock-In while Manual Status is set to Cancelled.');
+          return;
+        }
+        const allocSum = allocations.reduce((s, a) => s + a.quantity, 0);
+        if (allocations.length === 0 || Math.abs(allocSum - quantity) > 1e-6) {
+          showToast(`Item ID Allocations (${allocSum}) must sum exactly to Receiving Quantity (${quantity}) before completing.`);
+          return;
+        }
+      }
+
+      if (sourceOrderedQty > 0 && quantity !== sourceOrderedQty) {
+        if (!confirm(`Warning: Quantity on Receiving Document (${quantity}) differs from Source Ordered Quantity (${sourceOrderedQty}).\n\nDo you want to proceed?`)) {
+          return;
+        }
+      }
+
+      if (doComplete) {
+        const summaryLines = allocations.map(a => {
+          const inv = (state.inventory || []).find(i => String(i.itemId) === String(a.itemId));
+          const name = inv ? inv.deviceName : a.itemId;
+          return `• ${name} (Item ID: ${a.itemId})  →  +${a.quantity} to Main Stock`;
+        }).join('\n');
+
+        if (!confirm(`Confirm Complete Goods Receiving & Post Stock-In:\n\nSource: ${sourceType} (${sourceRecordId})\nReceiving Date: ${receivingDate}\n\nStock to be added to Main Store:\n${summaryLines}\n\nOnce completed, this receipt will be locked. Proceed?`)) {
+          return;
+        }
+      }
+
+      const payload = {
+        receivingId,
+        sourceType,
+        sourceRecordId,
+        receivingDate,
+        hoItemId,
+        deviceName,
+        company,
+        quantity,
+        unitPrice,
+        allocations,
+        manualStatus: doComplete ? '' : manualStatus,
+        remarks
+      };
+
+      closeModal();
+      setSyncIndicator(true);
+
+      if (isApiConfigured()) {
+        if (doComplete) {
+          if (receivingId) {
+            callApi('completeReceiving', { receivingId, allocations, payload })
+              .then(res => {
+                setSyncIndicator(false);
+                showToast(`Receiving Completed! Stock-In posted (${res.stockInTxnId || 'OK'})`);
+                fetchDataFromServer();
+              })
+              .catch(err => {
+                setSyncIndicator(false);
+                showToast('Failed: ' + (err.message || err));
+              });
+          } else {
+            callApi('addReceiving', payload)
+              .then(addRes => {
+                const newRecId = addRes.receivingId;
+                return callApi('completeReceiving', { receivingId: newRecId, allocations, payload });
+              })
+              .then(compRes => {
+                setSyncIndicator(false);
+                showToast(`Receiving Created & Completed! Stock-In posted (${compRes.stockInTxnId || 'OK'})`);
+                fetchDataFromServer();
+              })
+              .catch(err => {
+                setSyncIndicator(false);
+                showToast('Failed: ' + (err.message || err));
+                fetchDataFromServer();
+              });
+          }
+        } else {
+          const action = receivingId ? 'editReceiving' : 'addReceiving';
+          callApi(action, payload)
+            .then(() => {
+              setSyncIndicator(false);
+              showToast(receivingId ? 'Receiving updated!' : 'Receiving saved (Awaiting Delivery)!');
+              fetchDataFromServer();
+            })
+            .catch(err => {
+              setSyncIndicator(false);
+              showToast('Failed: ' + (err.message || err));
+            });
+        }
+      } else {
+        // Offline Mock Mode
+        setSyncIndicator(false);
+        let targetRec = null;
+        if (receivingId) {
+          const idx = state.receivings.findIndex(x => x.receivingId === receivingId);
+          if (idx !== -1) {
+            Object.assign(state.receivings[idx], payload);
+            targetRec = state.receivings[idx];
+          }
+        } else {
+          payload.receivingId = generateClientProcurementId('RC');
+          payload.stockInTxnId = '';
+          state.receivings.unshift(payload);
+          targetRec = payload;
+        }
+
+        if (doComplete && targetRec) {
+          const txnId = generateClientProcurementId('RCV');
+          targetRec.stockInTxnId = txnId;
+          targetRec.manualStatus = '';
+          allocations.forEach(a => {
+            state.transactions.unshift({
+              id: txnId,
+              date: receivingDate,
+              type: 'Stock In',
+              hn: '',
+              itemId: a.itemId,
+              qty: a.quantity,
+              fromLoc: '',
+              toLoc: 'Main',
+              disease: '',
+              procedure: '',
+              shift: '',
+              tech: '',
+              complication: 'Receiving: ' + targetRec.receivingId,
+              contrast: ''
+            });
+            const inv = (state.inventory || []).find(i => String(i.itemId) === String(a.itemId));
+            if (inv) {
+              inv.mainStock = (Number(inv.mainStock) || 0) + a.quantity;
+              inv.totalStock = inv.mainStock + (Number(inv.retailStock) || 0);
+              inv.stockDiff = inv.totalStock - (Number(inv.hoStock) || 0);
+            }
+          });
+          recalculateInventoryHierarchy();
+          showToast(`Receiving Completed & Stock-In Posted (${txnId}) (Mock)`);
+        } else {
+          showToast(receivingId ? 'Receiving updated (Mock)' : 'Receiving saved (Mock)');
+        }
+
+        recalculateProcurementState();
+        renderProcurementTab();
+      }
+    }
+
+    function handleDeleteReceiving(receivingId) {
+      const existing = (state.receivings || []).find(x => x.receivingId === receivingId);
+      if (existing && (existing.effectiveStatus === 'Completed' || existing.stockInTxnId)) {
+        showToast('Completed Receiving records are locked and cannot be deleted. Use Inventory Adjustment instead.');
+        return;
+      }
+      requireDeletePasscode(`Delete Goods Receiving "${receivingId}"?`, () => {
+        setSyncIndicator(true);
+        if (isApiConfigured()) {
+          callApi('deleteReceiving', { receivingId })
+            .then(() => {
+              setSyncIndicator(false);
+              showToast('Receiving deleted');
+              fetchDataFromServer();
+            })
+            .catch(err => {
+              setSyncIndicator(false);
+              showToast('Failed: ' + (err.message || err));
+            });
+        } else {
+          setSyncIndicator(false);
+          state.receivings = (state.receivings || []).filter(x => x.receivingId !== receivingId);
+          recalculateProcurementState();
+          renderProcurementTab();
+          showToast('Receiving deleted (Mock)');
+        }
+      });
+    }
+
+    // ── 6. Unified Cancel Action with Rule 0.6 Integrity Checks ──
+    function handleCancelProcurementRecord(entity, id, label) {
+      recalculateProcurementState();
+      const ent = String(entity || '').toLowerCase();
+
+      if (ent === 'ebidding') {
+        const eb = (state.ebiddings || []).find(x => x.ebiddingId === id);
+        if (eb && eb.linkedContractIds && eb.linkedContractIds.length > 0) {
+          showToast(`Cannot cancel E-Bidding while a non-cancelled Contract (${eb.linkedContractIds.join(', ')}) is linked to it.`);
+          return;
+        }
+      } else if (ent === 'contract') {
+        const activeLots = (state.contractPOs || []).filter(po => po.linkedContractId === id && po.effectiveStatus !== 'Cancelled');
+        if (activeLots.length > 0) {
+          showToast(`A Contract cannot be cancelled while it has non-cancelled PO lots (${activeLots.map(l => l.poId).join(', ')}).`);
+          return;
+        }
+      } else if (ent === 'contract_po') {
+        const po = (state.contractPOs || []).find(x => x.poId === id);
+        if (po && po.receivingStatus === 'Completed') {
+          showToast(`A Contract PO cannot be cancelled once its Receiving (${po.linkedReceivingId}) is Completed.`);
+          return;
+        }
+      } else if (ent === 'specific_purchase') {
+        const sp = (state.specificPurchases || []).find(x => x.spId === id);
+        if (sp && sp.receivingStatus === 'Completed') {
+          showToast(`A Specific Purchase cannot be cancelled once its Receiving (${sp.linkedReceivingId}) is Completed.`);
+          return;
+        }
+      } else if (ent === 'receiving') {
+        const rec = (state.receivings || []).find(x => x.receivingId === id);
+        if (rec && (rec.effectiveStatus === 'Completed' || rec.stockInTxnId)) {
+          showToast('A Completed Receiving cannot be cancelled. Use the Inventory Adjustment form instead.');
+          return;
+        }
+      }
+
+      if (!confirm(`Mark ${entity.toUpperCase()} record "${label || id}" as Cancelled?\n\nCancelled records are excluded from all quantity and value calculations.`)) {
+        return;
+      }
+
+      setSyncIndicator(true);
+      if (isApiConfigured()) {
+        callApi('cancelRecord', { entity: ent, id })
+          .then(() => {
+            setSyncIndicator(false);
+            showToast('Record marked as Cancelled');
+            fetchDataFromServer();
+          })
+          .catch(err => {
+            setSyncIndicator(false);
+            showToast('Failed: ' + (err.message || err));
+          });
+      } else {
+        setSyncIndicator(false);
+        if (ent === 'ebidding') {
+          const r = (state.ebiddings || []).find(x => x.ebiddingId === id);
+          if (r) r.manualStatus = 'Cancelled';
+        } else if (ent === 'contract') {
+          const r = (state.contracts || []).find(x => x.contractId === id);
+          if (r) r.manualStatus = 'Cancelled';
+        } else if (ent === 'contract_po') {
+          const r = (state.contractPOs || []).find(x => x.poId === id);
+          if (r) r.manualStatus = 'Cancelled';
+        } else if (ent === 'specific_purchase') {
+          const r = (state.specificPurchases || []).find(x => x.spId === id);
+          if (r) r.manualStatus = 'Cancelled';
+        } else if (ent === 'receiving') {
+          const r = (state.receivings || []).find(x => x.receivingId === id);
+          if (r) r.manualStatus = 'Cancelled';
+        }
+        recalculateProcurementState();
+        renderProcurementTab();
+        showToast('Record marked as Cancelled (Mock)');
+      }
     }
 
     // ===== MAIN EVENT BINDINGS =====
