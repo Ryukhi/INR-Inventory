@@ -139,10 +139,11 @@ window.__INR_MAIN_PARSED = true;
 
     // ===== STATE MANAGEMENT =====
     const state = {
-      currentLang: (function() {
-        try { return localStorage.getItem('inr_app_lang') || 'en'; } catch(e) { return 'en'; }
-      })(),
+      currentLang: 'th',
       currentTab: 'dashboard',
+      casesSubTab: 'new',
+      stockSubTab: 'items',
+      procEntryMode: 'new',
       inventory: [],
       transactions: [],
       settings: { diseases: [], procedures: [], shifts: [], categories: [], departments: [], users: [] },
@@ -151,6 +152,7 @@ window.__INR_MAIN_PARSED = true;
       loans: [],
       assets: [],
       assetSubTab: 'active',
+      assetFilterDue: false,
       activeAssetDetailId: null,
       pendingAssetPhoto: null,
       pendingDamagePhoto: null,
@@ -160,7 +162,9 @@ window.__INR_MAIN_PARSED = true;
       stockLines: [{ itemId: '', qty: 1, loc: 'Main', notes: '' }],
       stockType: 'Stock In',
       invSort: { key: 'category', dir: 'asc' },
-      settingsSection: 'groups',
+      settingsSection: 'lists',
+      settingsListKey: 'diseases',
+      securitySelectedScope: 'settings_access',
       editingSettingIdx: -1,
       settingsDirty: { diseases: false, procedures: false, shifts: false, categories: false, departments: false, users: false },
       statSubTab: 'device',
@@ -186,18 +190,52 @@ window.__INR_MAIN_PARSED = true;
     // ===== BILINGUAL TRANSLATION DICTIONARY (TH / EN) =====
     const i18n = {
       en: {
-        // 1. Navigation Tabs (Sidebar)
-        nav_dashboard: 'Dashboard',
-        nav_inventory: 'Inventory',
-        nav_procedure: 'Procedure Use',
-        nav_exchange: 'Exchange and Consignment',
-        nav_transfer: 'Transfer',
-        nav_loan: 'Transfer',
-        nav_procurement: 'Procurement',
-        nav_transactions: 'Transactions',
-        nav_statistics: 'Statistics',
+        // Navigation Groups & 8 Consolidated Menus
+        g_daily: 'Daily',
+        g_track: 'Tracking',
+        g_admin: 'Admin',
+        nav_home: 'Home',
+        nav_cases: 'Cases',
+        nav_stock: 'Stock',
+        nav_swap: 'Swap & Loan',
         nav_assets: 'Assets',
+        nav_buy: 'Procurement',
+        nav_reports: 'Reports',
+        nav_more: 'More',
+        nav_more_menus: 'All Menus',
+
+        // Legacy & Mapped Menu Keys
+        nav_dashboard: 'Home',
+        nav_inventory: 'Stock',
+        nav_procedure: 'Cases',
+        nav_exchange: 'Swap & Loan',
+        nav_transfer: 'Loans & Transfers',
+        nav_loan: 'Swap & Loan',
+        nav_procurement: 'Procurement',
+        nav_transactions: 'Movements',
+        nav_statistics: 'Reports',
         nav_settings: 'Settings',
+
+        // Dashboard KPIs & Headings
+        kpi_cases_month: 'Cases this month',
+        kpi_low_stock: 'Low stock',
+        kpi_open_loans: 'Open loans',
+        kpi_active_swaps: 'Active substitutions',
+        lbl_view_all: 'All →',
+        dash_disease_year: 'Disease Distribution',
+        dash_procs_month: 'Procedure Types',
+        dash_total_cases: 'Total Cases',
+
+        // Sub-tabs
+        sub_new_case: 'New case',
+        sub_history: 'History',
+        sub_items: 'Items',
+        sub_movements: 'Movements',
+        sub_substitution: 'Substitution',
+        sub_deposits: 'Deposits',
+        sub_loans: 'Loans',
+
+        // Procurement Sub-tabs
         proc_sub_ebidding: 'E-Bidding',
         proc_sub_contracts: 'Contracts',
         proc_sub_po: 'Contract POs',
@@ -210,80 +248,121 @@ window.__INR_MAIN_PARSED = true;
         proc_add_sp: 'Add Specific Purchase',
         proc_add_receiving: 'Record Goods Receiving',
 
-        // 2. Action Buttons
-        btn_add_device: 'Add Device',
-        btn_stock_in_out: 'Stock In / Out',
-        btn_adjustment: 'Adjustment',
-        btn_ho_reconcile: 'กระทบยอด HO',
+        // Reports Sub-tabs
+        stat_dev: 'Devices',
+        stat_proc: 'Procedures',
+        stat_dis: 'Diseases',
+        stat_stroke: 'Stroke',
+        stat_cm: 'Contrast',
+        stat_shift: 'Shift',
+
+        // Settings Sub-tabs & Security
+        set_lists: 'Lists',
+        set_users: 'Users',
+        set_groups: 'Groups',
+        set_security: 'Security',
+        set_users_title: 'User / Tech Management',
+        set_groups_title: 'Group Management (HO Item ID & Shared Pricing)',
+        btn_lock_settings: 'Lock Settings',
+        btn_unlock_settings: 'Unlock Settings',
+        sec_title: 'Server-Synced Security & Deletion Passcodes',
+        sec_subtitle: 'Manage Settings access passcode and independent deletion passcodes for each menu (stored in Google Sheets Settings sheet; default: 1234).',
+        sec_change_heading: 'Update Passcode',
+        sec_cur_pin: 'Current Passcode',
+        sec_new_pin: 'New Passcode (min 4 chars)',
+        sec_conf_pin: 'Confirm New Passcode',
+
+        // Action Buttons
+        btn_add_device: 'Add Item',
+        btn_stock_in_out: 'In / Out',
+        btn_adjustment: 'Adjust',
+        btn_ho_reconcile: 'HO Check',
+        btn_columns: 'Columns',
         btn_export_csv: 'Export CSV',
         btn_export_pdf: 'Export PDF',
         btn_print: 'Print',
-        btn_save: 'Save / Submit',
-        btn_cancel: 'Cancel / Close',
+        btn_save: 'Save',
+        btn_cancel: 'Cancel',
         btn_edit: 'Edit',
         btn_delete: 'Delete',
         btn_search: 'Search',
         btn_default: 'Default',
         btn_filter: 'Filter',
         btn_more_actions: 'More Actions ▾',
+        btn_record_deposit: 'Record Deposit',
+        btn_new_loan: 'New Loan / Transfer',
 
-        // 3. Stock & Locations
-        stock_main: 'Main Stock',
-        stock_retail: 'Retail Stock',
-        stock_buffer: 'Buffer Stock',
-        stock_total: 'Total Stock',
+        // Stock & Locations
+        stock_main: 'Main',
+        stock_retail: 'Retail',
+        stock_buffer: 'Buffer',
+        stock_total: 'Total',
         stock_on_hand: 'Remain',
-        stock_qty: 'Quantity',
-        stock_out_of_stock: 'Out of Stock',
-        stock_low_alert: 'Low Stock Alert',
+        stock_qty: 'Qty',
+        stock_out_of_stock: 'Out',
+        stock_low_alert: 'Low',
 
-        // 4. Procedure Use & Patient Details
+        // Procedure Use & Patient Details
+        lbl_date: 'Date',
         lbl_hn: 'Patient HN',
         lbl_disease: 'Disease',
         lbl_procedure: 'Procedure',
         lbl_shift: 'Shift',
-        lbl_tech: 'Technologist',
-        lbl_complication: 'Complication',
+        lbl_tech: 'Tech / Staff',
+        lbl_complication: 'Notes / Complication',
+        lbl_notes_comp: 'Notes/Complication',
+        lbl_notes: 'Notes',
         lbl_contrast: 'Contrast Media',
+        lbl_case_info: 'Case Info',
+        lbl_add_supplies: 'Add Items',
         lbl_selected_devices: 'Selected Devices',
-        proc_case_history: 'Procedure Case History ▾',
+        lbl_case_detail: 'Procedure Detail',
+        proc_case_history: 'History',
+        proc_mode_new: 'New Case',
+        proc_mode_existing: 'Add to Existing Case',
+        proc_select_existing: 'Select Existing Case',
 
-        // 5. Exchange & Consignment
-        ex_sub_quotas: 'Substitution Quotas',
+        // Substitution & Exchange
+        ex_sub_quotas: 'Substitution',
+        ex_new_rule: 'New Substitution',
         ex_physical_item: 'Physical Item',
         ex_substituted_item: 'Substituted Item',
-        ex_used_total: 'Current Used / Total Quota',
+        ex_used_total: 'Used / Total Quota',
         ex_vendor: 'Vendor / Company',
         ex_awaiting_return: 'Awaiting Return',
         ex_mark_returned: 'Mark as Returned',
 
-        // 6. Loan & Transfer
-        tr_borrowed: 'Borrowing list',
-        tr_lent: 'Lending list',
-        tr_internal: 'Internal Departments',
-        tr_external: 'External Departments',
-        tr_doc_no: 'Transfer No.',
-        tr_pending: 'Pending / Overdue',
-        tr_partial: 'Partial Returned',
-        tr_fully: 'Fully Returned',
+        // Loan & Transfer
+        tr_borrowed: 'We borrowed',
+        tr_lent: 'We lent',
+        tr_internal: 'Internal',
+        tr_external: 'External',
+        tr_doc_no: 'Doc No.',
+        tr_pending: 'Pending',
+        tr_partial: 'Partial',
+        tr_fully: 'Returned',
 
-        // 7. Assets Management
+        // Assets Management
+        ast_btn_add: 'Add Asset',
         ast_code: 'Asset Code',
-        ast_sn: 'Serial Number (S/N)',
+        ast_sn: 'S/N',
         ast_name: 'Asset Name',
         ast_medical_device: 'Medical Device',
         ast_active: 'Active',
-        ast_repair: 'Under Repair',
-        ast_damaged: 'Damaged / Condemn',
+        ast_repair: 'Repair',
+        ast_standby: 'Standby',
+        ast_archive: 'Archive',
+        ast_due: 'Check due',
+        ast_damaged: 'Condemned / Archive',
         ast_pm: 'Preventive Maintenance (PM)',
         ast_cal: 'Calibration',
         ast_radiation: 'Radiation Survey',
-        ast_qr_scan: 'Scan QR Code',
+        ast_qr_scan: 'Scan QR',
 
-        // General Table Headers & Filters
+        // General Table Headers & Announcements
         tbl_date: 'Date / Time',
-        tbl_type: 'Transaction Type',
-        tbl_details: 'Case Details',
+        tbl_type: 'Type',
+        tbl_details: 'Details',
         tbl_device: 'Device Name',
         tbl_action: 'Action',
         tbl_status: 'Status',
@@ -293,104 +372,179 @@ window.__INR_MAIN_PARSED = true;
         ann_btn_add: 'New Announcement'
       },
       th: {
-        // 1. Navigation Tabs (Sidebar)
+        // Navigation Groups & 8 Consolidated Menus
+        g_daily: 'งานประจำวัน',
+        g_track: 'ติดตาม',
+        g_admin: 'บริหาร',
+        nav_home: 'หน้าแรก',
+        nav_cases: 'บันทึกเคส',
+        nav_stock: 'คลังเวชภัณฑ์',
+        nav_swap: 'ยืม-แลก-ฝาก',
+        nav_assets: 'ครุภัณฑ์',
+        nav_buy: 'จัดซื้อ',
+        nav_reports: 'รายงาน',
+        nav_more: 'เพิ่มเติม',
+        nav_more_menus: 'เมนูทั้งหมด',
+
+        // Legacy & Mapped Menu Keys
         nav_dashboard: 'หน้าแรก',
         nav_inventory: 'คลังเวชภัณฑ์',
-        nav_procedure: 'บันทึกการใช้ของ',
-        nav_exchange: 'การแลกและฝากของ',
-        nav_transfer: 'การโอนย้าย',
-        nav_loan: 'การโอนย้าย',
-        nav_procurement: 'การจัดซื้อและตรวจรับ',
-        nav_transactions: 'ประวัติรายการ',
-        nav_statistics: 'สถิติ',
-        nav_assets: 'ครุภัณฑ์',
+        nav_procedure: 'บันทึกเคส',
+        nav_exchange: 'ยืม-แลก-ฝาก',
+        nav_transfer: 'ยืม-คืน / โอนย้าย',
+        nav_loan: 'ยืม-แลก-ฝาก',
+        nav_procurement: 'จัดซื้อและตรวจรับ',
+        nav_transactions: 'ความเคลื่อนไหว',
+        nav_statistics: 'รายงานสถิติ',
         nav_settings: 'ตั้งค่า',
+
+        // Dashboard KPIs & Headings
+        kpi_cases_month: 'เคสเดือนนี้',
+        kpi_low_stock: 'ของใกล้หมด',
+        kpi_open_loans: 'ค้างยืม-คืน',
+        kpi_active_swaps: 'ตัดทดแทนอยู่',
+        lbl_view_all: 'ทั้งหมด →',
+        dash_disease_year: 'การวินิจฉัย (ปีนี้)',
+        dash_procs_month: 'หัตถการ (เดือนนี้)',
+        dash_total_cases: 'จำนวนเคสเดือนนี้',
+
+        // Sub-tabs
+        sub_new_case: 'บันทึกเคสใหม่',
+        sub_history: 'ประวัติเคส',
+        sub_items: 'รายการอุปกรณ์',
+        sub_movements: 'ความเคลื่อนไหว',
+        sub_substitution: 'ตัดของทดแทน',
+        sub_deposits: 'ของฝาก',
+        sub_loans: 'ยืม-คืน',
+
+        // Procurement Sub-tabs
         proc_sub_ebidding: 'แผน E-Bidding',
         proc_sub_contracts: 'สัญญาจะซื้อจะขาย',
         proc_sub_po: 'ใบสั่งซื้อตามสัญญา (PO)',
-        proc_sub_sp: 'จัดซื้อวิธีเฉพาะเจาะจง',
-        proc_sub_receiving: 'การตรวจรับพัสดุ',
+        proc_sub_sp: 'จัดซื้อเฉพาะเจาะจง',
+        proc_sub_receiving: 'ตรวจรับพัสดุ',
         proc_fy_label: 'ปีงบประมาณ (พ.ศ.):',
         proc_add_ebidding: 'เพิ่มแผน E-Bidding',
         proc_add_contract: 'สร้างสัญญาจะซื้อจะขาย',
-        proc_add_po: 'ออกใบสั่งซื้อตามสัญญา (PO)',
-        proc_add_sp: 'เพิ่มรายการจัดซื้อเฉพาะเจาะจง',
-        proc_add_receiving: 'บันทึกการตรวจรับพัสดุ',
+        proc_add_po: 'ออกใบสั่งซื้อ (PO)',
+        proc_add_sp: 'เพิ่มจัดซื้อเฉพาะเจาะจง',
+        proc_add_receiving: 'บันทึกตรวจรับพัสดุ',
 
-        // 2. Action Buttons
+        // Reports Sub-tabs
+        stat_dev: 'อุปกรณ์',
+        stat_proc: 'หัตถการ',
+        stat_dis: 'โรค',
+        stat_stroke: 'Stroke',
+        stat_cm: 'สารทึบรังสี',
+        stat_shift: 'เวร',
+
+        // Settings Sub-tabs & Security
+        set_lists: 'ตัวเลือก',
+        set_users: 'ผู้ใช้',
+        set_groups: 'กลุ่มรายการ',
+        set_security: 'ความปลอดภัย',
+        set_users_title: 'จัดการชื่อเล่นผู้ใช้ / บุคลากร',
+        set_groups_title: 'จัดการกลุ่มอุปกรณ์ (HO Item ID และราคากลุ่ม)',
+        btn_lock_settings: 'ล็อกตั้งค่า',
+        btn_unlock_settings: 'ปลดล็อกตั้งค่า',
+        sec_title: 'รหัสผ่านตั้งค่าและรหัสลบข้อมูลแยกตามเมนู (ซิงก์เซิร์ฟเวอร์)',
+        sec_subtitle: 'จัดการรหัสผ่านเข้าหน้าตั้งค่าและรหัสยืนยันการลบข้อมูลแยกตามแต่ละเมนู (บันทึกลง Google Sheets แท็บ Settings · เข้าหน้าตั้งค่า 0000 · ลบข้อมูล 1234)',
+        sec_change_heading: 'เปลี่ยนรหัสผ่าน',
+        sec_cur_pin: 'รหัสผ่านเดิม',
+        sec_new_pin: 'รหัสผ่านใหม่ (อย่างน้อย 4 ตัวอักษร)',
+        sec_conf_pin: 'ยืนยันรหัสผ่านใหม่',
+
+        // Action Buttons
         btn_add_device: 'เพิ่มรายการ',
-        btn_stock_in_out: 'นำเข้า / จ่ายออก',
-        btn_adjustment: 'กระทบยอด',
+        btn_stock_in_out: 'รับ / จ่าย',
+        btn_adjustment: 'ปรับยอด',
         btn_ho_reconcile: 'กระทบยอด HO',
+        btn_columns: 'คอลัมน์',
         btn_export_csv: 'Export CSV',
         btn_export_pdf: 'Export PDF',
         btn_print: 'พิมพ์',
-        btn_save: 'บันทึกรายการ',
-        btn_cancel: 'ยกเลิก / ปิด',
+        btn_save: 'บันทึก',
+        btn_cancel: 'ยกเลิก',
         btn_edit: 'แก้ไข',
         btn_delete: 'ลบ',
         btn_search: 'ค้นหา',
         btn_default: 'ค่าเริ่มต้น',
         btn_filter: 'กรอง',
-        btn_more_actions: 'เพิ่มเติม',
+        btn_more_actions: 'เพิ่มเติม ▾',
+        btn_record_deposit: 'บันทึกรับฝาก',
+        btn_new_loan: 'ยืม / ให้ยืมใหม่',
 
-        // 3. Stock & Locations
+        // Stock & Locations
         stock_main: 'คลัง INR',
         stock_retail: 'คลังปลีก',
         stock_buffer: 'คลังสำรอง',
         stock_total: 'รวม',
-        stock_on_hand: 'ยอดคงเหลือ',
+        stock_on_hand: 'คงเหลือ',
         stock_qty: 'จำนวน',
-        stock_out_of_stock: 'ของหมด',
-        stock_low_alert: 'ของใกล้หมด',
+        stock_out_of_stock: 'หมด',
+        stock_low_alert: 'ใกล้หมด',
 
-        // 4. Procedure Use & Patient Details
+        // Procedure Use & Patient Details
+        lbl_date: 'วันที่',
         lbl_hn: 'HN ผู้ป่วย',
         lbl_disease: 'การวินิจฉัย',
         lbl_procedure: 'หัตถการ',
         lbl_shift: 'เวร',
-        lbl_tech: 'นักรังสีการแพทย์',
-        lbl_complication: 'ภาวะแทรกซ้อน',
+        lbl_tech: 'ผู้ปฏิบัติงาน',
+        lbl_complication: 'หมายเหตุ / ภาวะแทรกซ้อน',
+        lbl_notes_comp: 'หมายเหตุ / ภาวะแทรกซ้อน',
+        lbl_notes: 'หมายเหตุ',
         lbl_contrast: 'สารทึบรังสี',
-        lbl_selected_devices: 'รายการอุปกรณ์ที่ใช้',
-        proc_case_history: 'ประวัติเคสหัตถการ ▾',
+        lbl_case_info: 'ข้อมูลเคส',
+        lbl_add_supplies: 'เลือกอุปกรณ์',
+        lbl_selected_devices: 'อุปกรณ์ที่เลือก',
+        lbl_case_detail: 'รายละเอียดเคส',
+        proc_case_history: 'ประวัติเคส',
+        proc_mode_new: 'เคสใหม่',
+        proc_mode_existing: 'เพิ่มเข้าเคสเดิม',
+        proc_select_existing: 'เลือกเคสที่มีอยู่',
 
-        // 5. Exchange & Consignment
+        // Substitution & Exchange
         ex_sub_quotas: 'รายการตัดของทดแทน',
+        ex_new_rule: 'รายการตัดของทดแทน',
         ex_physical_item: 'รายการที่ใช้จริง',
         ex_substituted_item: 'รายการตัดทดแทน',
-        ex_used_total: 'ใช้แล้ว / เหลือทั้งหมด',
+        ex_used_total: 'ใช้แล้ว / เหลือ',
         ex_vendor: 'บริษัท / ตัวแทน',
         ex_awaiting_return: 'รอส่งคืน',
         ex_mark_returned: 'ส่งคืนแล้ว',
 
-        // 6. Loan & Transfer
-        tr_borrowed: 'รายการขอยืม',
-        tr_lent: 'รายการให้ยืม',
-        tr_internal: 'หน่วยงานภายใน',
-        tr_external: 'หน่วยงานภายนอก',
-        tr_doc_no: 'เลขที่ใบโอน',
-        tr_pending: 'ค้างส่ง / เกินกำหนด',
-        tr_partial: 'คืนแล้วบางส่วน',
+        // Loan & Transfer
+        tr_borrowed: 'ยืม',
+        tr_lent: 'ให้ยืม',
+        tr_internal: 'ภายใน',
+        tr_external: 'ภายนอก',
+        tr_doc_no: 'เลขที่การโอน',
+        tr_pending: 'รอดำเนินการ',
+        tr_partial: 'คืนบางส่วน',
         tr_fully: 'คืนครบแล้ว',
 
-        // 7. Assets Management
+        // Assets Management
+        ast_btn_add: 'เพิ่มครุภัณฑ์',
         ast_code: 'รหัสครุภัณฑ์',
-        ast_sn: 'หมายเลขเครื่อง (S/N)',
+        ast_sn: 'S/N',
         ast_name: 'ชื่อครุภัณฑ์',
         ast_medical_device: 'เครื่องมือแพทย์',
-        ast_active: 'ใช้งานปกติ',
+        ast_active: 'ใช้งาน',
         ast_repair: 'ส่งซ่อม',
+        ast_standby: 'สำรอง',
+        ast_archive: 'จำหน่ายแล้ว',
+        ast_due: 'ใกล้รอบตรวจ',
         ast_damaged: 'แทงชำรุด / รอจำหน่าย',
-        ast_pm: 'ตรวจบำรุงรักษาเชิงป้องกัน (PM)',
+        ast_pm: 'ตรวจบำรุงรักษา (PM)',
         ast_cal: 'สอบเทียบเครื่อง',
         ast_radiation: 'ตรวจวัดรังสี',
-        ast_qr_scan: 'สแกนคิวอาร์โค้ด',
+        ast_qr_scan: 'สแกน QR',
 
-        // General Table Headers & Filters
+        // General Table Headers & Announcements
         tbl_date: 'วัน/เวลา',
-        tbl_type: 'ประเภทรายการ',
-        tbl_details: 'รายละเอียดเคส',
+        tbl_type: 'ประเภท',
+        tbl_details: 'รายละเอียด',
         tbl_device: 'ชื่ออุปกรณ์',
         tbl_action: 'การกระทำ',
         tbl_status: 'สถานะ',
@@ -402,54 +556,41 @@ window.__INR_MAIN_PARSED = true;
     };
 
     function t(key, defaultEn) {
-      const lang = state.currentLang || 'en';
+      const lang = state.currentLang === 'en' ? 'en' : 'th';
       if (i18n[lang] && i18n[lang][key] !== undefined && i18n[lang][key] !== '') {
         return i18n[lang][key];
       }
-      if (i18n['en'] && i18n['en'][key] !== undefined && i18n['en'][key] !== '') {
-        return i18n['en'][key];
+      if (i18n.en && i18n.en[key] !== undefined && i18n.en[key] !== '') {
+        return i18n.en[key];
       }
       return defaultEn !== undefined ? defaultEn : (key || '');
     }
 
-    function setLanguage(lang) {
-      if (lang !== 'th' && lang !== 'en') lang = 'en';
-      state.currentLang = lang;
+    function setLanguage() {
+      state.currentLang = 'th';
       try {
-        localStorage.setItem('inr_app_lang', lang);
-        document.documentElement.lang = lang;
+        localStorage.setItem('inr_app_lang', 'th');
+        document.documentElement.lang = 'th';
       } catch (e) {}
-      updateLangSwitcherUI();
       applyI18nToDom();
-      initTabs();
-      renderCurrentTab();
+      if (typeof renderNavShell === 'function') renderNavShell();
+      if (typeof renderCurrentTab === 'function') renderCurrentTab();
     }
 
     function toggleLanguage() {
-      setLanguage(state.currentLang === 'th' ? 'en' : 'th');
+      setLanguage('th');
     }
 
     function updateLangSwitcherUI() {
-      const btnTh = document.getElementById('btn-lang-th');
-      const btnEn = document.getElementById('btn-lang-en');
-      if (btnTh && btnEn) {
-        btnTh.classList.toggle('active', state.currentLang === 'th');
-        btnEn.classList.toggle('active', state.currentLang === 'en');
-      }
+      // Thai-only mode: language switcher removed
     }
 
     function applyI18nToDom() {
-      tabs.forEach(tab => {
-        const titleEl = document.getElementById('tab-title-' + tab.id);
-        if (titleEl) {
-          titleEl.innerText = getTabLabel(tab);
-        }
-      });
       document.querySelectorAll('[data-i18n]').forEach(el => {
         const key = el.getAttribute('data-i18n');
         const translated = t(key, '');
         if (!translated) return;
-        const target = el.querySelector('[data-i18n-text]') || (el.querySelector('svg') ? el.querySelector('span:not(.badge):not(.status-dot):not(.sync-dot)') : null);
+        const target = el.querySelector('[data-i18n-text]') || (el.querySelector('svg') ? el.querySelector('span:not(.badge):not(.status-dot):not(.sync-dot):not(em)') : null);
         if (target) {
           target.innerText = translated;
         } else if (!el.querySelector('svg')) {
@@ -476,40 +617,51 @@ window.__INR_MAIN_PARSED = true;
     }
 
     function initLanguage() {
-      let saved = 'en';
+      state.currentLang = 'th';
       try {
-        saved = localStorage.getItem('inr_app_lang') || 'en';
+        localStorage.setItem('inr_app_lang', 'th');
+        document.documentElement.lang = 'th';
       } catch (e) {}
-      state.currentLang = (saved === 'th') ? 'th' : 'en';
-      try { document.documentElement.lang = state.currentLang; } catch (e) {}
-      updateLangSwitcherUI();
       applyI18nToDom();
     }
 
-    // Solid-color monochrome SVG icons (fill="currentColor")
+    // Inline stroke SVG icons (matching Test new/test new index.html)
+    const svgIc = (paths, cls = 'ic sm') => `<svg class="${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${paths}</svg>`;
     const ICONS = {
-      dashboard: '<svg class="nav-icon" viewBox="0 0 20 20" fill="currentColor"><path d="M3 4a1 1 0 011-1h5a1 1 0 011 1v5a1 1 0 01-1 1H4a1 1 0 01-1-1V4zm8 0a1 1 0 011-1h4a1 1 0 011 1v3a1 1 0 01-1 1h-4a1 1 0 01-1-1V4zm0 7a1 1 0 011-1h4a1 1 0 011 1v5a1 1 0 01-1 1h-4a1 1 0 01-1-1v-5zm-8 2a1 1 0 011-1h5a1 1 0 011 1v3a1 1 0 01-1 1H4a1 1 0 01-1-1v-3z"/></svg>',
-      inventory: '<svg class="nav-icon" viewBox="0 0 20 20" fill="currentColor"><path d="M10 2L3 5.5v9L10 18l7-3.5v-9L10 2zm0 2.24L14.52 6.5 10 8.76 5.48 6.5 10 4.24zM4.5 7.79l4.75 2.38v5.59L4.5 13.38V7.79zm11 5.59l-4.75 2.38v-5.59l4.75-2.38v5.59z"/></svg>',
-      procedure: '<svg class="nav-icon" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 2a4 4 0 00-4 4v1H5a2 2 0 00-2 2v7a2 2 0 002 2h10a2 2 0 002-2V9a2 2 0 00-2-2h-1V6a4 4 0 00-4-4zm2 5V6a2 2 0 10-4 0v1h4zm-3 3a1 1 0 012 0v1h1a1 1 0 110 2h-1v1a1 1 0 11-2 0v-1H8a1 1 0 110-2h1v-1z" clip-rule="evenodd"/></svg>',
-      exchange: '<svg class="nav-icon" viewBox="0 0 20 20" fill="currentColor"><path d="M5 4a1 1 0 00-2 0v7.268a2 2 0 000 3.464V16a1 1 0 102 0v-1.268a2 2 0 000-3.464V4zM11 4a1 1 0 10-2 0v1.268a2 2 0 000 3.464V16a1 1 0 102 0V8.732a2 2 0 000-3.464V4zM16 3a1 1 0 011 1v7.268a2 2 0 010 3.464V16a1 1 0 11-2 0v-1.268a2 2 0 010-3.464V4a1 1 0 011-1z"/></svg>',
-      loan: '<svg class="nav-icon" viewBox="0 0 20 20" fill="currentColor"><path d="M8 5a1 1 0 100 2h5.586l-1.293 1.293a1 1 0 001.414 1.414l3-3a1 1 0 000-1.414l-3-3a1 1 0 10-1.414 1.414L13.586 5H8zM12 15a1 1 0 100-2H6.414l1.293-1.293a1 1 0 10-1.414-1.414l-3 3a1 1 0 000 1.414l3 3a1 1 0 001.414-1.414L6.414 15H12z"/></svg>',
-      procurement: '<svg class="nav-icon" viewBox="0 0 20 20" fill="currentColor"><path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z"/><path fill-rule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clip-rule="evenodd"/></svg>',
-      transactions: '<svg class="nav-icon" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clip-rule="evenodd"/></svg>',
-      statistic: '<svg class="nav-icon" viewBox="0 0 20 20" fill="currentColor"><path d="M2 11a1 1 0 011-1h2a1 1 0 011 1v5a1 1 0 01-1 1H3a1 1 0 01-1-1v-5zM8 7a1 1 0 011-1h2a1 1 0 011 1v9a1 1 0 01-1 1H9a1 1 0 01-1-1V7zM14 4a1 1 0 011-1h2a1 1 0 011 1v12a1 1 0 01-1 1h-2a1 1 0 01-1-1V4z"/></svg>',
-      assets: '<svg class="nav-icon" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 5a2 2 0 012-2h10a2 2 0 012 2v8a2 2 0 01-2 2h-2.22l.123.489.804.804A1 1 0 0113 18H7a1 1 0 01-.707-1.707l.804-.804L7.22 15H5a2 2 0 01-2-2V5zm5.771 7H5V5h10v7H8.771z" clip-rule="evenodd"/></svg>',
-      settings: '<svg class="nav-icon" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clip-rule="evenodd"/></svg>',
-      edit: '<svg class="btn-icon" viewBox="0 0 20 20" fill="currentColor"><path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z"/></svg>',
-      trash: '<svg class="btn-icon" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"/></svg>',
-      up: '<svg class="btn-icon" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M14.707 12.707a1 1 0 01-1.414 0L10 9.414l-3.293 3.293a1 1 0 01-1.414-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 010 1.414z" clip-rule="evenodd"/></svg>',
-      down: '<svg class="btn-icon" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>',
-      plus: '<svg class="btn-icon" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd"/></svg>',
-      minus: '<svg class="btn-icon" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 10a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clip-rule="evenodd"/></svg>',
-      refresh: '<svg class="btn-icon" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.047a1 1 0 011.885-.666A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.608-1.286z" clip-rule="evenodd"/></svg>',
-      check: '<svg class="btn-icon" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>',
-      print: '<svg class="btn-icon" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5 4v3H4a2 2 0 00-2 2v3a2 2 0 002 2h1v2a1 1 0 001 1h8a1 1 0 001-1v-2h1a2 2 0 002-2V9a2 2 0 00-2-2h-1V4a1 1 0 00-1-1H6a1 1 0 00-1 1zm2 1h6v2H7V5zm8 6a1 1 0 11-2 0 1 1 0 012 0zM7 13h6v3H7v-3z" clip-rule="evenodd"/></svg>',
-      export: '<svg class="btn-icon" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>',
-      eye: '<svg class="btn-icon" viewBox="0 0 20 20" fill="currentColor"><path d="M10 12a2 2 0 100-4 2 2 0 000 4z"/><path fill-rule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clip-rule="evenodd"/></svg>',
-      list: '<svg class="btn-icon" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clip-rule="evenodd"/></svg>'
+      home: svgIc('<path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 22V12h6v10"/>', 'ic'),
+      dashboard: svgIc('<path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 22V12h6v10"/>', 'ic'),
+      clip: svgIc('<rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="M9 12h6"/><path d="M9 16h4"/>', 'ic'),
+      procedure: svgIc('<rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="M9 12h6"/><path d="M9 16h4"/>', 'ic'),
+      box: svgIc('<path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/>', 'ic'),
+      inventory: svgIc('<path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/>', 'ic'),
+      swap: svgIc('<path d="m16 3 4 4-4 4"/><path d="M20 7H4"/><path d="m8 21-4-4 4-4"/><path d="M4 17h16"/>', 'ic'),
+      exchange: svgIc('<path d="m16 3 4 4-4 4"/><path d="M20 7H4"/><path d="m8 21-4-4 4-4"/><path d="M4 17h16"/>', 'ic'),
+      loan: svgIc('<path d="m11 17 2 2a1 1 0 1 0 3-3"/><path d="m14 14 2.5 2.5a1 1 0 1 0 3-3l-3.88-3.88a3 3 0 0 0-4.24 0l-.88.88a1 1 0 1 1-3-3l2.81-2.81a5.79 5.79 0 0 1 7.06-.87l.47.28a2 2 0 0 0 1.42.25L21 4"/><path d="m21 3 1 11h-2"/><path d="M3 3 2 14l6.5 6.5a1 1 0 1 0 3-3"/><path d="M3 4h8"/>', 'ic'),
+      monitor: svgIc('<rect width="20" height="14" x="2" y="3" rx="2"/><path d="M8 21h8"/><path d="M12 17v4"/>', 'ic'),
+      assets: svgIc('<rect width="20" height="14" x="2" y="3" rx="2"/><path d="M8 21h8"/><path d="M12 17v4"/>', 'ic'),
+      cart: svgIc('<circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/>', 'ic'),
+      procurement: svgIc('<circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/>', 'ic'),
+      chart: svgIc('<path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/>', 'ic'),
+      statistic: svgIc('<path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/>', 'ic'),
+      gear: svgIc('<path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/>', 'ic'),
+      settings: svgIc('<path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/>', 'ic'),
+      grid: svgIc('<rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/>', 'ic'),
+      lock: svgIc('<rect width="18" height="11" x="3" y="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>'),
+      unlock: svgIc('<rect width="18" height="11" x="3" y="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/>'),
+      shield: svgIc('<path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/>'),
+      transactions: svgIc('<path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/>', 'ic'),
+      edit: svgIc('<path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>'),
+      trash: svgIc('<path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>'),
+      up: svgIc('<path d="m18 15-6-6-6 6"/>'),
+      down: svgIc('<path d="m6 9 6 6 6-6"/>'),
+      plus: svgIc('<path d="M5 12h14"/><path d="M12 5v14"/>'),
+      minus: svgIc('<path d="M5 12h14"/>'),
+      refresh: svgIc('<path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/>'),
+      check: svgIc('<path d="M20 6 9 17l-5-5"/>'),
+      print: svgIc('<path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect width="12" height="8" x="6" y="14"/>'),
+      export: svgIc('<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/>'),
+      eye: svgIc('<path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/>'),
+      list: svgIc('<path d="M8 6h13"/><path d="M8 12h13"/><path d="M8 18h13"/><path d="M3 6h.01"/><path d="M3 12h.01"/><path d="M3 18h.01"/>')
     };
 
     function debounce(fn, delay) {
@@ -520,18 +672,40 @@ window.__INR_MAIN_PARSED = true;
       };
     }
 
-    const tabs = [
-      { id: 'dashboard',    labelKey: 'nav_dashboard',    label: 'Dashboard',                icon: ICONS.dashboard },
-      { id: 'inventory',    labelKey: 'nav_inventory',    label: 'Inventory',                icon: ICONS.inventory },
-      { id: 'procedure',    labelKey: 'nav_procedure',    label: 'Procedure Use',            icon: ICONS.procedure },
-      { id: 'exchange',     labelKey: 'nav_exchange',     label: 'Exchange and Consignment', icon: ICONS.exchange },
-      { id: 'loan',         labelKey: 'nav_transfer',     label: 'Transfer',                 icon: ICONS.loan },
-      { id: 'procurement',  labelKey: 'nav_procurement',  label: 'Procurement',              icon: ICONS.procurement },
-      { id: 'transactions', labelKey: 'nav_transactions', label: 'Transactions',             icon: ICONS.transactions },
-      { id: 'statistic',    labelKey: 'nav_statistics',   label: 'Statistics',               icon: ICONS.statistic },
-      { id: 'assets',       labelKey: 'nav_assets',       label: 'Assets',                   icon: ICONS.assets },
-      { id: 'settings',     labelKey: 'nav_settings',     label: 'Settings',                 icon: ICONS.settings }
+    const NAV_GROUPS = [
+      {
+        groupKey: 'g_daily',
+        items: [
+          { id: 'dashboard', labelKey: 'nav_home', label: 'Home', icon: ICONS.home },
+          { id: 'procedure', labelKey: 'nav_cases', label: 'Cases', icon: ICONS.clip },
+          { id: 'inventory', labelKey: 'nav_stock', label: 'Stock', icon: ICONS.box }
+        ]
+      },
+      {
+        groupKey: 'g_track',
+        items: [
+          { id: 'exchange', labelKey: 'nav_swap', label: 'Swap & Loan', icon: ICONS.swap },
+          { id: 'assets', labelKey: 'nav_assets', label: 'Assets', icon: ICONS.monitor }
+        ]
+      },
+      {
+        groupKey: 'g_admin',
+        items: [
+          { id: 'procurement', labelKey: 'nav_buy', label: 'Procurement', icon: ICONS.cart },
+          { id: 'statistic', labelKey: 'nav_reports', label: 'Reports', icon: ICONS.chart },
+          { id: 'settings', labelKey: 'nav_settings', label: 'Settings', icon: ICONS.gear }
+        ]
+      }
     ];
+
+    const BNAV_TABS = [
+      { id: 'dashboard', labelKey: 'nav_home', label: 'Home', icon: ICONS.home },
+      { id: 'procedure', labelKey: 'nav_cases', label: 'Cases', icon: ICONS.clip },
+      { id: 'inventory', labelKey: 'nav_stock', label: 'Stock', icon: ICONS.box },
+      { id: 'assets', labelKey: 'nav_assets', label: 'Assets', icon: ICONS.monitor }
+    ];
+
+    const tabs = NAV_GROUPS.flatMap(g => g.items);
 
     function getTabLabel(tab) {
       if (!tab) return '';
@@ -609,10 +783,10 @@ window.__INR_MAIN_PARSED = true;
 
     function getDeviceName(itemId) {
       const item = (state.inventory || []).find(i => String(i.itemId) === String(itemId));
-      if (item) return item.deviceName;
+      if (item && item.deviceName !== undefined && item.deviceName !== null) return String(item.deviceName);
       const grp = (state.groups || []).find(g => String(g.groupId) === String(itemId));
-      if (grp) return grp.groupName;
-      return itemId;
+      if (grp && grp.groupName !== undefined && grp.groupName !== null) return String(grp.groupName);
+      return itemId !== undefined && itemId !== null ? String(itemId) : '';
     }
 
     function getDeviceCategory(itemId) {
@@ -627,7 +801,7 @@ window.__INR_MAIN_PARSED = true;
       if (!sel) return;
       const cur = preserveValue !== undefined ? preserveValue : sel.value;
       const users = (typeof getUsersList === 'function') ? getUsersList() : ((state.settings && state.settings.users) || []);
-      sel.innerHTML = `<option value="">-- Select User (Nickname) --</option>` +
+      sel.innerHTML = `<option value="">-- เลือกผู้บันทึก --</option>` +
         users.map(u => {
           const nick = String((u && (u.nickname || u.name)) || u || '').trim();
           if (!nick) return '';
@@ -841,58 +1015,164 @@ window.__INR_MAIN_PARSED = true;
 
     // ===== RENDER ENGINES =====
 
-    function initTabs() {
-      const container = document.getElementById('nav-tabs-container');
-      if (!container) return;
-      container.innerHTML = tabs.map(tab => 
-        `<button class="nav-tab ${state.currentTab === tab.id ? 'active' : ''}" data-tab="${tab.id}">${tab.icon}<span>${getTabLabel(tab)}</span></button>`
-      ).join('');
+    // ===== 8-MENU NAVIGATION, HIDDEN SETTINGS & MOBILE BOTTOM BAR =====
+    const SETTINGS_UNLOCK_KEY = 'inr_settings_unlocked';
 
-      document.querySelectorAll('.nav-tab').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-          document.querySelectorAll('.nav-tab').forEach(b => b.classList.remove('active'));
-          btn.classList.add('active');
-          switchTab(btn.dataset.tab);
-          if (window.innerWidth <= 768) setSidebarHidden(true);
-        });
-      });
-
-      // Restore sidebar show/hide preference (hidden by default on small screens)
-      let hidden = window.innerWidth <= 768;
+    function isSettingsUnlocked() {
       try {
-        const saved = localStorage.getItem('inr-sidebar-hidden');
-        if (saved !== null && window.innerWidth > 768) hidden = saved === '1';
-      } catch (e) {}
-      setSidebarHidden(hidden, true);
-      const curTab = tabs.find(x => x.id === state.currentTab);
-      const tt0 = document.getElementById('topbar-title');
-      if (tt0 && curTab) tt0.innerText = getTabLabel(curTab);
-    }
-
-    function setSidebarHidden(hidden, skipSave) {
-      const root = document.getElementById('app-root');
-      if (root) root.classList.toggle('sidebar-hidden', hidden);
-      const btn = document.getElementById('btn-toggle-sidebar');
-      if (btn) btn.title = hidden ? 'Show menu' : 'Hide menu';
-      if (!skipSave) {
-        try { localStorage.setItem('inr-sidebar-hidden', hidden ? '1' : '0'); } catch (e) {}
+        return sessionStorage.getItem(SETTINGS_UNLOCK_KEY) === '1';
+      } catch (e) {
+        return false;
       }
     }
 
+    function openMoreSheet() {
+      const sh = document.getElementById('mobile-more-sheet');
+      if (sh) sh.classList.add('open');
+    }
+
+    function closeMoreSheet() {
+      const sh = document.getElementById('mobile-more-sheet');
+      if (sh) sh.classList.remove('open');
+    }
+
+    function handleAdminSettingsToggle() {
+      if (isSettingsUnlocked()) {
+        if (state.currentTab === 'settings') {
+          lockSettings();
+        } else {
+          switchTab('settings');
+        }
+      } else {
+        promptUnlockSettings();
+      }
+    }
+
+    function promptUnlockSettings(targetSection) {
+      const msg = 'กรุณากรอกรหัสผ่าน 4 หลักเพื่อเข้าสู่หน้าตั้งค่า';
+      verifyPasscodeThen('settings_access', msg, () => {
+        try {
+          sessionStorage.setItem(SETTINGS_UNLOCK_KEY, '1');
+        } catch (e) {}
+        renderNavShell();
+        switchTab('settings');
+        if (targetSection && typeof switchSettingsSection === 'function') {
+          switchSettingsSection(targetSection);
+        }
+        showToast('ปลดล็อกเมนูตั้งค่าแล้ว');
+      });
+    }
+
+    function lockSettings() {
+      try {
+        sessionStorage.removeItem(SETTINGS_UNLOCK_KEY);
+      } catch (e) {}
+      renderNavShell();
+      if (state.currentTab === 'settings') {
+        switchTab('dashboard');
+      }
+      showToast(state.currentLang === 'th' ? 'ล็อกเมนูตั้งค่าแล้ว' : 'Settings locked');
+    }
+
+    function renderNavShell() {
+      const unlocked = isSettingsUnlocked();
+
+      // 1. Desktop Sidebar Navigation (3 Groups)
+      const sideNav = document.getElementById('nav-tabs-container');
+      if (sideNav) {
+        sideNav.innerHTML = NAV_GROUPS.map(grp => {
+          const visibleItems = grp.items.filter(it => !it.hiddenUntilUnlocked || unlocked);
+          if (visibleItems.length === 0) return '';
+          return `<h6>${t(grp.groupKey)}</h6>` + visibleItems.map(tab => {
+            const isActive = state.currentTab === tab.id;
+            return `<button type="button" class="nav-tab ${isActive ? 'on active' : ''}" data-tab="${tab.id}" onclick="switchTab('${tab.id}')">${tab.icon}<span>${getTabLabel(tab)}</span></button>`;
+          }).join('');
+        }).join('');
+      }
+
+      // 2. Sidebar Footer & Sheet Discreet Lock/Unlock Admin Buttons
+      const sideLockBtn = document.getElementById('btn-admin-unlock-side');
+      const sheetLockBtn = document.getElementById('btn-admin-unlock-sheet');
+      const lockIcon = unlocked ? ICONS.unlock : ICONS.lock;
+      const lockTitle = unlocked ? t('btn_lock_settings', 'Lock Settings') : t('btn_unlock_settings', 'Unlock Settings');
+      [sideLockBtn, sheetLockBtn].forEach(btn => {
+        if (!btn) return;
+        btn.innerHTML = lockIcon;
+        btn.title = lockTitle;
+        btn.setAttribute('aria-label', lockTitle);
+        btn.classList.toggle('unlocked', unlocked);
+      });
+
+      // 3. Mobile Fixed Bottom Nav (Home, Cases, Stock, Assets, More)
+      const bnavEl = document.getElementById('mobile-bnav');
+      if (bnavEl) {
+        const isMoreActive = !BNAV_TABS.some(b => b.id === state.currentTab);
+        bnavEl.innerHTML = BNAV_TABS.map(b => {
+          const on = state.currentTab === b.id;
+          return `<button type="button" class="${on ? 'on' : ''}" onclick="switchTab('${b.id}')">${b.icon}<span>${getTabLabel(b)}</span></button>`;
+        }).join('') + `<button type="button" class="${isMoreActive ? 'on' : ''}" onclick="openMoreSheet()">${ICONS.grid}<span>${t('nav_more', 'More')}</span></button>`;
+      }
+
+      // 4. Mobile More Sheet Grid (All Unlocked Pages)
+      const sheetGrid = document.getElementById('mobile-more-grid');
+      if (sheetGrid) {
+        const allVisible = tabs.filter(it => !it.hiddenUntilUnlocked || unlocked);
+        sheetGrid.innerHTML = allVisible.map(tab => {
+          const on = state.currentTab === tab.id;
+          return `<button type="button" class="${on ? 'on' : ''}" onclick="closeMoreSheet(); switchTab('${tab.id}')"><span class="kic">${tab.icon}</span><span>${getTabLabel(tab)}</span></button>`;
+        }).join('');
+      }
+
+      // 5. Topbar & Mobile Page Titles
+      const curTabObj = tabs.find(x => x.id === state.currentTab);
+      const pageTitleText = curTabObj ? getTabLabel(curTabObj) : '';
+      const tt = document.getElementById('topbar-title');
+      if (tt) tt.innerText = pageTitleText;
+      const mt = document.getElementById('mobile-page-title');
+      if (mt) mt.innerText = pageTitleText;
+    }
+
+    function initTabs() {
+      renderNavShell();
+    }
+
+    function setSidebarHidden() {
+      // Legacy no-op: sidebar is sticky on desktop and replaced by .bnav + .sheet on mobile
+    }
+
     function toggleSidebar() {
-      const root = document.getElementById('app-root');
-      setSidebarHidden(!(root && root.classList.contains('sidebar-hidden')));
+      openMoreSheet();
     }
 
     function switchTab(tabId) {
-      state.currentTab = tabId;
-      const tab = tabs.find(x => x.id === tabId);
-      const tt = document.getElementById('topbar-title');
-      if (tt) tt.innerText = tab ? getTabLabel(tab) : '';
+      let target = tabId || 'dashboard';
+      if (target === 'transactions') {
+        target = 'inventory';
+        state.stockSubTab = 'movements';
+      } else if (target === 'loan') {
+        target = 'exchange';
+        state.exchangeSubTab = 'loans';
+      }
+
+      if (target === 'settings' && !isSettingsUnlocked()) {
+        promptUnlockSettings();
+        return;
+      }
+
+      if (state.currentTab === 'settings' && target !== 'settings') {
+        try { sessionStorage.removeItem(SETTINGS_UNLOCK_KEY); } catch (e) {}
+      }
+
+      state.currentTab = target;
+      closeMoreSheet();
+      renderNavShell();
+
       document.querySelectorAll('.tab-panel').forEach(p => p.classList.add('hidden'));
-      const activePanel = document.getElementById('tab-' + tabId);
+      const activePanel = document.getElementById('tab-' + target);
       if (activePanel) activePanel.classList.remove('hidden');
+
       renderCurrentTab();
+      try { window.scrollTo({ top: 0 }); } catch (e) {}
     }
 
     function renderCurrentTab() {
@@ -903,22 +1183,24 @@ window.__INR_MAIN_PARSED = true;
             renderDashboard();
             break;
           case 'inventory':
-            renderInventoryTab();
+            switchStockSubTab(state.stockSubTab || 'items', true);
             break;
           case 'exchange':
-            renderExchangeTab();
+            switchExchangeSubTab(state.exchangeSubTab || 'quota', true);
             break;
           case 'loan':
-            renderLoanTab();
+            state.currentTab = 'exchange';
+            switchExchangeSubTab('loans', true);
             break;
           case 'procurement':
             renderProcurementTab();
             break;
           case 'transactions':
-            renderTransactions();
+            state.currentTab = 'inventory';
+            switchStockSubTab('movements', true);
             break;
           case 'procedure':
-            renderProcedureTab();
+            switchCasesSubTab(state.casesSubTab || 'new', true);
             break;
           case 'statistic':
             renderStatisticTab();
@@ -927,6 +1209,10 @@ window.__INR_MAIN_PARSED = true;
             renderAssetsTab();
             break;
           case 'settings':
+            if (!isSettingsUnlocked()) {
+              switchTab('dashboard');
+              return;
+            }
             renderSettingsTab();
             break;
         }
@@ -960,7 +1246,8 @@ window.__INR_MAIN_PARSED = true;
     function openModal(id) {
       document.getElementById('modal-overlay').classList.remove('hidden');
       document.querySelectorAll('.modal').forEach(m => m.classList.add('hidden'));
-      document.getElementById(id).classList.remove('hidden');
+      const modalEl = document.getElementById(id);
+      if (modalEl) modalEl.classList.remove('hidden');
       if (id === 'modal-adjust') {
         populateUserNicknameSelect('adj-modal-user');
         renderAdjustmentTab();
@@ -972,55 +1259,62 @@ window.__INR_MAIN_PARSED = true;
     }
     function closeModal() {
       stopQrScannerInstance();
-      document.getElementById('modal-overlay').classList.add('hidden');
+      if (typeof closeStockDevDropdown === 'function') closeStockDevDropdown();
+      pendingPasscodeAction = null;
+      document.getElementById('modal-overlay')?.classList.add('hidden');
     }
 
-    // ===== MODAL ENTER KEY SUBMISSION =====
+    // ===== MODAL KEYBOARD HANDLING (ENTER = SUBMIT, ESC = CLOSE) =====
     document.addEventListener('keydown', function(e) {
-      if (e.key !== 'Enter') return;
-      // Allow normal Enter behavior inside multiline textarea
-      if (e.target && e.target.tagName === 'TEXTAREA') return;
+      if (e.key === 'Escape') {
+        if (typeof closeStockDevDropdown === 'function') closeStockDevDropdown();
+        closePasscodeModal();
+        closeMoreSheet();
+        document.querySelectorAll('.pop.open').forEach(p => p.classList.remove('open'));
+        return;
+      }
 
-      // Check if modal overlay is visible
+      if (e.key !== 'Enter') return;
+      if (e.target && (e.target.tagName === 'TEXTAREA' || e.target.tagName === 'BUTTON')) return;
+
       const overlay = document.getElementById('modal-overlay');
       if (!overlay || overlay.classList.contains('hidden')) return;
 
-      // Find the currently active modal
       const activeModal = document.querySelector('.modal:not(.hidden)');
-      if (!activeModal) return;
+      if (!activeModal || !activeModal.contains(e.target)) return;
 
-      // Ensure the target is inside the active modal
-      if (!activeModal.contains(e.target)) return;
+      if (e.target && e.target.classList && e.target.classList.contains('stock-dev-input')) {
+        const dd = document.getElementById('stock-dev-floating-dd');
+        if (dd && !dd.classList.contains('hidden')) {
+          e.preventDefault();
+          if (typeof selectFirstStockDevOption === 'function') selectFirstStockDevOption(e.target);
+          return;
+        }
+      }
 
-      // Specific sub-form actions inside modals:
-      // In Procedure Edit modal, if pressing Enter in the Add Supply Item inputs, trigger Add Item
       if (activeModal.id === 'modal-proc-edit' && (e.target.id === 'proc-edit-add-item' || e.target.id === 'proc-edit-add-qty' || e.target.id === 'proc-edit-add-vol' || e.target.id === 'proc-edit-add-piece')) {
         e.preventDefault();
         if (typeof addProcEditDevice === 'function') addProcEditDevice();
         return;
       }
 
-      // In QR scanner modal manual code input
       if (e.target && e.target.id === 'qr-manual-code') {
         e.preventDefault();
         if (typeof handleManualQrLookup === 'function') handleManualQrLookup();
         return;
       }
 
-      // In Passcode confirm modal
-      if (e.target && e.target.id === 'passcode-input') {
+      if (activeModal.id === 'modal-passcode-confirm' || (e.target && e.target.id === 'passcode-input')) {
         e.preventDefault();
         if (typeof submitPasscodeConfirm === 'function') submitPasscodeConfirm();
         return;
       }
 
-      // In Procurement item search/allocation pickers, do not submit the whole modal on Enter
       if (e.target && (e.target.id === 'eb-item-picker-input' || e.target.id === 'sp-item-picker-input' || e.target.id === 'rc-alloc-search-input')) {
         e.preventDefault();
         return;
       }
 
-      // In Stock Adjustment modal
       if (activeModal.id === 'modal-adjust') {
         e.preventDefault();
         const submitAdjBtn = document.getElementById('btn-submit-adjustments');
@@ -1028,9 +1322,21 @@ window.__INR_MAIN_PARSED = true;
         return;
       }
 
-      // Find the primary Save / Submit / OK action button in the modal
-      // Usually the rightmost button with .btn-brand or .btn-danger in the modal footer or body
-      const actionButtons = Array.from(activeModal.querySelectorAll('button.btn-brand, button.btn-danger'));
+      if (activeModal.id === 'modal-ho-reconcile') {
+        e.preventDefault();
+        const submitHoBtn = document.getElementById('btn-submit-ho-reconcile');
+        if (submitHoBtn) submitHoBtn.click();
+        return;
+      }
+
+      if (activeModal.id === 'modal-stock') {
+        e.preventDefault();
+        const submitStockBtn = document.getElementById('btn-submit-stock');
+        if (submitStockBtn) submitStockBtn.click();
+        return;
+      }
+
+      const actionButtons = Array.from(activeModal.querySelectorAll('button.btn-p, button.btn-brand, button.btn-d, button.btn-danger'));
       const primaryBtn = actionButtons.length > 0 ? actionButtons[actionButtons.length - 1] : null;
 
       if (primaryBtn && !primaryBtn.disabled && typeof primaryBtn.click === 'function') {
@@ -1039,51 +1345,200 @@ window.__INR_MAIN_PARSED = true;
       }
     });
 
-    // ===== UNIVERSAL DELETION PASSCODE =====
-    function getDeletePasscode() {
-      try {
-        return localStorage.getItem('inr_delete_passcode') || (state.settings && state.settings.deletePasscode) || '1234';
-      } catch (e) {
-        return '1234';
+    // Close open popovers on outside click
+    document.addEventListener('click', function(e) {
+      document.querySelectorAll('.pop.open').forEach(p => {
+        if (!p.contains(e.target)) p.classList.remove('open');
+      });
+    });
+
+    // ===== SERVER-SYNCED PER-MENU PASSCODES (Settings Sheet) =====
+    const PASSCODE_SCOPE_META = {
+      settings_access: {
+        en: 'Settings Menu Access',
+        th: 'เข้าใช้งานเมนูตั้งค่า (Settings)',
+        descEn: 'Required to reveal and open the hidden Settings menu.',
+        descTh: 'ใช้สำหรับปลดล็อกเพื่อเปิดเมนูตั้งค่าที่ซ่อนไว้'
+      },
+      delete_home: {
+        en: 'Home — Announcements',
+        th: 'หน้าแรก — ลบประกาศ',
+        descEn: 'Deletion passcode for Announcements on Home.',
+        descTh: 'รหัสยืนยันการลบประกาศในหน้าแรก'
+      },
+      delete_cases: {
+        en: 'Cases — Procedure Records',
+        th: 'บันทึกเคส — ลบเคสหัตถการ',
+        descEn: 'Deletion passcode for logged Procedure Cases.',
+        descTh: 'รหัสยืนยันการลบรายการเคสหัตถการ'
+      },
+      delete_stock: {
+        en: 'Stock — Items & Movements',
+        th: 'คลังเวชภัณฑ์ — ลบอุปกรณ์/ความเคลื่อนไหว',
+        descEn: 'Deletion passcode for Inventory Items and Stock Movements.',
+        descTh: 'รหัสยืนยันการลบอุปกรณ์ในคลังและประวัติความเคลื่อนไหว'
+      },
+      delete_swap: {
+        en: 'Swap & Loan — Quotas, Deposits & Loans',
+        th: 'ยืม-แลก-ฝาก — ลบรายการทดแทน/ของฝาก/ยืม-คืน',
+        descEn: 'Deletion passcode for Substitutions, Deposits, and Loans.',
+        descTh: 'รหัสยืนยันการลบรายการตัดของทดแทน ของฝาก และยืม-คืน'
+      },
+      delete_assets: {
+        en: 'Assets — Registry, Logs & Condemn',
+        th: 'ครุภัณฑ์ — ลบครุภัณฑ์/ประวัติตรวจ/แทงชำรุด',
+        descEn: 'Passcode for deleting Assets, Maintenance logs, or Condemning assets.',
+        descTh: 'รหัสยืนยันการลบครุภัณฑ์ ประวัติซ่อมบำรุง หรือแทงชำรุด'
+      },
+      delete_procurement: {
+        en: 'Procurement — Delete & Cancel',
+        th: 'จัดซื้อ — ลบ/ยกเลิกรายการจัดซื้อ',
+        descEn: 'Passcode for deleting or cancelling E-Bidding, Contracts, POs, and Receiving.',
+        descTh: 'รหัสยืนยันการลบหรือยกเลิกแผน สัญญา ใบสั่งซื้อ และการตรวจรับ'
+      },
+      delete_settings: {
+        en: 'Settings — Lists, Users & Groups',
+        th: 'ตั้งค่า — ลบตัวเลือก/ผู้ใช้/กลุ่ม',
+        descEn: 'Deletion passcode for Lists, User Nicknames, and Groups.',
+        descTh: 'รหัสยืนยันการลบตัวเลือก รายชื่อผู้ใช้ และกลุ่มอุปกรณ์'
       }
-    }
-    function setDeletePasscode(newCode) {
-      try {
-        localStorage.setItem('inr_delete_passcode', String(newCode).trim());
-      } catch (e) {}
-    }
+    };
+
+    // Offline / mock fallback store (settings_access defaults to '0000', delete scopes default to '1234')
+    const _mockPasscodes = {
+      settings_access: '0000',
+      delete_home: '1234',
+      delete_cases: '1234',
+      delete_stock: '1234',
+      delete_swap: '1234',
+      delete_assets: '1234',
+      delete_procurement: '1234',
+      delete_settings: '1234'
+    };
 
     let pendingPasscodeAction = null;
+    let pendingPasscodeScope = 'delete_stock';
+    let _passcodeVerifying = false;
 
-    function verifyPasscodeThen(description, callback) {
+    function getPasscodeScopeLabel(scope) {
+      const meta = PASSCODE_SCOPE_META[scope];
+      if (!meta) return scope || 'Security';
+      return state.currentLang === 'th' ? meta.th : meta.en;
+    }
+
+    function verifyPasscodeThen(scopeOrDesc, descOrCallback, maybeCallback) {
+      let scope = 'delete_stock';
+      let description = '';
+      let callback = null;
+      if (typeof descOrCallback === 'function') {
+        description = scopeOrDesc || '';
+        callback = descOrCallback;
+      } else {
+        scope = PASSCODE_SCOPE_META[scopeOrDesc] ? scopeOrDesc : 'delete_stock';
+        description = descOrCallback || '';
+        callback = maybeCallback;
+      }
+
+      pendingPasscodeScope = scope;
       pendingPasscodeAction = callback;
+      _passcodeVerifying = false;
+
+      const isUnlock = scope === 'settings_access';
+      const titleEl = document.getElementById('passcode-modal-title');
+      if (titleEl) {
+        titleEl.innerText = isUnlock
+          ? (state.currentLang === 'th' ? 'ยืนยันรหัสผ่านเข้าหน้าตั้งค่า' : 'Unlock Admin Settings')
+          : (state.currentLang === 'th' ? 'กรุณายืนยันรหัสผ่าน' : 'Security Passcode Required');
+        titleEl.style.color = isUnlock ? 'var(--g-d)' : 'var(--red)';
+      }
+
+      const scopeBadge = document.getElementById('passcode-scope-badge');
+      if (scopeBadge) {
+        scopeBadge.innerText = getPasscodeScopeLabel(scope);
+        scopeBadge.className = 'badge ' + (isUnlock ? 'ok' : 'warn');
+      }
+
       const descEl = document.getElementById('passcode-action-desc');
-      if (descEl) descEl.innerText = description || 'Security passcode required to confirm deletion.';
+      if (descEl) descEl.innerText = description || (state.currentLang === 'th' ? 'กรุณากรอกรหัสผ่านเพื่อดำเนินการต่อ' : 'Security passcode required to continue.');
+
+      const btn = document.getElementById('btn-passcode-confirm');
+      if (btn) {
+        btn.disabled = false;
+        btn.className = isUnlock ? 'btn btn-p' : 'btn btn-d';
+        btn.innerText = isUnlock
+          ? (state.currentLang === 'th' ? 'ปลดล็อก' : 'Unlock')
+          : (state.currentLang === 'th' ? 'ยืนยัน' : 'Confirm');
+      }
+
       const inputEl = document.getElementById('passcode-input');
       if (inputEl) {
         inputEl.value = '';
-        setTimeout(() => inputEl.focus(), 150);
+        setTimeout(() => inputEl.focus(), 120);
       }
       const errEl = document.getElementById('passcode-error');
       if (errEl) errEl.classList.add('hidden');
       openModal('modal-passcode-confirm');
     }
 
-    function submitPasscodeConfirm() {
+    function requireDeletePasscode(description, callback, scope) {
+      verifyPasscodeThen(scope || 'delete_procurement', description, callback);
+    }
+
+    async function submitPasscodeConfirm() {
+      if (_passcodeVerifying) return;
       const inputEl = document.getElementById('passcode-input');
       const val = inputEl ? inputEl.value.trim() : '';
-      const correctCode = getDeletePasscode();
-      if (val === correctCode) {
-        closePasscodeModal();
-        if (typeof pendingPasscodeAction === 'function') {
-          const act = pendingPasscodeAction;
-          pendingPasscodeAction = null;
-          act();
-        }
-      } else {
-        const errEl = document.getElementById('passcode-error');
+      const errEl = document.getElementById('passcode-error');
+      const btn = document.getElementById('btn-passcode-confirm');
+      const scope = pendingPasscodeScope || 'delete_stock';
+      const isUnlock = scope === 'settings_access';
+
+      if (!val) {
         if (errEl) {
-          errEl.innerText = state.currentLang === 'th' ? 'รหัสผ่านไม่ถูกต้อง กรุณาลองใหม่อีกครั้ง' : 'Incorrect passcode. Please try again.';
+          errEl.innerText = state.currentLang === 'th' ? 'กรุณากรอกรหัสผ่าน' : 'Please enter passcode.';
+          errEl.classList.remove('hidden');
+        }
+        if (inputEl) inputEl.focus();
+        return;
+      }
+
+      _passcodeVerifying = true;
+      const prevLabel = btn ? btn.innerText : '';
+      if (btn) {
+        btn.disabled = true;
+        btn.innerText = state.currentLang === 'th' ? 'กำลังตรวจสอบ...' : 'Verifying...';
+      }
+      if (errEl) errEl.classList.add('hidden');
+
+      let isValid = false;
+      let errMsg = '';
+      try {
+        if (isApiConfigured()) {
+          const res = await callApi('verifyPasscode', { scope, passcode: val });
+          isValid = Boolean(res && res.valid === true);
+          if (!isValid && res && res.error) errMsg = res.error;
+        } else {
+          const expected = _mockPasscodes[scope] || '1234';
+          isValid = (val === expected);
+        }
+      } catch (err) {
+        errMsg = (err && err.message) ? err.message : 'Verification error';
+      } finally {
+        _passcodeVerifying = false;
+        if (btn) {
+          btn.disabled = false;
+          btn.innerText = prevLabel || (isUnlock ? (state.currentLang === 'th' ? 'ปลดล็อก' : 'Unlock') : (state.currentLang === 'th' ? 'ยืนยัน' : 'Confirm'));
+        }
+      }
+
+      if (isValid) {
+        const act = pendingPasscodeAction;
+        pendingPasscodeAction = null;
+        closePasscodeModal();
+        if (typeof act === 'function') act();
+      } else {
+        if (errEl) {
+          errEl.innerText = errMsg || (state.currentLang === 'th' ? 'รหัสผ่านไม่ถูกต้อง กรุณาลองใหม่อีกครั้ง' : 'Incorrect passcode. Please try again.');
           errEl.classList.remove('hidden');
         }
         if (inputEl) {
@@ -1093,22 +1548,77 @@ window.__INR_MAIN_PARSED = true;
       }
     }
 
+    function onPasscodeInputChange(el) {
+      if (pendingPasscodeScope !== 'settings_access') return;
+      if (_passcodeVerifying) return;
+      const val = (el ? el.value : '').trim();
+      if (val.length === 4) {
+        submitPasscodeConfirm();
+      }
+    }
+
     function closePasscodeModal() {
       pendingPasscodeAction = null;
+      _passcodeVerifying = false;
       document.getElementById('modal-passcode-confirm')?.classList.add('hidden');
       document.getElementById('modal-overlay')?.classList.add('hidden');
     }
 
-    function saveNewPasscode() {
+    function selectSecurityScope(scope) {
+      if (!PASSCODE_SCOPE_META[scope]) return;
+      state.securitySelectedScope = scope;
       const curInput = document.getElementById('settings-cur-passcode');
       const newInput = document.getElementById('settings-new-passcode');
       const confInput = document.getElementById('settings-confirm-passcode');
+      if (curInput) curInput.value = '';
+      if (newInput) newInput.value = '';
+      if (confInput) confInput.value = '';
+      renderSecuritySettings();
+    }
+
+    function renderSecuritySettings() {
+      const listEl = document.getElementById('security-scope-list');
+      const badgeEl = document.getElementById('sec-selected-scope-label');
+      const selected = PASSCODE_SCOPE_META[state.securitySelectedScope] ? state.securitySelectedScope : 'settings_access';
+      state.securitySelectedScope = selected;
+
+      if (badgeEl) {
+        badgeEl.innerText = getPasscodeScopeLabel(selected);
+        badgeEl.className = 'badge ' + (selected === 'settings_access' ? 'ok' : 'warn');
+      }
+      if (!listEl) return;
+
+      const scopes = Object.keys(PASSCODE_SCOPE_META);
+      listEl.innerHTML = scopes.map(sc => {
+        const m = PASSCODE_SCOPE_META[sc];
+        const title = state.currentLang === 'th' ? m.th : m.en;
+        const desc = state.currentLang === 'th' ? m.descTh : m.descEn;
+        const on = sc === selected;
+        return `
+          <button type="button" class="security-scope-btn ${on ? 'on' : ''}" data-scope="${sc}" onclick="selectSecurityScope('${sc}')">
+            <span class="kic">${sc === 'settings_access' ? ICONS.lock : ICONS.shield}</span>
+            <span style="flex:1; min-width:0;">
+              <b>${escapeHtml(title)}</b>
+              <small>${escapeHtml(desc)}</small>
+            </span>
+          </button>
+        `;
+      }).join('');
+    }
+
+    async function saveNewPasscode() {
+      const scope = PASSCODE_SCOPE_META[state.securitySelectedScope] ? state.securitySelectedScope : 'settings_access';
+      const curInput = document.getElementById('settings-cur-passcode');
+      const newInput = document.getElementById('settings-new-passcode');
+      const confInput = document.getElementById('settings-confirm-passcode');
+      const btn = document.getElementById('btn-save-passcode');
+
       const cur = curInput ? curInput.value.trim() : '';
       const nw = newInput ? newInput.value.trim() : '';
       const cf = confInput ? confInput.value.trim() : '';
 
-      if (cur !== getDeletePasscode()) {
-        showToast(state.currentLang === 'th' ? 'รหัสผ่านปัจจุบันไม่ถูกต้อง' : 'Current passcode is incorrect');
+      if (!cur) {
+        showToast(state.currentLang === 'th' ? 'กรุณากรอกรหัสผ่านเดิม' : 'Please enter current passcode');
         return;
       }
       if (!nw || nw.length < 4) {
@@ -1120,11 +1630,30 @@ window.__INR_MAIN_PARSED = true;
         return;
       }
 
-      setDeletePasscode(nw);
-      if (curInput) curInput.value = '';
-      if (newInput) newInput.value = '';
-      if (confInput) confInput.value = '';
-      showToast(state.currentLang === 'th' ? 'บันทึกรหัสผ่านใหม่สำเร็จ' : 'Passcode updated successfully');
+      if (btn) btn.disabled = true;
+      setSyncIndicator(true);
+      try {
+        if (isApiConfigured()) {
+          await callApi('updatePasscode', { scope, currentPasscode: cur, newPasscode: nw });
+        } else {
+          if (cur !== (_mockPasscodes[scope] || '1234')) {
+            throw new Error(state.currentLang === 'th' ? 'รหัสผ่านเดิมไม่ถูกต้อง' : 'Current passcode is incorrect.');
+          }
+          _mockPasscodes[scope] = nw;
+        }
+        if (curInput) curInput.value = '';
+        if (newInput) newInput.value = '';
+        if (confInput) confInput.value = '';
+        showToast(
+          (state.currentLang === 'th' ? 'บันทึกรหัสผ่านใหม่สำเร็จ: ' : 'Passcode updated: ') +
+          getPasscodeScopeLabel(scope)
+        );
+      } catch (err) {
+        showToast((err && err.message) ? err.message : 'Failed to update passcode');
+      } finally {
+        setSyncIndicator(false);
+        if (btn) btn.disabled = false;
+      }
     }
 
     function setStockActionMode(mode) {
@@ -1136,11 +1665,17 @@ window.__INR_MAIN_PARSED = true;
 
       const btnIn = document.getElementById('stock-mode-btn-in');
       const btnOut = document.getElementById('stock-mode-btn-out');
-      if (btnIn) btnIn.className = m === 'Stock In' ? 'btn btn-brand' : 'btn btn-outline';
-      if (btnOut) btnOut.className = m === 'Stock Out' ? 'btn btn-brand' : 'btn btn-outline';
+      if (btnIn) btnIn.className = 'btn stock-mode-btn stock-mode-in' + (m === 'Stock In' ? ' active' : '');
+      if (btnOut) btnOut.className = 'btn stock-mode-btn stock-mode-out' + (m === 'Stock Out' ? ' active' : '');
+
+      const submitBtn = document.getElementById('btn-submit-stock');
+      if (submitBtn) {
+        submitBtn.classList.remove('stock-submit-in', 'stock-submit-out');
+        submitBtn.classList.add(m === 'Stock In' ? 'stock-submit-in' : 'stock-submit-out');
+      }
 
       const submitLabel = document.getElementById('btn-submit-stock-label');
-      if (submitLabel) submitLabel.innerText = m === 'Stock In' ? 'Save Stock In' : 'Save Stock Out';
+      if (submitLabel) submitLabel.innerText = m === 'Stock In' ? 'บันทึกนำเข้า' : 'บันทึกจ่ายออก';
       renderStockTab();
     }
 
@@ -1158,7 +1693,7 @@ window.__INR_MAIN_PARSED = true;
       applyDefaultInvCols();
       state.invSort = { key: 'category', dir: 'asc' };
       renderInventoryTab();
-      showToast(state.currentLang === 'th' ? 'รีเซ็ตตารางแสดงผลเป็น 6 คอลัมน์เริ่มต้นและเรียงตามหมวดหมู่แล้ว' : 'Reset table view to 6 default columns and category sort');
+      showToast(state.currentLang === 'th' ? 'รีเซ็ตตารางแสดงผลเป็นคอลัมน์เริ่มต้นและเรียงตามหมวดหมู่แล้ว' : 'Reset table view to default columns and category sort');
     }
 
     function exportInventoryCSV() {
@@ -1265,8 +1800,29 @@ window.__INR_MAIN_PARSED = true;
     }
 
     function toggleInvColsPanel() {
-      const panel = document.getElementById('inv-cols-panel');
-      if (panel) panel.classList.toggle('hidden');
+      const pop = document.getElementById('inv-cols-pop');
+      if (pop) pop.classList.toggle('open');
+    }
+
+    function switchStockSubTab(sub) {
+      const target = sub === 'movements' ? 'movements' : 'items';
+      state.stockSubTab = target;
+      document.querySelectorAll('#stock-subtabs button').forEach(btn => {
+        const isMatch = btn.dataset.ssub === target;
+        btn.classList.toggle('on', isMatch);
+        btn.classList.toggle('active', isMatch);
+      });
+      const itemsPanel = document.getElementById('stock-panel-items');
+      const movPanel = document.getElementById('stock-panel-movements');
+      if (itemsPanel) itemsPanel.classList.toggle('hidden', target !== 'items');
+      if (movPanel) movPanel.classList.toggle('hidden', target !== 'movements');
+      const itemsCntEl = document.getElementById('stock-items-count');
+      if (itemsCntEl) itemsCntEl.innerText = String((state.inventory || []).length);
+      if (target === 'movements') {
+        renderTransactions();
+      } else {
+        renderInventoryTab();
+      }
     }
 
     function setAllInvCols(checked) {
@@ -1277,7 +1833,7 @@ window.__INR_MAIN_PARSED = true;
       renderInventoryTab();
     }
 
-    const invDefaultCols = ['inv-col-name', 'inv-col-main', 'inv-col-retail', 'inv-col-buffer', 'inv-col-total', 'inv-col-ho'];
+    const invDefaultCols = ['inv-col-name', 'inv-col-hoid', 'inv-col-main', 'inv-col-retail', 'inv-col-buffer', 'inv-col-total', 'inv-col-ho'];
 
     function applyDefaultInvCols() {
       invCols.forEach(col => {
@@ -1313,6 +1869,121 @@ window.__INR_MAIN_PARSED = true;
       if (diffInput) diffInput.value = isFree ? 0 : (tot - ho);
     }
 
+    function getInventoryOrderedStructure() {
+      recalculateInventoryHierarchy();
+
+      const numCols = ['buyPrice', 'sellPrice', 'mainStock', 'retailStock', 'bufferStock', 'totalStock', 'hoStock', 'stockDiff', 'stockMonth', 'exceedPercent', 'orderEstimate', 'buyPoint', 'safetyStock'];
+      const sortKey = (state.invSort && state.invSort.key) ? state.invSort.key : 'category';
+      const sortDir = (state.invSort && state.invSort.dir === 'desc') ? -1 : 1;
+
+      function compareEntries(a, b) {
+        const nameA = a.isGroupSummary ? (a.groupName || '') : (a.deviceName || '');
+        const nameB = b.isGroupSummary ? (b.groupName || '') : (b.deviceName || '');
+        if (sortKey === 'category') {
+          const catOrder = getAllCategories().map(c => c.toLowerCase());
+          const catA = String(a.category || '').trim().toLowerCase();
+          const catB = String(b.category || '').trim().toLowerCase();
+          let idxA = catOrder.indexOf(catA);
+          let idxB = catOrder.indexOf(catB);
+          if (idxA === -1) idxA = 9999;
+          if (idxB === -1) idxB = 9999;
+          if (idxA !== idxB) {
+            return (idxA - idxB) * sortDir;
+          }
+          return nameA.toLowerCase().localeCompare(nameB.toLowerCase());
+        } else if (sortKey === 'deviceName') {
+          return nameA.toLowerCase().localeCompare(nameB.toLowerCase()) * sortDir;
+        } else if (numCols.includes(sortKey)) {
+          const valA = Number(a[sortKey]) || 0;
+          const valB = Number(b[sortKey]) || 0;
+          return (valA - valB) * sortDir;
+        } else {
+          const valA = String(a[sortKey] || '').toLowerCase();
+          const valB = String(b[sortKey] || '').toLowerCase();
+          return valA.localeCompare(valB) * sortDir;
+        }
+      }
+
+      const groupMap = new Map();
+      (state.groups || []).forEach(g => {
+        if (g && g.groupId) groupMap.set(String(g.groupId), g);
+      });
+
+      const membersByGroup = new Map();
+      const topLevelEntries = [];
+
+      (state.inventory || []).forEach(i => {
+        const gid = String(i.groupId || '').trim();
+        if (gid && groupMap.has(gid)) {
+          if (!membersByGroup.has(gid)) membersByGroup.set(gid, []);
+          membersByGroup.get(gid).push(i);
+        } else {
+          topLevelEntries.push(Object.assign({}, i, { isGroupSummary: false }));
+        }
+      });
+
+      groupMap.forEach((g, gid) => {
+        const members = membersByGroup.get(gid) || [];
+        if (members.length > 0) {
+          topLevelEntries.push(Object.assign({}, g, { isGroupSummary: true }));
+        }
+      });
+
+      function getSavedGroupSubOrder(g) {
+        if (g && Array.isArray(g.subItemOrder) && g.subItemOrder.length > 0) {
+          return g.subItemOrder.map(x => String(x));
+        }
+        try {
+          const saved = localStorage.getItem('inr_group_suborder_' + (g ? g.groupId : ''));
+          if (saved) {
+            const parsed = JSON.parse(saved);
+            if (Array.isArray(parsed)) return parsed.map(x => String(x));
+          }
+        } catch (e) {}
+        return [];
+      }
+
+      topLevelEntries.sort(compareEntries);
+      membersByGroup.forEach((list, gid) => {
+        const grp = groupMap.get(String(gid));
+        const orderList = getSavedGroupSubOrder(grp);
+        list.sort((a, b) => {
+          if (orderList.length > 0) {
+            const idxA = orderList.indexOf(String(a.itemId));
+            const idxB = orderList.indexOf(String(b.itemId));
+            if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+            if (idxA !== -1) return -1;
+            if (idxB !== -1) return 1;
+          }
+          return compareEntries(a, b);
+        });
+      });
+
+      const orderedDeviceEntries = [];
+      topLevelEntries.forEach(entry => {
+        if (entry.isGroupSummary) {
+          const members = membersByGroup.get(String(entry.groupId)) || [];
+          members.forEach(sub => {
+            orderedDeviceEntries.push({
+              item: sub,
+              isSubItem: true,
+              groupId: entry.groupId,
+              groupName: entry.groupName || entry.groupId
+            });
+          });
+        } else {
+          orderedDeviceEntries.push({
+            item: entry,
+            isSubItem: false,
+            groupId: '',
+            groupName: ''
+          });
+        }
+      });
+
+      return { groupMap, membersByGroup, topLevelEntries, orderedDeviceEntries };
+    }
+
     function renderInventoryTab() {
       recalculateInventoryHierarchy();
 
@@ -1327,7 +1998,7 @@ window.__INR_MAIN_PARSED = true;
       const allCats = getAllCategories();
       if (catSelect) {
         const curCat = catSelect.value;
-        catSelect.innerHTML = `<option value="">All Categories</option>` +
+        catSelect.innerHTML = `<option value="">ทุกหมวดหมู่</option>` +
           allCats.map(c => `<option value="${c}" ${c === curCat ? 'selected' : ''}>${c}</option>`).join('');
       }
       const catDatalist = document.getElementById('inv-cat-list');
@@ -1360,84 +2031,29 @@ window.__INR_MAIN_PARSED = true;
         );
       }
 
-      // Sort helper
-      const numCols = ['buyPrice', 'sellPrice', 'mainStock', 'retailStock', 'bufferStock', 'totalStock', 'hoStock', 'stockDiff', 'stockMonth', 'exceedPercent', 'orderEstimate', 'buyPoint', 'safetyStock'];
-      const sortKey = state.invSort.key || 'category';
-      const sortDir = state.invSort.dir === 'desc' ? -1 : 1;
-
-      function compareEntries(a, b) {
-        const nameA = a.isGroupSummary ? (a.groupName || '') : (a.deviceName || '');
-        const nameB = b.isGroupSummary ? (b.groupName || '') : (b.deviceName || '');
-        if (sortKey === 'category') {
-          const catOrder = getAllCategories().map(c => c.toLowerCase());
-          const catA = String(a.category || '').trim().toLowerCase();
-          const catB = String(b.category || '').trim().toLowerCase();
-          let idxA = catOrder.indexOf(catA);
-          let idxB = catOrder.indexOf(catB);
-          if (idxA === -1) idxA = 9999;
-          if (idxB === -1) idxB = 9999;
-          if (idxA !== idxB) {
-            return (idxA - idxB) * sortDir;
-          }
-          return nameA.toLowerCase().localeCompare(nameB.toLowerCase());
-        } else if (sortKey === 'deviceName') {
-          return nameA.toLowerCase().localeCompare(nameB.toLowerCase()) * sortDir;
-        } else if (numCols.includes(sortKey)) {
-          const valA = Number(a[sortKey]) || 0;
-          const valB = Number(b[sortKey]) || 0;
-          return (valA - valB) * sortDir;
-        } else {
-          const valA = String(a[sortKey] || '').toLowerCase();
-          const valB = String(b[sortKey] || '').toLowerCase();
-          return valA.localeCompare(valB) * sortDir;
-        }
-      }
-
-      // Organize Groups and Standalone items (Section 2.3 & 4.1)
-      const groupMap = new Map();
-      (state.groups || []).forEach(g => {
-        if (g && g.groupId) groupMap.set(String(g.groupId), g);
-      });
-
-      const membersByGroup = new Map();
-      const topLevelEntries = [];
-
-      (state.inventory || []).forEach(i => {
-        const gid = String(i.groupId || '').trim();
-        if (gid && groupMap.has(gid)) {
-          if (!membersByGroup.has(gid)) membersByGroup.set(gid, []);
-          membersByGroup.get(gid).push(i);
-        } else {
-          topLevelEntries.push(Object.assign({}, i, { isGroupSummary: false }));
-        }
-      });
-
-      groupMap.forEach((g, gid) => {
-        const members = membersByGroup.get(gid) || [];
-        if (members.length > 0) {
-          topLevelEntries.push(Object.assign({}, g, { isGroupSummary: true }));
-        }
-      });
-
-      topLevelEntries.sort(compareEntries);
-      membersByGroup.forEach(list => list.sort(compareEntries));
+      const { membersByGroup, topLevelEntries } = getInventoryOrderedStructure();
 
       const displayRows = [];
+      let logicalGroupCounter = 0;
       topLevelEntries.forEach(entry => {
         if (entry.isGroupSummary) {
           const members = membersByGroup.get(String(entry.groupId)) || [];
           const matchingMembers = members.filter(matchesItemFilter);
           const groupMatches = matchesGroupFilter(entry);
           if (groupMatches || matchingMembers.length > 0) {
-            // Section 4.1: Always expanded; show Group Summary Row followed by all Sub-Item Rows
-            displayRows.push({ rowType: 'group', group: entry });
+            const zebraCls = (logicalGroupCounter % 2 === 0) ? 'inv-zebra-white' : 'inv-zebra-gray';
+            logicalGroupCounter++;
+            // Section 4.1: Always expanded; show Group Summary Row followed by all Sub-Item Rows sharing same zebra background
+            displayRows.push({ rowType: 'group', group: entry, zebraCls });
             const subItemsToShow = (searchVal && !groupMatches) ? matchingMembers : members;
             subItemsToShow.forEach(sub => {
-              displayRows.push({ rowType: 'sub', item: sub, group: entry });
+              displayRows.push({ rowType: 'sub', item: sub, group: entry, zebraCls });
             });
           }
         } else if (matchesItemFilter(entry)) {
-          displayRows.push({ rowType: 'standalone', item: entry });
+          const zebraCls = (logicalGroupCounter % 2 === 0) ? 'inv-zebra-white' : 'inv-zebra-gray';
+          logicalGroupCounter++;
+          displayRows.push({ rowType: 'standalone', item: entry, zebraCls });
         }
       });
 
@@ -1458,8 +2074,9 @@ window.__INR_MAIN_PARSED = true;
         }
       });
 
-      // Render Rows (Section 2.3 & Section 4.1)
+      // Render Rows (Section 2.3 & Section 4.1 & Requirement 1.1-1.4)
       body.innerHTML = displayRows.map(rowObj => {
+        const zebraCls = rowObj.zebraCls || 'inv-zebra-white';
         if (rowObj.rowType === 'group') {
           const g = rowObj.group;
           const diffVal = Number(g.stockDiff) || 0;
@@ -1472,9 +2089,9 @@ window.__INR_MAIN_PARSED = true;
           const exceedDisplay = exceedVal > 0 ? ('+' + exceedVal + '%') : (exceedVal + '%');
 
           return `
-            <tr class="inv-parent-row">
+            <tr class="inv-parent-row ${zebraCls}">
               <td class="col-inv-name">
-                <a href="javascript:void(0)" class="device-name-link font-bold" onclick="openGroupModal('${escapeHtml(String(g.groupId))}')">${escapeHtml(g.groupName || '')}</a>
+                <a href="javascript:void(0)" class="device-name-link font-bold" onclick="openGroupModal('${escapeHtml(String(g.groupId))}')" title="Edit Group Name & Reorder Sub-Items">${escapeHtml(g.groupName || '')}</a>
               </td>
               <td class="col-inv-hoid text-gray text-xs font-mono">${escapeHtml(g.hoItemId || '-')}</td>
               <td class="col-inv-itemid text-gray text-xs font-mono">-</td>
@@ -1517,15 +2134,17 @@ window.__INR_MAIN_PARSED = true;
           }
         }
 
-        const displayName = isSub ? (`- ${i.deviceName || ''}`) : (i.deviceName || '');
+        // Requirement 1.4: Sub-items inside a Group have blank HO Item ID cell and NO "- " prefix (visual indentation only)
+        const displayName = i.deviceName || '';
+        const hoidCellText = isSub ? '' : escapeHtml(i.hoItemId || '-');
         const freeBadgeHtml = isFree ? ` <span class="badge-free" title="Free Item">FREE</span>` : '';
 
         return `
-          <tr class="${isSub ? 'inv-child-row' : ''}">
+          <tr class="${isSub ? 'inv-child-row ' : ''}${zebraCls}">
             <td class="col-inv-name">
               <a href="javascript:void(0)" class="device-name-link font-medium" onclick="openDeviceDetailModal('${escapeHtml(String(i.itemId))}')">${escapeHtml(displayName)}</a>${freeBadgeHtml}
             </td>
-            <td class="col-inv-hoid text-gray text-xs font-mono">${escapeHtml(i.hoItemId || '-')}</td>
+            <td class="col-inv-hoid text-gray text-xs font-mono">${hoidCellText}</td>
             <td class="col-inv-itemid text-gray text-xs font-mono">${escapeHtml(i.itemId || '-')}</td>
             <td class="col-inv-cat text-gray">${escapeHtml(i.category || '')}</td>
             <td class="col-inv-buyprice num">฿${(Number(i.buyPrice) || 0).toLocaleString()}</td>
@@ -1559,6 +2178,8 @@ window.__INR_MAIN_PARSED = true;
 
       const countEl = document.getElementById('inv-cols-count');
       if (countEl) countEl.innerText = visibleCount;
+      const itemsCntEl = document.getElementById('stock-items-count');
+      if (itemsCntEl) itemsCntEl.innerText = String((state.inventory || []).length);
     }
 
     function openAddDeviceModal() {
@@ -1714,7 +2335,7 @@ window.__INR_MAIN_PARSED = true;
     function removeDevice(itemId) {
       const inv = state.inventory.find(i => String(i.itemId) === String(itemId));
       const devName = inv ? inv.deviceName : itemId;
-      verifyPasscodeThen(state.currentLang === 'th' ? `ยืนยันการลบเวชภัณฑ์ "${devName}"?` : `Delete inventory device "${devName}"?`, async () => {
+      verifyPasscodeThen('delete_stock', state.currentLang === 'th' ? `ยืนยันการลบเวชภัณฑ์ "${devName}"?` : `Delete inventory device "${devName}"?`, async () => {
         if (isApiConfigured()) {
           appLoading.classList.remove('hidden');
           appContent.classList.add('hidden');
@@ -1745,7 +2366,7 @@ window.__INR_MAIN_PARSED = true;
       const userNick = (document.getElementById('inv-modal-user')?.value || '').trim();
 
       if (!userNick) {
-        showToast('Please select User (Nickname)');
+        showToast('กรุณาเลือกผู้บันทึก');
         return;
       }
       if (!name || !cat) {
@@ -1891,10 +2512,6 @@ window.__INR_MAIN_PARSED = true;
       recalculateInventoryHierarchy();
       state.hoReconcileDraft = {};
       populateUserNicknameSelect('ho-rec-user', '');
-      const dateEl = document.getElementById('ho-rec-date');
-      if (dateEl) dateEl.value = getToday();
-      const searchEl = document.getElementById('ho-rec-search');
-      if (searchEl) searchEl.value = '';
       renderHoReconcileTable();
       openModal('modal-ho-reconcile');
     }
@@ -1909,15 +2526,40 @@ window.__INR_MAIN_PARSED = true;
     }
 
     function renderHoReconcileTable() {
-      recalculateInventoryHierarchy();
+      const { topLevelEntries } = getInventoryOrderedStructure();
       const tbody = document.getElementById('ho-rec-table-body');
       if (!tbody) return;
-      const q = (document.getElementById('ho-rec-search')?.value || '').trim().toLowerCase();
 
-      // Section 5: 1 row per Group and 1 row per standalone item (sub-items inside a Group are NOT listed separately)
+      // Order identically to Inventory: Group entries and standalone items (sub-items inside a Group are NOT listed separately)
       const rows = [];
+      const seenGroupIds = new Set();
+      topLevelEntries.forEach(entry => {
+        if (entry.isGroupSummary) {
+          seenGroupIds.add(String(entry.groupId));
+          rows.push({
+            key: 'group::' + entry.groupId,
+            targetType: 'group',
+            id: entry.groupId,
+            name: entry.groupName || entry.groupId,
+            hoItemId: entry.hoItemId || '-',
+            hoStock: Number(entry.hoStock) || 0,
+            hoLastChecked: entry.hoLastChecked || ''
+          });
+        } else {
+          rows.push({
+            key: 'item::' + entry.itemId,
+            targetType: 'item',
+            id: entry.itemId,
+            name: entry.deviceName || entry.itemId,
+            hoItemId: entry.hoItemId || '-',
+            hoStock: Number(entry.hoStock) || 0,
+            hoLastChecked: entry.hoLastChecked || ''
+          });
+        }
+      });
+
       (state.groups || []).forEach(g => {
-        if (!g || !g.groupId) return;
+        if (!g || !g.groupId || seenGroupIds.has(String(g.groupId))) return;
         rows.push({
           key: 'group::' + g.groupId,
           targetType: 'group',
@@ -1929,30 +2571,12 @@ window.__INR_MAIN_PARSED = true;
         });
       });
 
-      (state.inventory || []).forEach(i => {
-        if (i.groupId) return; // skip sub-items inside a Group
-        rows.push({
-          key: 'item::' + i.itemId,
-          targetType: 'item',
-          id: i.itemId,
-          name: i.deviceName || i.itemId,
-          hoItemId: i.hoItemId || '-',
-          hoStock: Number(i.hoStock) || 0,
-          hoLastChecked: i.hoLastChecked || ''
-        });
-      });
-
-      const filtered = rows.filter(r => {
-        if (!q) return true;
-        return r.name.toLowerCase().includes(q) || String(r.hoItemId).toLowerCase().includes(q) || String(r.id).toLowerCase().includes(q);
-      });
-
-      if (filtered.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="5" class="empty-state">No groups or standalone items match your filter.</td></tr>';
+      if (rows.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" class="empty-state">ไม่พบรายการ Group หรืออุปกรณ์ในคลัง</td></tr>';
         return;
       }
 
-      tbody.innerHTML = filtered.map(r => {
+      tbody.innerHTML = rows.map(r => {
         const draftVal = (state.hoReconcileDraft && state.hoReconcileDraft[r.key] !== undefined) ? state.hoReconcileDraft[r.key] : '';
         const typeTag = r.targetType === 'group' ? ` <span class="badge badge-blue" style="font-size:10px; margin-left:4px;">GROUP</span>` : '';
         return `
@@ -1971,9 +2595,9 @@ window.__INR_MAIN_PARSED = true;
 
     function submitHoReconciliationModal() {
       const userNick = (document.getElementById('ho-rec-user')?.value || '').trim();
-      const recDate  = (document.getElementById('ho-rec-date')?.value || '').trim() || getToday();
+      const recDate  = getToday();
       if (!userNick) {
-        showToast('Please select User (Nickname)');
+        showToast('กรุณาเลือกผู้บันทึก');
         return;
       }
 
@@ -2083,7 +2707,7 @@ window.__INR_MAIN_PARSED = true;
       if (countBadge) countBadge.innerText = String(list.length);
 
       if (list.length === 0) {
-        container.innerHTML = `<div class="empty-state text-sm" style="padding:12px;">${state.currentLang === 'th' ? 'ยังไม่มีประกาศสำคัญ คลิก "+ New Announcement" เพื่อเพิ่มบันทึกข้อตกลงหรือวิธีตัดของแถม' : 'No active announcements. Click "+ New Announcement" to post clinical or stock notes.'}</div>`;
+        container.innerHTML = `<div class="empty-state text-sm" style="padding:12px;">ยังไม่มีประกาศสำคัญ</div>`;
         return;
       }
 
@@ -2120,7 +2744,7 @@ window.__INR_MAIN_PARSED = true;
       const isEdit = Boolean(annId);
       const ann = isEdit ? (state.announcements || []).find(a => String(a.id) === String(annId)) : null;
       const titleEl = document.getElementById('modal-ann-title');
-      if (titleEl) titleEl.innerText = isEdit ? 'Edit Announcement' : 'New Announcement';
+      if (titleEl) titleEl.innerText = isEdit ? 'แก้ไขประกาศ' : 'เพิ่มประกาศใหม่';
 
       document.getElementById('ann-modal-id').value = ann ? ann.id : '';
       document.getElementById('ann-modal-title').value = ann ? (ann.title || '') : '';
@@ -2177,7 +2801,7 @@ window.__INR_MAIN_PARSED = true;
     function removeAnnouncement(annId) {
       const ann = (state.announcements || []).find(a => String(a.id) === String(annId));
       const label = ann ? ann.title : annId;
-      verifyPasscodeThen(state.currentLang === 'th' ? `ยืนยันการลบประกาศ "${label}"?` : `Delete announcement "${label}"?`, () => {
+      verifyPasscodeThen('delete_home', state.currentLang === 'th' ? `ยืนยันการลบประกาศ "${label}"?` : `Delete announcement "${label}"?`, () => {
         if (isApiConfigured()) {
           setSyncIndicator(true);
           callApi('deleteAnnouncement', { id: annId })
@@ -2222,9 +2846,57 @@ window.__INR_MAIN_PARSED = true;
     }
 
     // --- Tab 1: Dashboard ---
+    function updateDashboardKpis() {
+      const now = new Date();
+      const curMonth = now.getMonth();
+      const curYear = now.getFullYear();
+
+      const monthCasesSet = new Set();
+      (state.transactions || []).forEach(tx => {
+        if (tx.type === 'Procedure Use' && tx.date) {
+          const td = new Date(tx.date);
+          if (!isNaN(td.getTime()) && td.getMonth() === curMonth && td.getFullYear() === curYear) {
+            monthCasesSet.add((tx.hn || '') + '|' + formatDate(tx.date));
+          }
+        }
+      });
+
+      recalculateInventoryHierarchy();
+      let lowCount = 0;
+      const seenGroupIds = new Set();
+      (state.groups || []).forEach(g => {
+        seenGroupIds.add(String(g.groupId));
+        const threshold = Number(g.safetyStock) > 0 ? Number(g.safetyStock) : 5;
+        if (Number(g.totalStock || 0) <= threshold) lowCount++;
+      });
+      (state.inventory || []).forEach(i => {
+        if (i.groupId && seenGroupIds.has(String(i.groupId))) return;
+        if (i.isFreeItem) return;
+        const threshold = Number(i.safetyStock) > 0 ? Number(i.safetyStock) : 5;
+        if (Number(i.totalStock || 0) <= threshold) lowCount++;
+      });
+
+      const pendingLoansCount = (state.loans || []).filter(l => l.status !== 'Fully Returned').length;
+
+      const activeSwapsCount = (state.exchangeQuotas || []).filter(q =>
+        String(q.status || 'Active') === 'Active' &&
+        (Number(q.currentUsed) || 0) < (Number(q.totalQuota) || 0)
+      ).length;
+
+      const elCases = document.getElementById('dash-kpi-cases');
+      const elLow = document.getElementById('dash-kpi-low');
+      const elLoans = document.getElementById('dash-kpi-loans');
+      const elSwaps = document.getElementById('dash-kpi-swaps');
+      if (elCases) elCases.innerText = String(monthCasesSet.size);
+      if (elLow) elLow.innerText = String(lowCount);
+      if (elLoans) elLoans.innerText = String(pendingLoansCount);
+      if (elSwaps) elSwaps.innerText = String(activeSwapsCount);
+    }
+
     function renderDashboard() {
-      // 0. Top Row: Announcement Board
+      // 0. Top Row: Announcement Board + 4 Live KPI Cards
       renderAnnouncementsBoard();
+      updateDashboardKpis();
 
       // 1. Priority 1: Substitution Quotas (Active items showing currentUsed / totalQuota)
       const quotaContainer = document.getElementById('dash-quota-list');
@@ -2260,7 +2932,6 @@ window.__INR_MAIN_PARSED = true;
 
       // 2. Priority 2: Loan & Transfer (Active pending/partial loans with remaining balance)
       const loanContainer = document.getElementById('dash-loan-list');
-      const loanBadge = document.getElementById('dash-loan-badge');
       const loans = state.loans || [];
       const pendingLoans = loans.filter(l => {
         if (l.status === 'Fully Returned') return false;
@@ -2269,13 +2940,9 @@ window.__INR_MAIN_PARSED = true;
         return (tot - ret) > 0;
       });
 
-      if (loanBadge) {
-        loanBadge.innerText = `${pendingLoans.length} ${t('tr_pending', 'Pending')}`;
-      }
-
       if (loanContainer) {
         if (pendingLoans.length === 0) {
-          loanContainer.innerHTML = `<div class="empty-state text-sm" style="padding:16px;">${state.currentLang === 'th' ? 'ไม่มีรายการโอนย้ายค้างส่ง' : 'No pending loan or transfer returns.'}</div>`;
+          loanContainer.innerHTML = `<div class="empty-state text-sm" style="padding:16px;">ไม่มีรายการยืม-คืน</div>`;
         } else {
           loanContainer.innerHTML = pendingLoans.map(l => {
             const tot = Number(l.totalQty) || 0;
@@ -2283,8 +2950,8 @@ window.__INR_MAIN_PARSED = true;
             const rem = Math.max(0, tot - ret);
             const isWeOwe = String(l.direction || '').includes('Inward') || String(l.direction || '').includes('We Borrowed');
             const dirBadge = isWeOwe
-              ? `<span class="badge badge-amber" style="font-size:10px; padding:1px 6px;">${t('tr_borrowed', 'We Owe')}</span>`
-              : `<span class="badge badge-blue" style="font-size:10px; padding:1px 6px;">${t('tr_lent', 'They Owe')}</span>`;
+              ? `<span class="badge badge-amber" style="font-size:10px; padding:1px 6px;">ยืม</span>`
+              : `<span class="badge badge-blue" style="font-size:10px; padding:1px 6px;">ให้ยืม</span>`;
             const itemName = l.itemName || getDeviceName(l.itemId);
 
             return `
@@ -2293,7 +2960,7 @@ window.__INR_MAIN_PARSED = true;
                   <div class="font-medium text-sm truncate" title="${escapeHtml(itemName)}">${escapeHtml(itemName)}</div>
                   <div class="text-xs text-gray truncate" style="display:flex; align-items:center; gap:4px; margin-top:2px;">
                     ${dirBadge}
-                    <span class="truncate">${escapeHtml(l.department || '')}</span>
+                    <span class="truncate">${escapeHtml(cleanDepartmentName(l.department || ''))}</span>
                   </div>
                 </div>
                 <span class="badge ${isWeOwe ? 'badge-amber' : 'badge-blue'}" style="font-size:12px; font-weight:700;">${rem}</span>
@@ -2309,12 +2976,12 @@ window.__INR_MAIN_PARSED = true;
       const contrastItems = (state.inventory || []).filter(i => String(i.category || '').trim().toLowerCase() === 'contrast media');
 
       if (contrastBadge) {
-        contrastBadge.innerText = `${contrastItems.length} ${t('stock_total', 'Items')}`;
+        contrastBadge.innerText = `${contrastItems.length} รายการ`;
       }
 
       if (contrastContainer) {
         if (contrastItems.length === 0) {
-          contrastContainer.innerHTML = `<div class="empty-state text-sm" style="padding:16px;">${state.currentLang === 'th' ? 'ไม่มีรายการสารทึบรังสีในคลัง' : 'No contrast media items in Inventory.'}</div>`;
+          contrastContainer.innerHTML = `<div class="empty-state text-sm" style="padding:16px;">ไม่มีรายการสารทึบรังสีในคลัง</div>`;
         } else {
           contrastContainer.innerHTML = contrastItems.map(device => {
             const totalStock = Number(device.totalStock) || 0;
@@ -2327,7 +2994,7 @@ window.__INR_MAIN_PARSED = true;
             return `
               <div class="dash-item-row">
                 <span class="font-medium text-sm truncate" style="max-width:70%;" title="${escapeHtml(device.deviceName)}">${escapeHtml(device.deviceName)}</span>
-                <span class="badge ${badgeCls}" style="font-size:12px; font-weight:700;">${totalStock} ${t('stock_on_hand', 'remain')}</span>
+                <span class="badge ${badgeCls}" style="font-size:12px; font-weight:700;">${totalStock}</span>
               </div>
             `;
           }).join('');
@@ -2579,50 +3246,56 @@ window.__INR_MAIN_PARSED = true;
     }
 
     function renderTransactions() {
-      const typeFilter = document.getElementById('tx-filter-type').value;
-      const searchFilter = document.getElementById('tx-filter-search').value.toLowerCase();
+      const typeFilter = document.getElementById('tx-filter-type')?.value || '';
+      const searchFilter = (document.getElementById('tx-filter-search')?.value || '').toLowerCase();
       const body = document.getElementById('tx-table-body');
+      if (!body) return;
 
-      const filtered = state.transactions.filter(t => {
-        const matchesType = !typeFilter || t.type === typeFilter;
-        const devName = getDeviceName(t.itemId).toLowerCase();
+      const filtered = (state.transactions || []).filter(tx => {
+        const matchesType = !typeFilter || tx.type === typeFilter;
+        const devName = getDeviceName(tx.itemId).toLowerCase();
         const matchesSearch = !searchFilter || 
-          (t.hn || '').toLowerCase().includes(searchFilter) || 
-          (t.tech || '').toLowerCase().includes(searchFilter) ||
-          (t.complication || '').toLowerCase().includes(searchFilter) ||
+          String(tx.hn || '').toLowerCase().includes(searchFilter) || 
+          String(tx.tech || '').toLowerCase().includes(searchFilter) ||
+          String(tx.complication || '').toLowerCase().includes(searchFilter) ||
           devName.includes(searchFilter);
         return matchesType && matchesSearch;
       }).reverse(); // Newest first
 
-      body.innerHTML = filtered.map(t => {
-        const typeColor = t.type === 'Procedure Use' ? 'var(--red)'
-          : t.type === 'Stock In' ? 'var(--brand)'
-          : t.type === 'HO Check' ? '#7c3aed'
-          : (t.type === 'Add Device' || t.type === 'Edit Device') ? '#d97706'
+      if (filtered.length === 0) {
+        body.innerHTML = '<tr><td colspan="7" class="empty-state">ไม่พบประวัติรายการ</td></tr>';
+        return;
+      }
+
+      body.innerHTML = filtered.map(tx => {
+        const typeColor = tx.type === 'Procedure Use' ? 'var(--red)'
+          : tx.type === 'Stock In' ? 'var(--brand)'
+          : tx.type === 'HO Check' ? '#7c3aed'
+          : (tx.type === 'Add Device' || tx.type === 'Edit Device') ? '#d97706'
           : 'var(--blue)';
-        const detailPrimary = t.hn ? escapeHtml(t.hn) : (t.complication ? `<span class="text-xs">${escapeHtml(t.complication)}</span>` : '');
-        const detailSub = t.procedure ? `<span class="text-xs text-gray" style="display:block;">${escapeHtml(t.procedure)}</span>` : '';
-        const userTag = t.tech ? `<span class="text-xs text-gray" style="display:block;">User: <strong>${escapeHtml(t.tech)}</strong></span>` : '';
-        const locStr = `${formatLoc(t.fromLoc)}${t.toLoc ? ' → ' + formatLoc(t.toLoc) : ''}` || '—';
+        const detailPrimary = tx.hn ? escapeHtml(tx.hn) : (tx.complication ? `<span class="text-xs">${escapeHtml(tx.complication)}</span>` : '');
+        const detailSub = tx.procedure ? `<span class="text-xs text-gray" style="display:block;">${escapeHtml(tx.procedure)}</span>` : '';
+        const userTag = tx.tech ? `<span class="text-xs text-gray" style="display:block;">ผู้ใช้: <strong>${escapeHtml(tx.tech)}</strong></span>` : '';
+        const locStr = `${formatLoc(tx.fromLoc)}${tx.toLoc ? ' → ' + formatLoc(tx.toLoc) : ''}` || '—';
         return `
         <tr>
-          <td>${formatDate(t.date)}</td>
-          <td class="font-medium" style="color:${typeColor}">${formatTxType(t.type)}</td>
+          <td>${formatDate(tx.date)}</td>
+          <td class="font-medium" style="color:${typeColor}">${formatTxType(tx.type)}</td>
           <td>${detailPrimary}${detailSub}${userTag}</td>
-          <td>${escapeHtml(getDeviceName(t.itemId))}</td>
-          <td class="num font-bold">${t.qty}</td>
+          <td>${escapeHtml(getDeviceName(tx.itemId) || '—')}</td>
+          <td class="num font-bold">${tx.qty}</td>
           <td class="text-gray text-sm">${locStr}</td>
-          <td class="center"><button class="btn-ghost" onclick="handleDeleteTx('${t.id}')" style="color:var(--red);" title="${t('btn_delete', 'Delete')}">${ICONS.trash}</button></td>
+          <td class="center"><button class="btn-ghost" onclick="handleDeleteTx('${escapeHtml(tx.id)}')" style="color:var(--red);" title="${t('btn_delete', 'ลบ')}">${ICONS.trash}</button></td>
         </tr>
       `;
       }).join('');
     }
 
     function handleDeleteTx(txId) {
-      verifyPasscodeThen(state.currentLang === 'th' ? `ยืนยันการลบรายการ ${txId}?` : `Delete transaction ${txId}?`, async () => {
+      verifyPasscodeThen('delete_stock', state.currentLang === 'th' ? `ยืนยันการลบรายการ ${txId}?` : `Delete transaction ${txId}?`, async () => {
         appLoading.classList.remove('hidden');
         appContent.classList.add('hidden');
-        
+
         if (isApiConfigured()) {
           try {
             await callApi('deleteTransaction', { transactionId: txId });
@@ -2634,7 +3307,7 @@ window.__INR_MAIN_PARSED = true;
             appContent.classList.remove('hidden');
           }
         } else {
-          state.transactions = state.transactions.filter(t => t.id !== txId);
+          state.transactions = state.transactions.filter(tx => tx.id !== txId);
           (state.exchangeQuotas || []).forEach(q => {
             if (Array.isArray(q.history)) {
               q.history = q.history.filter(h => String(h.txnId) !== String(txId));
@@ -2651,6 +3324,49 @@ window.__INR_MAIN_PARSED = true;
           renderTransactions();
         }
       });
+    }
+
+    function exportTransactionsCSV() {
+      const typeFilter = document.getElementById('tx-filter-type')?.value || '';
+      const searchFilter = (document.getElementById('tx-filter-search')?.value || '').toLowerCase();
+      const filtered = (state.transactions || []).filter(tx => {
+        const matchesType = !typeFilter || tx.type === typeFilter;
+        const devName = getDeviceName(tx.itemId).toLowerCase();
+        const matchesSearch = !searchFilter ||
+          String(tx.hn || '').toLowerCase().includes(searchFilter) ||
+          String(tx.tech || '').toLowerCase().includes(searchFilter) ||
+          String(tx.complication || '').toLowerCase().includes(searchFilter) ||
+          devName.includes(searchFilter);
+        return matchesType && matchesSearch;
+      }).reverse();
+      if (filtered.length === 0) {
+        showToast(state.currentLang === 'th' ? 'ไม่พบข้อมูลสำหรับส่งออก' : 'No movement records to export');
+        return;
+      }
+      const headers = ['Date', 'Type', 'HN', 'Procedure', 'User', 'Device', 'Qty', 'From', 'To', 'Notes'];
+      const esc = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
+      const rows = filtered.map(tx => [
+        formatDate(tx.date),
+        tx.type || '',
+        tx.hn || '',
+        tx.procedure || '',
+        tx.tech || '',
+        getDeviceName(tx.itemId) || '',
+        tx.qty ?? 0,
+        tx.fromLoc || '',
+        tx.toLoc || '',
+        tx.complication || ''
+      ].map(esc).join(','));
+      const csv = '\uFEFF' + [headers.map(esc).join(','), ...rows].join('\r\n');
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `INR_Movements_${new Date().toISOString().slice(0, 10)}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
     }
 
     // --- Tab 3: Procedure Use ---
@@ -2738,19 +3454,23 @@ window.__INR_MAIN_PARSED = true;
       const curCat = catSelect ? catSelect.value : '';
       const allCats = getAllCategories();
       if (catSelect) {
-        catSelect.innerHTML = `<option value="">All Categories</option>` +
+        catSelect.innerHTML = `<option value="">ทุกหมวดหมู่</option>` +
           allCats.map(c => `<option value="${c}" ${c === curCat ? 'selected' : ''}>${c}</option>`).join('');
       }
 
       // 2. Render Search Results
       renderProcDeviceResults();
 
-      // 3. Render Cart
+      // 3. Render Cart & sync Existing Case select if needed
       renderCart();
+      if (state.procEntryMode === 'existing') {
+        populateExistingProcSelect();
+      }
 
-      // 4. Refresh Procedure History if open
-      const histCard = document.getElementById('proc-history-card');
-      if (histCard && !histCard.classList.contains('hidden')) {
+      // 4. Refresh Procedure History count & panel if active
+      const histCntEl = document.getElementById('cases-hist-count');
+      if (histCntEl) histCntEl.innerText = String(getProcedureGroups().length);
+      if (state.casesSubTab === 'history') {
         renderProcHistory();
       }
     }
@@ -2771,12 +3491,30 @@ window.__INR_MAIN_PARSED = true;
       }
       const hist = Array.isArray(q.history) ? q.history : [];
       const pieces = [];
+      let nextSeq = 1;
       hist.forEach(h => {
-        if (h && h.pieceNo !== undefined && h.pieceNo !== null && h.pieceNo !== '') {
+        if (!h) return;
+        const qtyUsed = Math.max(1, Number(h.qty) || 1);
+        if (h.pieceNo !== undefined && h.pieceNo !== null && h.pieceNo !== '') {
           const p = Number(h.pieceNo);
-          if (!isNaN(p) && !pieces.includes(p)) pieces.push(p);
+          if (!isNaN(p)) {
+            for (let k = 0; k < qtyUsed; k++) {
+              if (!pieces.includes(p + k)) pieces.push(p + k);
+            }
+            nextSeq = Math.max(nextSeq, p + qtyUsed);
+            return;
+          }
+        }
+        for (let k = 0; k < qtyUsed; k++) {
+          while (pieces.includes(nextSeq)) nextSeq++;
+          pieces.push(nextSeq);
+          nextSeq++;
         }
       });
+      const curUsed = Number(q.currentUsed) || 0;
+      if (pieces.length === 0 && curUsed > 0) {
+        for (let k = 1; k <= curUsed; k++) pieces.push(k);
+      }
       return pieces.sort((a, b) => a - b);
     }
 
@@ -2844,8 +3582,6 @@ window.__INR_MAIN_PARSED = true;
       if (!resultsContainer) return;
 
       const filtered = state.inventory.filter(i => {
-        // Strict Hierarchy Rule: Parent Device Groups cannot be deducted directly in Procedure Use
-        if (i.isParent) return false;
         // Module 3 Rule: Consignment & Vendor Quarantine Hold items in Buffer are locked/hidden from Procedure Use
         if (isConsignmentOnlyItem(i)) return false;
         if (catVal && String(i.category || '').toLowerCase() !== catVal) return false;
@@ -2902,10 +3638,6 @@ window.__INR_MAIN_PARSED = true;
 
     function addToCart(itemId, deviceName) {
       const inv = state.inventory.find(i => String(i.itemId) === String(itemId));
-      if (inv && inv.isParent) {
-        showToast('Cannot deduct stock directly from a Parent Device Group. Please select a Child Sub-Device.');
-        return;
-      }
       const isContrast = inv && String(inv.category || '').toLowerCase().includes('contrast');
       const exRule = getActiveExchangeRule(itemId);
       let defaultPieceNo = '';
@@ -3131,16 +3863,168 @@ window.__INR_MAIN_PARSED = true;
       return Array.from(map.values()).sort((a, b) => String(b.date).localeCompare(String(a.date)));
     }
 
-    function toggleProcHistory() {
-      const card = document.getElementById('proc-history-card');
-      const btn = document.getElementById('btn-toggle-proc-history');
-      if (!card) return;
-      const isHidden = card.classList.toggle('hidden');
-      if (btn) {
-        const spanEl = btn.querySelector('span') || btn;
-        spanEl.innerText = isHidden ? `${t('proc_case_history', 'Procedure Case History ▾')}` : 'Hide Case History ▲';
+    function switchCasesSubTab(sub) {
+      const target = sub === 'history' ? 'history' : 'new';
+      state.casesSubTab = target;
+      document.querySelectorAll('#cases-subtabs button').forEach(btn => {
+        const isMatch = btn.dataset.csub === target;
+        btn.classList.toggle('on', isMatch);
+        btn.classList.toggle('active', isMatch);
+      });
+      const newPanel = document.getElementById('cases-panel-new');
+      const histPanel = document.getElementById('cases-panel-history');
+      if (newPanel) newPanel.classList.toggle('hidden', target !== 'new');
+      if (histPanel) histPanel.classList.toggle('hidden', target !== 'history');
+      const histCntEl = document.getElementById('cases-hist-count');
+      if (histCntEl) histCntEl.innerText = String(getProcedureGroups().length);
+      if (target === 'history') {
+        renderProcHistory();
+      } else {
+        renderProcedureTab();
       }
-      if (!isHidden) renderProcHistory();
+    }
+
+    function setProcEntryMode(mode) {
+      const target = mode === 'existing' ? 'existing' : 'new';
+      state.procEntryMode = target;
+      document.querySelectorAll('#proc-mode-chips button').forEach(btn => {
+        const isMatch = btn.dataset.pmode === target;
+        btn.classList.toggle('on', isMatch);
+        btn.classList.toggle('active', isMatch);
+      });
+      const existingRow = document.getElementById('proc-existing-row');
+      const newFields = document.getElementById('proc-new-header-fields');
+      if (existingRow) existingRow.classList.toggle('hidden', target !== 'existing');
+      if (newFields) newFields.classList.toggle('hidden', target === 'existing');
+      if (target === 'existing') {
+        populateExistingProcSelect();
+      }
+    }
+
+    function populateExistingProcSelect() {
+      const sel = document.getElementById('proc-existing-select');
+      if (!sel) return;
+      const curVal = sel.value;
+      const groups = getProcedureGroups().slice(0, 80);
+      sel.innerHTML = `<option value="">-- Select an existing case (today / recent) --</option>` +
+        groups.map(g => `<option value="${escapeHtml(String(g.id))}">${escapeHtml(formatDate(g.date))} — HN ${escapeHtml(g.hn || '—')} (${escapeHtml(g.procedure || '—')})</option>`).join('');
+      if (curVal && groups.some(g => String(g.id) === String(curVal))) {
+        sel.value = curVal;
+      }
+      onSelectExistingProc();
+    }
+
+    function onSelectExistingProc() {
+      const sel = document.getElementById('proc-existing-select');
+      const previewEl = document.getElementById('proc-existing-preview');
+      if (!sel) return;
+      const txId = sel.value;
+      if (!txId) {
+        if (previewEl) previewEl.innerHTML = '';
+        return;
+      }
+      const g = getProcedureGroups().find(x => String(x.id) === String(txId));
+      if (!g) {
+        if (previewEl) previewEl.innerHTML = '';
+        return;
+      }
+      if (previewEl) {
+        previewEl.innerHTML = `<span class="badge badge-green">${escapeHtml(formatDate(g.date))}</span> <strong>HN ${escapeHtml(g.hn || '—')}</strong> · ${escapeHtml(g.procedure || '—')} (${escapeHtml(g.disease || '—')}) · ${(g.items || []).length} items`;
+      }
+    }
+
+    function toggleProcHistory() {
+      switchCasesSubTab(state.casesSubTab === 'history' ? 'new' : 'history');
+    }
+
+    function getFilteredProcGroups() {
+      const q = (document.getElementById('proc-hist-search')?.value || '').toLowerCase().trim();
+      const fromD = document.getElementById('proc-hist-from')?.value || '';
+      const toD = document.getElementById('proc-hist-to')?.value || '';
+      const allGroups = getProcedureGroups();
+      const histCntEl = document.getElementById('cases-hist-count');
+      if (histCntEl) histCntEl.innerText = String(allGroups.length);
+
+      return allGroups.filter(g => {
+        const dStr = String(g.date).slice(0, 10);
+        if (fromD && dStr < fromD) return false;
+        if (toD && dStr > toD) return false;
+        if (!q) return true;
+        const itemNames = g.items.map(i => i.deviceName).join(' ').toLowerCase();
+        return (
+          String(g.hn).toLowerCase().includes(q) ||
+          String(g.procedure).toLowerCase().includes(q) ||
+          String(g.disease).toLowerCase().includes(q) ||
+          String(g.tech).toLowerCase().includes(q) ||
+          String(g.shift).toLowerCase().includes(q) ||
+          String(g.complication || '').toLowerCase().includes(q) ||
+          itemNames.includes(q)
+        );
+      });
+    }
+
+    function exportProcHistoryCSV() {
+      const groups = getFilteredProcGroups();
+      if (groups.length === 0) {
+        showToast(state.currentLang === 'th' ? 'ไม่พบประวัติเคสสำหรับส่งออก' : 'No procedure cases to export');
+        return;
+      }
+      const esc = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
+      const headers = ['Date', 'HN', 'Procedure', 'Disease', 'Shift', 'Staff', 'Devices', 'Notes'];
+      const rows = groups.map(g => [
+        formatDate(g.date),
+        g.hn || '',
+        g.procedure || '',
+        g.disease || '',
+        g.shift || '',
+        g.tech || '',
+        (g.items || []).map(it => `${it.deviceName} x${it.qty}`).join('; '),
+        [g.complication, g.contrast ? `Contrast: ${g.contrast}` : ''].filter(Boolean).join(' | ')
+      ].map(esc).join(','));
+      const csv = '\uFEFF' + [headers.map(esc).join(','), ...rows].join('\r\n');
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `INR_Cases_${new Date().toISOString().slice(0, 10)}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+
+    function printProcHistory() {
+      const groups = getFilteredProcGroups();
+      if (groups.length === 0) {
+        showToast(state.currentLang === 'th' ? 'ไม่พบประวัติเคสสำหรับพิมพ์' : 'No procedure cases to print');
+        return;
+      }
+      const rowsHtml = groups.map(g => {
+        const notes = [g.complication, g.contrast ? `Contrast: ${g.contrast}` : ''].filter(Boolean).join(' | ');
+        return `
+          <tr>
+            <td>${escapeHtml(formatDate(g.date))}</td>
+            <td><strong>${escapeHtml(g.hn || '—')}</strong></td>
+            <td>${escapeHtml(g.procedure || '—')}</td>
+            <td>${escapeHtml(g.disease || '—')}</td>
+            <td>${escapeHtml(g.shift || '—')}</td>
+            <td>${escapeHtml(g.tech || '—')}</td>
+            <td>${escapeHtml(notes || '—')}</td>
+          </tr>
+        `;
+      }).join('');
+      printStageHtml(`
+        <div style="padding:16px; font-family:'Noto Sans', 'Noto Sans Thai', sans-serif;">
+          <h2 style="margin:0 0 4px 0; font-size:18px;">INR Interventional Neuroradiology — Procedure Case History</h2>
+          <div style="font-size:11px; color:#6b7280; margin-bottom:12px;">Printed: ${new Date().toLocaleString('en-GB')} · Total: ${groups.length} cases</div>
+          <table class="data-table">
+            <thead>
+              <tr><th>Date</th><th>HN</th><th>Procedure</th><th>Disease</th><th>Shift</th><th>Staff</th><th>Notes</th></tr>
+            </thead>
+            <tbody>${rowsHtml}</tbody>
+          </table>
+        </div>
+      `);
     }
 
     function formatLongDate(dateStr) {
@@ -3157,26 +4041,7 @@ window.__INR_MAIN_PARSED = true;
     function renderProcHistory() {
       const body = document.getElementById('proc-history-body');
       if (!body) return;
-      const q = (document.getElementById('proc-hist-search')?.value || '').toLowerCase().trim();
-      const fromD = document.getElementById('proc-hist-from')?.value || '';
-      const toD = document.getElementById('proc-hist-to')?.value || '';
-
-      const groups = getProcedureGroups().filter(g => {
-        const dStr = String(g.date).slice(0, 10);
-        if (fromD && dStr < fromD) return false;
-        if (toD && dStr > toD) return false;
-        if (!q) return true;
-        const itemNames = g.items.map(i => i.deviceName).join(' ').toLowerCase();
-        return (
-          String(g.hn).toLowerCase().includes(q) ||
-          String(g.procedure).toLowerCase().includes(q) ||
-          String(g.disease).toLowerCase().includes(q) ||
-          String(g.tech).toLowerCase().includes(q) ||
-          String(g.shift).toLowerCase().includes(q) ||
-          String(g.complication || '').toLowerCase().includes(q) ||
-          itemNames.includes(q)
-        );
-      });
+      const groups = getFilteredProcGroups();
 
       if (groups.length === 0) {
         body.innerHTML = '<tr><td colspan="7" class="empty-state">No procedure records found.</td></tr>';
@@ -3235,17 +4100,9 @@ window.__INR_MAIN_PARSED = true;
             `;
           }).join('');
 
-      // Procedure names: primary on top, secondary indented / stacked below
-      const procs = String(g.procedure || '').split(',').map(s => s.trim()).filter(Boolean);
-      let procHtml = '—';
-      if (procs.length > 0) {
-        procHtml = procs.map((p, idx) => {
-          if (idx === 0) {
-            return `<div>${escapeHtml(p)}</div>`;
-          }
-          return `<div class="text-gray text-xs" style="padding-left:14px; margin-top:3px;">↳ ${escapeHtml(p)}</div>`;
-        }).join('');
-      }
+      // Procedure name: full procedure name in bold/dark text on the line directly underneath "Procedure:"
+      const procText = String(g.procedure || '').trim();
+      const procHtml = procText ? escapeHtml(procText) : '—';
 
       // Notes content
       const notesContent = [
@@ -3255,35 +4112,35 @@ window.__INR_MAIN_PARSED = true;
 
       return `
         <div class="space-y">
-          <!-- Metadata Header: Two-Column Alignment (Transaction ID Hidden) -->
+          <!-- Metadata Header: Two-Column Summary Card (Requirement 2) -->
           <div class="proc-detail-header-card">
             <!-- Left Column -->
             <div style="display:flex; flex-direction:column; gap:8px;">
-              <div style="font-size:1.2em; font-weight:700; color:var(--gray-900); line-height:1.3;">
-                <span class="text-gray" style="font-weight:600;">Patient HN:</span> ${escapeHtml(g.hn || '—')}
+              <div>
+                <span class="text-gray font-medium">Patient HN:</span> <strong style="font-weight:700; color:var(--black);">${escapeHtml(g.hn || '—')}</strong>
               </div>
               <div>
-                <span class="text-gray font-medium">Date:</span> <strong>${formatLongDate(g.date)}</strong>
+                <span class="text-gray font-medium">Date:</span> <strong style="font-weight:600; color:var(--black);">${formatLongDate(g.date)}</strong>
               </div>
               <div>
-                <span class="text-gray font-medium">Procedure:</span>
-                <div class="font-medium" style="margin-top:2px;">${procHtml}</div>
+                <div class="text-gray font-medium">Procedure:</div>
+                <div style="font-weight:700; color:var(--black); margin-top:2px;">${procHtml}</div>
               </div>
               <div>
-                <span class="text-gray font-medium">Disease:</span> <strong>${escapeHtml(g.disease || '—')}</strong>
+                <span class="text-gray font-medium">Disease:</span> <strong style="font-weight:600; color:var(--black);">${escapeHtml(g.disease || '—')}</strong>
               </div>
             </div>
 
             <!-- Right Column -->
             <div style="display:flex; flex-direction:column; gap:8px;">
               <div>
-                <span class="text-gray font-medium">Shift:</span> <span class="badge badge-blue font-semibold">${escapeHtml(g.shift || '—')}</span>
+                <span class="text-gray font-medium">Shift:</span> <span style="color:var(--blue); font-weight:700;">${escapeHtml(g.shift || '—')}</span>
               </div>
               <div>
-                <span class="text-gray font-medium">Tech/Staff:</span> <strong>${escapeHtml(g.tech || '—')}</strong>
+                <span class="text-gray font-medium">Tech/Staff:</span> <strong style="font-weight:600; color:var(--black);">${escapeHtml(g.tech || '—')}</strong>
               </div>
               <div>
-                <span class="text-gray font-medium">Notes:</span> <strong>${notesContent || '—'}</strong>
+                <span class="text-gray font-medium">Notes:</span> <span style="font-weight:500; color:var(--black);">${notesContent || '—'}</span>
               </div>
             </div>
           </div>
@@ -3320,11 +4177,50 @@ window.__INR_MAIN_PARSED = true;
       if (!g) return;
       document.getElementById('proc-view-body').innerHTML = buildProcDetailHtml(g);
       document.getElementById('btn-proc-view-print').onclick = () => printProcedureCase(txId);
+      const delBtn = document.getElementById('btn-proc-view-delete');
+      if (delBtn) delBtn.onclick = () => deleteProcedureCase(txId);
       document.getElementById('btn-proc-view-edit').onclick = () => {
         closeModal();
         openProcEditModal(txId);
       };
       openModal('modal-proc-view');
+    }
+
+    function deleteProcedureCase(txId) {
+      const g = getProcedureGroups().find(x => String(x.id) === String(txId));
+      const label = g ? `HN ${g.hn || '—'} (${formatDate(g.date)})` : txId;
+      verifyPasscodeThen('delete_cases', state.currentLang === 'th' ? `ยืนยันการลบข้อมูลเคส ${label}?` : `Delete procedure case ${label}?`, async () => {
+        closeModal();
+        appLoading.classList.remove('hidden');
+        appContent.classList.add('hidden');
+        if (isApiConfigured()) {
+          try {
+            await callApi('deleteTransaction', { transactionId: txId });
+            showToast(state.currentLang === 'th' ? 'ลบเคสเรียบร้อยแล้ว' : 'Case deleted');
+            fetchDataFromServer();
+          } catch (err) {
+            showToast('Failed to delete: ' + (err.message || err));
+            appLoading.classList.add('hidden');
+            appContent.classList.remove('hidden');
+          }
+        } else {
+          state.transactions = (state.transactions || []).filter(tx => String(tx.id) !== String(txId));
+          (state.exchangeQuotas || []).forEach(q => {
+            if (Array.isArray(q.history)) {
+              q.history = q.history.filter(h => String(h.txnId) !== String(txId));
+              q.usedPieces = getQuotaUsedPieces(q);
+              q.currentUsed = q.usedPieces.length;
+              if (q.currentUsed < (Number(q.totalQuota) || 0) && q.status === 'Completed') {
+                q.status = 'Active';
+              }
+            }
+          });
+          showToast(state.currentLang === 'th' ? 'ลบเคสเรียบร้อยแล้ว (mock)' : 'Case deleted (mock)');
+          appLoading.classList.add('hidden');
+          appContent.classList.remove('hidden');
+          renderCurrentTab();
+        }
+      });
     }
 
     function printProcedureCase(txId) {
@@ -3406,7 +4302,7 @@ window.__INR_MAIN_PARSED = true;
       // Populate Category filter in edit modal
       const allCats = getAllCategories();
       const editCatSelect = document.getElementById('proc-edit-add-cat');
-      editCatSelect.innerHTML = '<option value="">All Categories</option>' +
+      editCatSelect.innerHTML = '<option value="">ทุกหมวดหมู่</option>' +
         allCats.map(c => `<option value="${c}">${c}</option>`).join('');
 
       renderProcEditDeviceOptions();
@@ -3821,61 +4717,253 @@ window.__INR_MAIN_PARSED = true;
       };
     }
 
+    let _stockDevDdState = { idx: -1, inputEl: null };
+
+    function ensureStockDevDropdownEl() {
+      let dd = document.getElementById('stock-dev-floating-dd');
+      if (!dd) {
+        dd = document.createElement('div');
+        dd.id = 'stock-dev-floating-dd';
+        dd.className = 'stock-dev-dropdown hidden';
+        document.body.appendChild(dd);
+      }
+      if (!document._stockDevListenersAttached) {
+        document._stockDevListenersAttached = true;
+        document.addEventListener('mousedown', (e) => {
+          const target = e.target;
+          if (!target) return;
+          if (target.closest && (target.closest('#stock-dev-floating-dd') || target.closest('.stock-dev-combo'))) return;
+          closeStockDevDropdown();
+        });
+        window.addEventListener('resize', () => closeStockDevDropdown());
+        const stockBody = document.querySelector('#modal-stock .modal-body');
+        if (stockBody) {
+          stockBody.addEventListener('scroll', () => closeStockDevDropdown(), { passive: true });
+        }
+      }
+      return dd;
+    }
+
+    function closeStockDevDropdown() {
+      const dd = document.getElementById('stock-dev-floating-dd');
+      if (dd) {
+        dd.classList.add('hidden');
+        dd.innerHTML = '';
+      }
+      _stockDevDdState = { idx: -1, inputEl: null };
+    }
+
+    function getStockDeviceDisplayLabel(item) {
+      if (!item) return '';
+      return String(item.deviceName || '') + (item.isFreeItem ? ' [FREE]' : '');
+    }
+
+    function positionStockDevDropdown(dd, inputEl) {
+      if (!dd || !inputEl) return;
+      const rect = inputEl.getBoundingClientRect();
+      const ddWidth = Math.min(Math.max(rect.width, 300), window.innerWidth - 16);
+      const ddLeft = Math.max(8, Math.min(rect.left, window.innerWidth - ddWidth - 8));
+      dd.style.width = ddWidth + 'px';
+      dd.style.left = ddLeft + 'px';
+
+      const spaceBelow = window.innerHeight - rect.bottom - 10;
+      const spaceAbove = rect.top - 10;
+      if (spaceBelow < 180 && spaceAbove > spaceBelow) {
+        dd.style.top = 'auto';
+        dd.style.bottom = (window.innerHeight - rect.top + 4) + 'px';
+        dd.style.maxHeight = Math.min(260, Math.max(120, spaceAbove)) + 'px';
+      } else {
+        dd.style.bottom = 'auto';
+        dd.style.top = (rect.bottom + 4) + 'px';
+        dd.style.maxHeight = Math.min(260, Math.max(120, spaceBelow)) + 'px';
+      }
+    }
+
+    function renderStockDevDropdownList(idx, query, filterMode) {
+      const dd = ensureStockDevDropdownEl();
+      const line = state.stockLines[idx];
+      if (!line) {
+        closeStockDevDropdown();
+        return;
+      }
+      const { orderedDeviceEntries } = getInventoryOrderedStructure();
+      const q = String(query || '').trim().toLowerCase();
+      const matches = (filterMode && q)
+        ? orderedDeviceEntries.filter(entry => {
+            const i = entry.item;
+            return (
+              String(i.deviceName || '').toLowerCase().includes(q) ||
+              String(i.itemId || '').toLowerCase().includes(q) ||
+              String(i.hoItemId || '').toLowerCase().includes(q) ||
+              String(entry.groupName || '').toLowerCase().includes(q)
+            );
+          })
+        : orderedDeviceEntries;
+
+      if (matches.length === 0) {
+        dd.innerHTML = '<div class="stock-dev-empty">ไม่พบอุปกรณ์ที่ตรงกับคำค้นหา</div>';
+      } else {
+        dd.innerHTML = matches.map((entry, mIdx) => {
+          const item = entry.item;
+          const isSelected = String(line.itemId) === String(item.itemId);
+          const isHighlighted = (filterMode && q) ? (mIdx === 0) : isSelected;
+          const freeTag = item.isFreeItem ? ' <span class="badge-free">FREE</span>' : '';
+          const metaText = entry.isSubItem && entry.groupName
+            ? entry.groupName
+            : (item.category || '');
+          return `
+            <div class="stock-dev-opt ${entry.isSubItem ? 'sub-item' : ''} ${isHighlighted ? 'active' : ''}"
+                 data-item-id="${escapeHtml(String(item.itemId))}"
+                 onmousedown="event.preventDefault(); selectStockDevOption(${idx}, '${escapeHtml(String(item.itemId))}')">
+              <span>${entry.isSubItem ? '↳ ' : ''}${escapeHtml(item.deviceName || '')}${freeTag}</span>
+              ${metaText ? `<span class="stock-dev-opt-meta">${escapeHtml(metaText)}</span>` : ''}
+            </div>
+          `;
+        }).join('');
+      }
+      dd.classList.remove('hidden');
+      if (_stockDevDdState.inputEl) {
+        positionStockDevDropdown(dd, _stockDevDdState.inputEl);
+      }
+    }
+
+    function openStockDevDropdown(idx, inputEl) {
+      _stockDevDdState = { idx, inputEl };
+      renderStockDevDropdownList(idx, '', false);
+    }
+
+    function toggleStockDevDropdown(idx, btnEl) {
+      const dd = document.getElementById('stock-dev-floating-dd');
+      const combo = btnEl ? btnEl.closest('.stock-dev-combo') : null;
+      const inputEl = combo ? combo.querySelector('.stock-dev-input') : null;
+      if (dd && !dd.classList.contains('hidden') && _stockDevDdState.idx === idx) {
+        closeStockDevDropdown();
+        return;
+      }
+      if (inputEl) {
+        inputEl.focus();
+        openStockDevDropdown(idx, inputEl);
+      }
+    }
+
+    function onStockDevSearch(idx, inputEl) {
+      if (!state.stockLines[idx]) return;
+      _stockDevDdState = { idx, inputEl };
+      const q = String(inputEl.value || '').trim();
+      if (!q) {
+        state.stockLines[idx].itemId = '';
+        refreshStockPreview(idx);
+        renderStockDevDropdownList(idx, '', false);
+        return;
+      }
+      renderStockDevDropdownList(idx, q, true);
+    }
+
+    function selectStockDevOption(idx, itemId) {
+      if (!state.stockLines[idx]) return;
+      state.stockLines[idx].itemId = String(itemId || '');
+      const matched = (state.inventory || []).find(i => String(i.itemId) === String(itemId));
+      const inputEl = (_stockDevDdState.idx === idx && _stockDevDdState.inputEl)
+        ? _stockDevDdState.inputEl
+        : document.querySelector(`#stock-lines-container .stock-dev-input[data-stock-idx="${idx}"]`);
+      if (inputEl) {
+        inputEl.value = getStockDeviceDisplayLabel(matched);
+      }
+      refreshStockPreview(idx);
+      closeStockDevDropdown();
+    }
+
+    function selectFirstStockDevOption(inputEl) {
+      const dd = document.getElementById('stock-dev-floating-dd');
+      if (!dd || !inputEl) return;
+      const firstOpt = dd.querySelector('.stock-dev-opt');
+      if (!firstOpt) return;
+      const itemId = firstOpt.getAttribute('data-item-id');
+      const idx = Number(inputEl.getAttribute('data-stock-idx'));
+      if (itemId && !isNaN(idx)) {
+        selectStockDevOption(idx, itemId);
+      }
+    }
+
+    function onStockDevBlur(idx, inputEl) {
+      const line = state.stockLines[idx];
+      const matched = line && line.itemId
+        ? (state.inventory || []).find(i => String(i.itemId) === String(line.itemId))
+        : null;
+      if (inputEl) {
+        inputEl.value = getStockDeviceDisplayLabel(matched);
+      }
+      setTimeout(() => {
+        if (_stockDevDdState.idx === idx) {
+          closeStockDevDropdown();
+        }
+      }, 120);
+    }
+
     function renderStockTab() {
       const container = document.getElementById('stock-lines-container');
       if (!container) return;
+      closeStockDevDropdown();
       const actionEl = document.querySelector('input[name="stock-action"]:checked');
       const action = actionEl ? actionEl.value : 'Stock In';
-      const locLabel = action === 'Stock In' ? 'Destination Location' : 'Source Location';
+      const locLabel = action === 'Stock In' ? 'คลังปลายทาง' : 'คลังต้นทาง';
+      const canRemove = state.stockLines.length > 1;
 
-      container.innerHTML = state.stockLines.map((line, idx) => {
-        const preview = getStockPreviewText(line);
+      const headerHtml = `
+        <div class="stock-lines-head">
+          <div>ชื่ออุปกรณ์ <span style="color:var(--red);">*</span></div>
+          <div style="text-align:center;">จำนวน <span style="color:var(--red);">*</span></div>
+          <div>${locLabel} <span style="color:var(--red);">*</span></div>
+          <div>หมายเหตุ</div>
+          <div></div>
+        </div>
+      `;
+
+      const rowsHtml = state.stockLines.map((line, idx) => {
+        const matched = line.itemId
+          ? (state.inventory || []).find(i => String(i.itemId) === String(line.itemId))
+          : null;
+        const displayName = getStockDeviceDisplayLabel(matched);
         return `
-        <div class="${idx > 0 ? 'stock-item-card' : ''}">
-          ${state.stockLines.length > 1 ? `
-            <div class="flex justify-between items-center mb-2">
-              <span class="text-xs font-bold text-gray">Item #${idx + 1}</span>
-              <button type="button" class="btn-ghost text-xs" onclick="removeStockLine(${idx})" style="color:var(--red);">✕ Remove</button>
-            </div>
-          ` : ''}
-          <div class="device-modal-grid">
-            <div class="form-group col-span-2">
-              <label class="form-label"><span>Device Name</span> <span style="color:var(--red);">*</span></label>
-              <select class="form-select" onchange="updateStockItem(${idx}, this.value)">
-                <option value="">Select Device...</option>
-                ${getTransactableInventory().map(item => `<option value="${item.itemId}" ${line.itemId === item.itemId ? 'selected' : ''}>${item.deviceName}${item.isFreeItem ? ' [FREE]' : ''}</option>`).join('')}
-              </select>
-            </div>
-
-            <div class="form-group">
-              <label class="form-label"><span>Quantity</span> <span style="color:var(--red);">*</span></label>
-              <input type="number" value="${line.qty}" min="1" class="form-input" placeholder="1" oninput="updateStockQty(${idx}, this.value)">
-            </div>
-            <div class="form-group">
-              <label class="form-label"><span>${locLabel}</span> <span style="color:var(--red);">*</span></label>
-              <select class="form-select" onchange="updateStockLoc(${idx}, this.value)">
-                <option value="Main" ${line.loc === 'Main' ? 'selected' : ''}>Main</option>
-                <option value="Retail" ${line.loc === 'Retail' ? 'selected' : ''}>Retail</option>
-                <option value="Buffer" ${line.loc === 'Buffer' ? 'selected' : ''}>Buffer (Staging)</option>
-              </select>
-            </div>
-
-            <div class="form-group">
-              <label class="form-label">Main Stock (Main)</label>
-              <input type="text" id="stock-prev-main-${idx}" class="form-input" value="${preview.main}" readonly style="background:var(--gray-50); color:var(--gray-600);">
-            </div>
-            <div class="form-group">
-              <label class="form-label">Retail Stock (Retail)</label>
-              <input type="text" id="stock-prev-retail-${idx}" class="form-input" value="${preview.retail}" readonly style="background:var(--gray-50); color:var(--gray-600);">
-            </div>
-
-            <div class="form-group col-span-2">
-              <label class="form-label">Notes</label>
-              <input type="text" value="${line.notes || ''}" class="form-input" placeholder="Notes..." oninput="updateStockNotes(${idx}, this.value)">
+        <div class="stock-line-row">
+          <div class="stock-col-dev">
+            <div class="stock-dev-combo">
+              <input type="text"
+                     class="form-input form-input-sm stock-dev-input"
+                     data-stock-idx="${idx}"
+                     value="${escapeHtml(displayName)}"
+                     placeholder="พิมพ์ค้นหาหรือคลิกเลือก..."
+                     autocomplete="off"
+                     onfocus="openStockDevDropdown(${idx}, this)"
+                     onclick="openStockDevDropdown(${idx}, this)"
+                     oninput="onStockDevSearch(${idx}, this)"
+                     onblur="onStockDevBlur(${idx}, this)">
+              <button type="button" class="stock-dev-caret" tabindex="-1" onmousedown="event.preventDefault(); toggleStockDevDropdown(${idx}, this)" aria-label="แสดงรายการอุปกรณ์">▾</button>
             </div>
           </div>
+          <div class="stock-col-qty">
+            <input type="number" value="${line.qty}" min="1" class="form-input form-input-sm" style="text-align:center;" placeholder="1" oninput="updateStockQty(${idx}, this.value)">
+          </div>
+          <div class="stock-col-loc">
+            <select class="form-select form-input-sm" onchange="updateStockLoc(${idx}, this.value)">
+              <option value="Main" ${line.loc === 'Main' ? 'selected' : ''}>Main</option>
+              <option value="Retail" ${line.loc === 'Retail' ? 'selected' : ''}>Retail</option>
+              <option value="Buffer" ${line.loc === 'Buffer' ? 'selected' : ''}>Buffer</option>
+            </select>
+          </div>
+          <div class="stock-col-note">
+            <input type="text" value="${escapeHtml(line.notes || '')}" class="form-input form-input-sm" placeholder="หมายเหตุ..." oninput="updateStockNotes(${idx}, this.value)">
+          </div>
+          <div class="stock-col-rm">
+            ${canRemove
+              ? `<button type="button" class="stock-line-remove-btn" onclick="removeStockLine(${idx})" title="ลบแถวนี้">✕</button>`
+              : `<span></span>`}
+          </div>
         </div>
-      `}).join('');
+      `;
+      }).join('');
+
+      container.innerHTML = headerHtml + rowsHtml;
     }
 
     function refreshStockPreview(idx) {
@@ -3899,35 +4987,83 @@ window.__INR_MAIN_PARSED = true;
 
     // --- Tab 5: Adjustment ---
     function renderAdjustmentTab() {
-      const searchVal = document.getElementById('adj-search-input').value.toLowerCase();
+      const searchEl = document.getElementById('adj-search-input');
+      const searchVal = (searchEl ? searchEl.value : '').trim().toLowerCase();
       const body = document.getElementById('adj-table-body');
-      
-      const filtered = getTransactableInventory().filter(i => !searchVal || i.deviceName.toLowerCase().includes(searchVal));
+      if (!body) return;
 
-      body.innerHTML = filtered.map(i => {
+      const { membersByGroup, topLevelEntries } = getInventoryOrderedStructure();
+
+      function matchAdjItem(i) {
+        if (!searchVal) return true;
+        return (
+          String(i.deviceName || '').toLowerCase().includes(searchVal) ||
+          String(i.itemId || '').toLowerCase().includes(searchVal) ||
+          String(i.hoItemId || '').toLowerCase().includes(searchVal)
+        );
+      }
+
+      function matchAdjGroup(g) {
+        if (!searchVal) return true;
+        return (
+          String(g.groupName || '').toLowerCase().includes(searchVal) ||
+          String(g.groupId || '').toLowerCase().includes(searchVal) ||
+          String(g.hoItemId || '').toLowerCase().includes(searchVal)
+        );
+      }
+
+      function buildAdjItemRow(i, isSubItem) {
         const valMain = getAdjValue(i.itemId, 'Main');
         const valRetail = getAdjValue(i.itemId, 'Retail');
         const valBuffer = getAdjValue(i.itemId, 'Buffer');
         const bufStock = Number(i.bufferStock) || 0;
         const freeBadge = i.isFreeItem ? ` <span class="badge-free">FREE</span>` : '';
+        const nameStyle = isSubItem ? 'padding-left:20px;' : '';
+        const prefix = isSubItem ? '↳ ' : '';
         return `
           <tr>
-            <td class="font-medium">${i.deviceName}${freeBadge}</td>
+            <td class="font-medium" style="${nameStyle}">${prefix}${escapeHtml(i.deviceName || '')}${freeBadge}</td>
             <td class="center text-gray">${i.mainStock}</td>
             <td class="center">
-              <input type="number" class="adj-input" value="${valMain}" oninput="handleSetAdj('${i.itemId}', 'Main', this.value, ${i.mainStock})" placeholder="—">
+              <input type="number" class="adj-input" value="${valMain}" oninput="handleSetAdj('${escapeHtml(String(i.itemId))}', 'Main', this.value, ${i.mainStock})" placeholder="—">
             </td>
             <td class="center text-gray">${i.retailStock}</td>
             <td class="center">
-              <input type="number" class="adj-input" value="${valRetail}" oninput="handleSetAdj('${i.itemId}', 'Retail', this.value, ${i.retailStock})" placeholder="—">
+              <input type="number" class="adj-input" value="${valRetail}" oninput="handleSetAdj('${escapeHtml(String(i.itemId))}', 'Retail', this.value, ${i.retailStock})" placeholder="—">
             </td>
             <td class="center text-gray">${bufStock}</td>
             <td class="center">
-              <input type="number" class="adj-input" style="background:#f5f3ff;" value="${valBuffer}" oninput="handleSetAdj('${i.itemId}', 'Buffer', this.value, ${bufStock})" placeholder="—">
+              <input type="number" class="adj-input" style="background:#f5f3ff;" value="${valBuffer}" oninput="handleSetAdj('${escapeHtml(String(i.itemId))}', 'Buffer', this.value, ${bufStock})" placeholder="—">
             </td>
           </tr>
         `;
-      }).join('');
+      }
+
+      const htmlParts = [];
+      topLevelEntries.forEach(entry => {
+        if (entry.isGroupSummary) {
+          const members = membersByGroup.get(String(entry.groupId)) || [];
+          const grpMatch = matchAdjGroup(entry);
+          const matchedMembers = grpMatch ? members : members.filter(matchAdjItem);
+          if (matchedMembers.length > 0) {
+            htmlParts.push(`
+              <tr class="adj-group-row">
+                <td colspan="7">${escapeHtml(entry.groupName || entry.groupId)} <span class="badge badge-blue" style="font-size:10px; margin-left:4px;">GROUP</span></td>
+              </tr>
+            `);
+            matchedMembers.forEach(sub => htmlParts.push(buildAdjItemRow(sub, true)));
+          }
+        } else if (matchAdjItem(entry)) {
+          htmlParts.push(buildAdjItemRow(entry, false));
+        }
+      });
+
+      if (htmlParts.length === 0) {
+        body.innerHTML = '<tr><td colspan="7" class="empty-state">ไม่พบอุปกรณ์ที่ตรงกับคำค้นหา</td></tr>';
+        return;
+      }
+
+      body.innerHTML = htmlParts.join('');
     }
 
     function getAdjValue(itemId, loc) {
@@ -3971,8 +5107,10 @@ window.__INR_MAIN_PARSED = true;
 
     function switchStatSubTab(sub) {
       state.statSubTab = sub;
-      document.querySelectorAll('#stat-subtabs .sub-tab').forEach(btn => {
-        btn.classList.toggle('active', btn.dataset.stat === sub);
+      document.querySelectorAll('#stat-subtabs button').forEach(btn => {
+        const isMatch = btn.dataset.stat === sub;
+        btn.classList.toggle('on', isMatch);
+        btn.classList.toggle('active', isMatch);
       });
       const searchInput = document.getElementById('stat-search-input');
       if (searchInput) {
@@ -4341,22 +5479,14 @@ window.__INR_MAIN_PARSED = true;
         `;
 
         const users = getUsersList();
-        function isRadTechUser(u) {
-          if (!u) return false;
-          const p = String(u.position || '').trim().toLowerCase();
-          if (!p) return true;
-          return p.includes('radiological') || p.includes('technologist') || p === 'rt' || p === 'tech';
-        }
-
-        const radTechUsers = users.filter(isRadTechUser);
         const staffMap = new Map();
-        radTechUsers.forEach(u => {
-          const fullName = `${u.name || ''} ${u.surname || ''}`.trim();
-          if (fullName) {
-            staffMap.set(fullName, {
-              name: fullName,
-              first: String(u.name || '').trim() || fullName,
-              nickname: u.nickname || '',
+        users.forEach(u => {
+          const nick = String(u.nickname || u.name || '').trim();
+          if (nick) {
+            staffMap.set(nick, {
+              name: nick,
+              first: nick,
+              nickname: nick,
               months: {},
               cases: new Set()
             });
@@ -4373,24 +5503,15 @@ window.__INR_MAIN_PARSED = true;
           const caseId = t.id || `${t.hn}|${formatDate(t.date)}`;
           String(t.tech).split(',').map(s => s.trim()).filter(Boolean).forEach(nm => {
             const nmL = nm.toLowerCase();
-            // Exclude users known to be non-RT (e.g. Registered Nurse)
-            const isNonRT = users.some(u => !isRadTechUser(u) && (
-              nmL === `${u.name || ''} ${u.surname || ''}`.trim().toLowerCase() ||
-              nmL === String(u.name || '').trim().toLowerCase()
-            ));
-            if (isNonRT) return;
-
-            const matchedUser = radTechUsers.find(u => {
+            const matchedUser = users.find(u => {
+              const nick = String(u.nickname || u.name || '').trim().toLowerCase();
               const fn = `${u.name || ''} ${u.surname || ''}`.trim().toLowerCase();
-              const fst = String(u.name || '').trim().toLowerCase();
-              return nmL === fn || nmL === fst || nmL.includes(fn) || (fn && fn.includes(nmL));
+              return nmL === nick || nmL === fn || (nick && nmL.includes(nick));
             });
 
-            if (radTechUsers.length > 0 && !matchedUser) return;
-
-            let key = matchedUser ? `${matchedUser.name || ''} ${matchedUser.surname || ''}`.trim() : nm;
+            let key = matchedUser ? String(matchedUser.nickname || matchedUser.name || nm).trim() : nm;
             if (!staffMap.has(key)) {
-              staffMap.set(key, { name: key, first: nm.split(/\s+/)[0], nickname: '', months: {}, cases: new Set() });
+              staffMap.set(key, { name: key, first: key, nickname: key, months: {}, cases: new Set() });
             }
             const e = staffMap.get(key);
             if (!e.months[mKey]) e.months[mKey] = new Set();
@@ -4873,48 +5994,112 @@ function exportStatisticsCSV() {
 
     // --- Tab 8: Settings ---
     const settingsTitles = {
+      groups: 'Group Management',
+      users: 'User / Tech Management (Nicknames)',
       diseases: 'Disease',
       procedures: 'Procedure Types',
       shifts: 'Shift',
-      users: 'User',
       categories: 'Category',
       departments: 'Departments (Internal Rooms & External Facilities)'
     };
 
+    const SETTINGS_LIST_KEYS = ['diseases', 'procedures', 'shifts', 'categories', 'departments'];
+
+    function getActiveSettingsListKey() {
+      if (SETTINGS_LIST_KEYS.includes(state.settingsListKey)) return state.settingsListKey;
+      if (SETTINGS_LIST_KEYS.includes(state.settingsSection)) return state.settingsSection;
+      return 'diseases';
+    }
+
+    function updateSettingsBadgeCounts() {
+      SETTINGS_LIST_KEYS.forEach(k => {
+        const el = document.getElementById('cnt-list-' + k);
+        if (el) el.innerText = String(((state.settings || {})[k] || []).length);
+      });
+      const uEl = document.getElementById('settings-users-count');
+      if (uEl) uEl.innerText = String(((state.settings || {}).users || []).length);
+      const gEl = document.getElementById('settings-groups-count');
+      if (gEl) gEl.innerText = String((state.groups || []).length);
+    }
+
     function switchSettingsSection(sec) {
-      state.settingsSection = sec;
+      let target = sec || state.settingsSection || 'lists';
+      if (SETTINGS_LIST_KEYS.includes(target)) {
+        state.settingsListKey = target;
+        target = 'lists';
+      }
+      state.settingsSection = target;
       state.editingSettingIdx = -1;
       cancelAddSettingItem();
-      document.querySelectorAll('#settings-subtabs .sub-tab').forEach(btn => {
-        btn.classList.toggle('active', btn.dataset.sec === sec);
+      document.querySelectorAll('#settings-subtabs button').forEach(btn => {
+        const isMatch = btn.dataset.sec === target;
+        btn.classList.toggle('on', isMatch);
+        btn.classList.toggle('active', isMatch);
+      });
+      renderSettingsTab();
+    }
+
+    function switchSettingsListChip(listKey) {
+      if (!SETTINGS_LIST_KEYS.includes(listKey)) return;
+      state.settingsSection = 'lists';
+      state.settingsListKey = listKey;
+      state.editingSettingIdx = -1;
+      cancelAddSettingItem();
+      document.querySelectorAll('#settings-subtabs button').forEach(btn => {
+        const isMatch = btn.dataset.sec === 'lists';
+        btn.classList.toggle('on', isMatch);
+        btn.classList.toggle('active', isMatch);
+      });
+      document.querySelectorAll('#settings-list-chips button').forEach(btn => {
+        const isMatch = btn.dataset.lsec === listKey;
+        btn.classList.toggle('on', isMatch);
+        btn.classList.toggle('active', isMatch);
       });
       renderSettingsTab();
     }
 
     function renderSettingsTab() {
-      const sec = state.settingsSection || 'diseases';
+      updateSettingsBadgeCounts();
+      let rawSec = state.settingsSection || 'lists';
+      if (SETTINGS_LIST_KEYS.includes(rawSec)) {
+        state.settingsListKey = rawSec;
+        rawSec = 'lists';
+        state.settingsSection = 'lists';
+      }
+      const sec = rawSec;
+      const listKey = getActiveSettingsListKey();
+      document.querySelectorAll('#settings-subtabs button').forEach(btn => {
+        const isMatch = btn.dataset.sec === sec;
+        btn.classList.toggle('on', isMatch);
+        btn.classList.toggle('active', isMatch);
+      });
+      document.querySelectorAll('#settings-list-chips button').forEach(btn => {
+        const isMatch = btn.dataset.lsec === listKey;
+        btn.classList.toggle('on', isMatch);
+        btn.classList.toggle('active', isMatch);
+      });
+
       const listCard = document.getElementById('settings-list-card');
       const userCard = document.getElementById('settings-user-card');
       const secCard  = document.getElementById('settings-security-card');
-      const hierCard = document.getElementById('settings-hierarchy-card');
-      const scopeSel = document.getElementById('settings-add-dept-scope');
-      if (scopeSel) scopeSel.classList.toggle('hidden', sec !== 'departments');
+      const grpCard  = document.getElementById('settings-groups-card');
 
-      if (sec === 'hierarchy') {
+      if (sec === 'groups' || sec === 'hierarchy') {
         if (listCard) listCard.classList.add('hidden');
         if (userCard) userCard.classList.add('hidden');
         if (secCard)  secCard.classList.add('hidden');
-        if (hierCard) hierCard.classList.remove('hidden');
-        renderHierarchySettings();
+        if (grpCard)  grpCard.classList.remove('hidden');
+        renderGroupsSettings();
         return;
       } else {
-        if (hierCard) hierCard.classList.add('hidden');
+        if (grpCard) grpCard.classList.add('hidden');
       }
 
       if (sec === 'security') {
         if (listCard) listCard.classList.add('hidden');
         if (userCard) userCard.classList.add('hidden');
         if (secCard) secCard.classList.remove('hidden');
+        if (typeof renderSecuritySettings === 'function') renderSecuritySettings();
         return;
       } else {
         if (secCard) secCard.classList.add('hidden');
@@ -4923,31 +6108,22 @@ function exportStatisticsCSV() {
       if (sec === 'users') {
         if (listCard) listCard.classList.add('hidden');
         if (userCard) userCard.classList.remove('hidden');
-        const dirtyBadge = document.getElementById('settings-user-dirty');
-        if (dirtyBadge) dirtyBadge.classList.toggle('hidden', !state.settingsDirty.users);
 
         const tbody = document.getElementById('settings-users-body');
         const users = state.settings.users || [];
         if (users.length === 0) {
-          tbody.innerHTML = '<tr><td colspan="8" class="empty-state">No users configured yet. Click "+ Add" to add a user.</td></tr>';
+          tbody.innerHTML = '<tr><td colspan="3" class="empty-state">No User Nicknames configured yet. Click "+ Add Nickname" to add one.</td></tr>';
         } else {
           tbody.innerHTML = users.map((u, idx) => {
-            const isFirst = idx === 0;
-            const isLast = idx === users.length - 1;
+            const uid = u.userId || ('USR-' + String(idx + 1).padStart(3, '0'));
+            const nick = u.nickname || u.name || '';
             return `
             <tr>
-              <td class="font-medium">${u.name || ''}</td>
-              <td>${u.surname || ''}</td>
-              <td class="text-gray">${u.nickname || ''}</td>
-              <td><span class="badge badge-blue">${u.position || '—'}</span></td>
-              <td><span class="badge badge-ok">${u.authorization || '—'}</span></td>
-              <td class="text-gray">${u.phone || u.tel || ''}</td>
-              <td class="text-gray">${u.dob ? formatDate(u.dob) : ''}</td>
+              <td class="font-mono text-xs text-gray">${escapeHtml(uid)}</td>
+              <td class="font-semibold">${escapeHtml(nick)}</td>
               <td class="center" style="white-space:nowrap;">
-                <button class="btn-ghost" onclick="moveUser(${idx}, -1)" ${isFirst ? 'disabled style="opacity:0.25; cursor:default;"' : ''} title="Move Up">▲</button>
-                <button class="btn-ghost" onclick="moveUser(${idx}, 1)" ${isLast ? 'disabled style="opacity:0.25; cursor:default;"' : ''} title="Move Down">▼</button>
-                <button class="btn-ghost" onclick="openUserModal(${idx})" title="Edit">${ICONS.edit}</button>
-                <button class="btn-ghost" style="color:var(--red);" onclick="removeUser(${idx})" title="Remove">${ICONS.trash}</button>
+                <button class="btn-ghost" onclick="openUserModal(${idx})" title="Edit Nickname">${ICONS.edit}</button>
+                <button class="btn-ghost" style="color:var(--red);" onclick="removeUser(${idx})" title="Delete Nickname">${ICONS.trash}</button>
               </td>
             </tr>
           `;
@@ -4956,14 +6132,14 @@ function exportStatisticsCSV() {
       } else {
         if (listCard) listCard.classList.remove('hidden');
         if (userCard) userCard.classList.add('hidden');
-        document.getElementById('settings-list-title').innerText = settingsTitles[sec] || sec;
+        document.getElementById('settings-list-title').innerText = settingsTitles[listKey] || listKey;
         const dirtyBadge = document.getElementById('settings-list-dirty');
-        if (dirtyBadge) dirtyBadge.classList.toggle('hidden', !state.settingsDirty[sec]);
+        if (dirtyBadge) dirtyBadge.classList.toggle('hidden', !state.settingsDirty[listKey]);
 
-        const list = state.settings[sec] || [];
+        const list = state.settings[listKey] || [];
         const container = document.getElementById('settings-list-container');
         if (list.length === 0) {
-          container.innerHTML = `<div class="empty-state">No ${settingsTitles[sec] || sec} items configured yet. Click "+ Add" to add one.</div>`;
+          container.innerHTML = `<div class="empty-state">No ${settingsTitles[listKey] || listKey} items configured yet. Click "+ Add" to add one.</div>`;
         } else {
           container.innerHTML = list.map((item, idx) => {
             if (state.editingSettingIdx === idx) {
@@ -4979,14 +6155,8 @@ function exportStatisticsCSV() {
             }
             const isFirst = idx === 0;
             const isLast = idx === list.length - 1;
-            let displayHtml = `<span class="font-medium">${item}</span>`;
-            if (sec === 'departments' && item.includes('|')) {
-              const parts = item.split('|').map(s => s.trim());
-              const sc = parts[0];
-              const nm = parts.slice(1).join(' | ');
-              const badgeCls = sc.toLowerCase() === 'external' ? 'badge-amber' : 'badge-blue';
-              displayHtml = `<span class="badge ${badgeCls}">${sc}</span> <span class="font-medium">${nm}</span>`;
-            }
+            const itemLabel = listKey === 'departments' ? cleanDepartmentName(item) : item;
+            let displayHtml = `<span class="font-medium">${escapeHtml(itemLabel)}</span>`;
             return `
               <div class="settings-item">
                 <div class="flex items-center gap-2">
@@ -4994,10 +6164,10 @@ function exportStatisticsCSV() {
                   ${displayHtml}
                 </div>
                 <div class="flex gap-1 items-center">
-                  <button class="btn-ghost" onclick="moveSettingItem(${idx}, -1)" ${isFirst ? 'disabled style="opacity:0.25; cursor:default;"' : ''} title="Move Up">▲</button>
-                  <button class="btn-ghost" onclick="moveSettingItem(${idx}, 1)" ${isLast ? 'disabled style="opacity:0.25; cursor:default;"' : ''} title="Move Down">▼</button>
-                  <button class="btn-ghost" onclick="startEditSettingItem(${idx})" title="Edit">${ICONS.edit}</button>
-                  <button class="btn-ghost" style="color:var(--red);" onclick="removeSettingItem(${idx})" title="Remove">${ICONS.trash}</button>
+                  <button class="btn-ghost" onclick="moveSettingItem(${idx}, -1)" ${isFirst ? 'disabled style="opacity:0.25; cursor:default;"' : ''} title="เลื่อนขึ้น">▲</button>
+                  <button class="btn-ghost" onclick="moveSettingItem(${idx}, 1)" ${isLast ? 'disabled style="opacity:0.25; cursor:default;"' : ''} title="เลื่อนลง">▼</button>
+                  <button class="btn-ghost" onclick="startEditSettingItem(${idx})" title="แก้ไข">${ICONS.edit}</button>
+                  <button class="btn-ghost" style="color:var(--red);" onclick="removeSettingItem(${idx})" title="ลบ">${ICONS.trash}</button>
                 </div>
               </div>
             `;
@@ -5007,13 +6177,12 @@ function exportStatisticsCSV() {
     }
 
     function startAddSettingItem() {
+      const sec = getActiveSettingsListKey();
       const row = document.getElementById('settings-add-row');
       const input = document.getElementById('settings-add-input');
-      const scopeSel = document.getElementById('settings-add-dept-scope');
-      if (scopeSel) scopeSel.classList.toggle('hidden', state.settingsSection !== 'departments');
       if (row) row.classList.remove('hidden');
       if (input) {
-        input.placeholder = state.settingsSection === 'departments' ? 'e.g. BIR Room, Operating Room (OR), Siriraj Hospital...' : 'New item...';
+        input.placeholder = sec === 'departments' ? 'เช่น ห้องตรวจ BIR, ห้องผ่าตัด OR, รพ.ศิริราช...' : 'เพิ่มรายการใหม่...';
         input.value = '';
         input.focus();
       }
@@ -5027,15 +6196,11 @@ function exportStatisticsCSV() {
     }
 
     function confirmAddSettingItem() {
-      const sec = state.settingsSection || 'diseases';
+      const sec = getActiveSettingsListKey();
       const input = document.getElementById('settings-add-input');
-      let val = (input ? input.value : '').trim();
+      const rawVal = (input ? input.value : '').trim();
+      const val = sec === 'departments' ? cleanDepartmentName(rawVal) : rawVal;
       if (!val) return;
-      if (sec === 'departments' && !val.includes('|')) {
-        const scopeSel = document.getElementById('settings-add-dept-scope');
-        const sc = scopeSel ? scopeSel.value : 'Internal';
-        val = `${sc} | ${val}`;
-      }
       if (!Array.isArray(state.settings[sec])) state.settings[sec] = [];
       state.settings[sec].push(val);
       state.settingsDirty[sec] = true;
@@ -5053,7 +6218,7 @@ function exportStatisticsCSV() {
     }
 
     function saveEditSettingItem(idx) {
-      const sec = state.settingsSection || 'diseases';
+      const sec = getActiveSettingsListKey();
       const el = document.getElementById('settings-edit-input-' + idx);
       const val = (el ? el.value : '').trim();
       if (!val) return;
@@ -5069,10 +6234,10 @@ function exportStatisticsCSV() {
     }
 
     function removeSettingItem(idx) {
-      const sec = state.settingsSection || 'diseases';
+      const sec = getActiveSettingsListKey();
       const item = (state.settings[sec] || [])[idx];
       const name = (typeof item === 'object' ? item.name : item) || 'item';
-      verifyPasscodeThen(state.currentLang === 'th' ? `ยืนยันการลบ "${name}"?` : `Delete "${name}" from ${sec}?`, () => {
+      verifyPasscodeThen('delete_settings', state.currentLang === 'th' ? `ยืนยันการลบ "${name}"?` : `Delete "${name}" from ${sec}?`, () => {
         state.settings[sec].splice(idx, 1);
         state.settingsDirty[sec] = true;
         renderSettingsTab();
@@ -5080,7 +6245,7 @@ function exportStatisticsCSV() {
     }
 
     function moveSettingItem(idx, dir) {
-      const sec = state.settingsSection || 'diseases';
+      const sec = getActiveSettingsListKey();
       const list = state.settings[sec];
       if (!list) return;
       const targetIdx = idx + dir;
@@ -5092,21 +6257,8 @@ function exportStatisticsCSV() {
       renderSettingsTab();
     }
 
-    function moveUser(idx, dir) {
-      const users = state.settings.users;
-      if (!users) return;
-      const targetIdx = idx + dir;
-      if (targetIdx < 0 || targetIdx >= users.length) return;
-      const temp = users[idx];
-      users[idx] = users[targetIdx];
-      users[targetIdx] = temp;
-      state.settings.techs = state.settings.users;
-      state.settingsDirty.users = true;
-      renderSettingsTab();
-    }
-
     function saveSettingsList() {
-      const sec = state.settingsSection || 'diseases';
+      const sec = getActiveSettingsListKey();
       const btn = document.getElementById('btn-save-settings-list');
       if (btn) { btn.innerText = 'Saving...'; btn.disabled = true; }
 
@@ -5132,197 +6284,213 @@ function exportStatisticsCSV() {
 
     function openUserModal(idx) {
       const isEdit = idx >= 0;
-      document.getElementById('modal-user-title').innerText = isEdit ? 'Edit User' : 'Add User';
+      const u = isEdit ? ((state.settings.users || [])[idx] || {}) : {};
+      document.getElementById('modal-user-title').innerText = isEdit ? 'Edit User Nickname' : 'Add User Nickname';
       document.getElementById('user-modal-idx').value = String(idx);
-
-      // Populate Position datalist (standard + any custom positions)
-      const defaultPositions = ['Radiological Technologist', 'Registered Nurse', 'Practical Nurse'];
-      const customPositions = (state.settings.users || []).map(u => u.position).filter(Boolean);
-      const allPositions = Array.from(new Set([...defaultPositions, ...customPositions]));
-      const posList = document.getElementById('user-position-list');
-      if (posList) {
-        posList.innerHTML = allPositions.map(p => `<option value="${escapeHtml(p)}">`).join('');
-      }
-
-      const u = isEdit ? (state.settings.users[idx] || {}) : {};
-      document.getElementById('user-modal-name').value = u.name || '';
-      document.getElementById('user-modal-surname').value = u.surname || '';
-      document.getElementById('user-modal-nickname').value = u.nickname || '';
-      document.getElementById('user-modal-position').value = u.position || 'Radiological Technologist';
-      document.getElementById('user-modal-auth').value = u.authorization || 'Operational Staff';
-      document.getElementById('user-modal-phone').value = u.phone || u.tel || '';
-      document.getElementById('user-modal-dob').value = u.dob ? String(u.dob).slice(0, 10) : '';
-
+      const idEl = document.getElementById('user-modal-id');
+      if (idEl) idEl.value = u.userId || '';
+      const nickEl = document.getElementById('user-modal-nickname');
+      if (nickEl) nickEl.value = u.nickname || u.name || '';
       openModal('modal-user');
     }
 
     function applyUserModal() {
       const idx = parseInt(document.getElementById('user-modal-idx').value);
-      const name = document.getElementById('user-modal-name').value.trim();
-      if (!name) {
-        showToast('User name is required');
+      const userId = (document.getElementById('user-modal-id')?.value || '').trim();
+      const nickname = (document.getElementById('user-modal-nickname')?.value || '').trim();
+      if (!nickname) {
+        showToast('Nickname is required');
         return;
       }
-      const userObj = {
-        name,
-        surname: document.getElementById('user-modal-surname').value.trim(),
-        nickname: document.getElementById('user-modal-nickname').value.trim(),
-        position: document.getElementById('user-modal-position').value.trim(),
-        authorization: document.getElementById('user-modal-auth').value,
-        phone: document.getElementById('user-modal-phone').value.trim(),
-        dob: document.getElementById('user-modal-dob').value
-      };
-      userObj.tel = userObj.phone;
 
       if (!Array.isArray(state.settings.users)) state.settings.users = [];
-      if (idx >= 0 && idx < state.settings.users.length) {
-        state.settings.users[idx] = userObj;
-      } else {
-        state.settings.users.push(userObj);
+      const dup = state.settings.users.some((u, i) => i !== idx && String(u.nickname || u.name || '').trim().toLowerCase() === nickname.toLowerCase());
+      if (dup) {
+        showToast('This Nickname already exists');
+        return;
       }
-      state.settings.techs = state.settings.users;
-      state.settingsDirty.users = true;
+
       closeModal();
-      renderSettingsTab();
+      if (isApiConfigured()) {
+        setSyncIndicator(true);
+        const isEdit = idx >= 0 && idx < state.settings.users.length;
+        const oldNick = isEdit ? (state.settings.users[idx].nickname || state.settings.users[idx].name || '') : '';
+        const action = isEdit ? 'editUser' : 'addUser';
+        const payload = isEdit ? { userId, oldNickname: oldNick, nickname } : { nickname };
+        callApi(action, payload)
+          .then(() => {
+            setSyncIndicator(false);
+            showToast(isEdit ? 'Nickname updated!' : 'Nickname added!');
+            fetchDataFromServer();
+          })
+          .catch(err => {
+            setSyncIndicator(false);
+            showToast('Failed: ' + (err.message || err));
+          });
+      } else {
+        if (idx >= 0 && idx < state.settings.users.length) {
+          state.settings.users[idx].nickname = nickname;
+          state.settings.users[idx].name = nickname;
+        } else {
+          const newId = 'USR-' + String(state.settings.users.length + 1).padStart(3, '0');
+          state.settings.users.push({ userId: newId, nickname, name: nickname });
+        }
+        state.settings.techs = state.settings.users;
+        renderSettingsTab();
+        showToast(idx >= 0 ? 'Nickname updated (mock)' : 'Nickname added (mock)');
+      }
     }
 
     function removeUser(idx) {
       const u = (state.settings.users || [])[idx];
-      const uName = u ? (u.name + ' ' + (u.surname || '')) : 'staff member';
-      verifyPasscodeThen(state.currentLang === 'th' ? `ยืนยันการลบผู้ใช้ "${uName}"?` : `Remove staff user "${uName}"?`, () => {
-        state.settings.users.splice(idx, 1);
-        state.settings.techs = state.settings.users;
-        state.settingsDirty.users = true;
-        renderSettingsTab();
+      if (!u) return;
+      const nick = u.nickname || u.name || 'user';
+      verifyPasscodeThen('delete_settings', state.currentLang === 'th' ? `ยืนยันการลบชื่อเล่น "${nick}"?` : `Delete user nickname "${nick}"?`, () => {
+        if (isApiConfigured()) {
+          setSyncIndicator(true);
+          callApi('deleteUser', { userId: u.userId, nickname: nick })
+            .then(() => {
+              setSyncIndicator(false);
+              showToast('Nickname deleted');
+              fetchDataFromServer();
+            })
+            .catch(err => {
+              setSyncIndicator(false);
+              showToast('Failed: ' + (err.message || err));
+            });
+        } else {
+          state.settings.users.splice(idx, 1);
+          state.settings.techs = state.settings.users;
+          renderSettingsTab();
+          showToast('Nickname deleted (mock)');
+        }
       });
     }
 
     function saveUsersList() {
-      const btn = document.getElementById('btn-save-users');
-      if (btn) { btn.innerText = 'Saving...'; btn.disabled = true; }
-
-      if (isApiConfigured()) {
-        callApi('saveUsers', { users: state.settings.users || [] })
-          .then(() => {
-            if (btn) { btn.innerText = 'Save Order'; btn.disabled = false; }
-            state.settingsDirty.users = false;
-            showToast('Users saved to User sheet!');
-            renderSettingsTab();
-          })
-          .catch(err => {
-            if (btn) { btn.innerText = 'Save Order'; btn.disabled = false; }
-            showToast('Save failed: ' + (err.message || err));
-          });
-      } else {
-        if (btn) { btn.innerText = 'Save Order'; btn.disabled = false; }
-        state.settingsDirty.users = false;
-        showToast('Users saved (mock)');
-        renderSettingsTab();
-      }
+      renderSettingsTab();
     }
 
     // ════════════════════════════════════════════════════════════════
-    // SETTINGS: DEVICE & SUB-DEVICE HIERARCHY MANAGEMENT
+    // SETTINGS: GROUP MANAGEMENT & SUB-ITEM REORDERING
     // ════════════════════════════════════════════════════════════════
-    function renderHierarchySettings() {
+    function renderGroupsSettings() {
       recalculateInventoryHierarchy();
-      const childSel  = document.getElementById('hier-assign-child-select');
-      const parentSel = document.getElementById('hier-assign-parent-select');
-      const treeEl    = document.getElementById('settings-hierarchy-tree');
+      const itemSel  = document.getElementById('grp-assign-item-select');
+      const groupSel = document.getElementById('grp-assign-group-select');
+      const treeEl   = document.getElementById('settings-groups-tree');
 
-      const parents  = (state.inventory || []).filter(i => i.isParent);
-      const children = (state.inventory || []).filter(i => !i.isParent);
+      const groups = state.groups || [];
+      const items  = state.inventory || [];
+      const groupById = new Map();
+      groups.forEach(g => { if (g && g.groupId) groupById.set(String(g.groupId), g); });
 
-      if (childSel) {
-        const curChild = childSel.value;
-        childSel.innerHTML = `<option value="">-- Select Sub-Device --</option>` +
-          children.map(c => {
-            const pObj = c.parentId ? parents.find(p => String(p.itemId) === String(c.parentId)) : null;
-            const pTag = pObj ? ` [in ${pObj.deviceName}]` : ' [Standalone]';
-            const fTag = c.isFreeItem ? ' [FREE]' : '';
-            return `<option value="${escapeHtml(String(c.itemId))}" ${String(c.itemId) === String(curChild) ? 'selected' : ''}>${escapeHtml(c.deviceName)}${fTag}${escapeHtml(pTag)}</option>`;
+      if (itemSel) {
+        const curItem = itemSel.value;
+        itemSel.innerHTML = `<option value="">-- Select Inventory Device --</option>` +
+          items.map(i => {
+            const gObj = i.groupId ? groupById.get(String(i.groupId)) : null;
+            const gTag = gObj ? ` [in ${gObj.groupName}]` : ' [Ungrouped]';
+            const fTag = i.isFreeItem ? ' [FREE]' : '';
+            return `<option value="${escapeHtml(String(i.itemId))}" ${String(i.itemId) === String(curItem) ? 'selected' : ''}>${escapeHtml(i.deviceName)}${fTag}${escapeHtml(gTag)}</option>`;
           }).join('');
       }
 
-      if (parentSel) {
-        const curParent = parentSel.value;
-        parentSel.innerHTML = `<option value="">-- Standalone (No Parent Group) --</option>` +
-          parents.map(p => `<option value="${escapeHtml(String(p.itemId))}" ${String(p.itemId) === String(curParent) ? 'selected' : ''}>${escapeHtml(p.deviceName)} (${escapeHtml(p.category || '—')})</option>`).join('');
+      if (groupSel) {
+        const curGrp = groupSel.value;
+        groupSel.innerHTML = `<option value="">-- Select Target Group --</option>` +
+          groups.map(g => `<option value="${escapeHtml(String(g.groupId))}" ${String(g.groupId) === String(curGrp) ? 'selected' : ''}>${escapeHtml(g.groupName)} (HO ID: ${escapeHtml(g.hoItemId || '-')})</option>`).join('');
       }
 
       if (!treeEl) return;
 
-      if (parents.length === 0) {
-        treeEl.innerHTML = `<div class="empty-state text-sm">No Parent Device Groups created yet. Click "+ New Parent Device Group" above to create a group (e.g., Solitaire Platinum, Rebar Microcatheter).</div>`;
-        return;
+      let html = '';
+      if (groups.length === 0) {
+        html += `<div class="empty-state text-sm">No Groups created yet. Click "+ Create Group" above or add 2+ devices sharing the same HO Item ID to auto-group.</div>`;
+      } else {
+        html += groups.map(g => {
+          const members = items.filter(i => String(i.groupId) === String(g.groupId));
+          // Sort members by saved subItemOrder if present
+          let orderList = Array.isArray(g.subItemOrder) ? g.subItemOrder.map(x => String(x)) : [];
+          if (orderList.length === 0) {
+            try {
+              const saved = localStorage.getItem('inr_group_suborder_' + g.groupId);
+              if (saved) orderList = JSON.parse(saved).map(x => String(x));
+            } catch (e) {}
+          }
+          if (orderList.length > 0) {
+            members.sort((a, b) => {
+              const idxA = orderList.indexOf(String(a.itemId));
+              const idxB = orderList.indexOf(String(b.itemId));
+              if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+              if (idxA !== -1) return -1;
+              if (idxB !== -1) return 1;
+              return 0;
+            });
+          }
+
+          return `
+            <div class="hierarchy-group-card">
+              <div class="hierarchy-group-header">
+                <div>
+                  <div class="flex items-center gap-2 flex-wrap">
+                    <span class="badge-parent">GROUP</span>
+                    <strong class="text-sm">${escapeHtml(g.groupName)}</strong>
+                    <span class="text-xs font-mono text-gray">(${escapeHtml(g.groupId)})</span>
+                    ${g.hoItemId ? `<span class="text-xs font-mono text-gray">· HO ID: ${escapeHtml(g.hoItemId)}</span>` : ''}
+                  </div>
+                  <div class="text-xs text-gray mt-1">
+                    Shared Buy: <strong>฿${(Number(g.buyPrice) || 0).toLocaleString()}</strong> · Shared Sell: <strong>฿${(Number(g.sellPrice) || 0).toLocaleString()}</strong> · Main: <strong>${g.mainStock || 0}</strong> · Retail: <strong>${g.retailStock || 0}</strong> · Total: <strong style="color:var(--brand-dark);">${g.totalStock || 0}</strong> · HO Stock: <strong>${g.hoStock || 0}</strong> · Diff: <strong>${g.stockDiff > 0 ? ('+' + g.stockDiff) : (g.stockDiff || 0)}</strong>
+                  </div>
+                </div>
+                <div class="flex gap-1">
+                  <button type="button" class="btn btn-outline btn-sm" onclick="openGroupModal('${escapeHtml(g.groupId)}')">${ICONS.edit} Edit Group</button>
+                  <button type="button" class="btn-ghost" style="color:var(--red);" onclick="handleDeleteGroup('${escapeHtml(g.groupId)}')" title="Delete Empty Group">${ICONS.trash}</button>
+                </div>
+              </div>
+              <div class="hierarchy-children-list">
+                ${members.length === 0
+                  ? `<div class="text-xs text-gray" style="padding:4px 8px;">No member items in this Group. You can assign items above or delete this empty Group.</div>`
+                  : members.map(c => `
+                    <div class="hierarchy-child-item">
+                      <div>
+                        <strong>${escapeHtml(c.deviceName)}</strong>
+                        ${c.isFreeItem ? `<span class="badge-free" style="margin-left:4px;">FREE</span>` : ''}
+                        <span class="text-xs font-mono text-gray" style="margin-left:6px;">(${escapeHtml(c.itemId)})</span>
+                        <span class="text-xs text-gray" style="margin-left:8px;">Main: ${c.mainStock || 0} · Retail: <strong>${c.retailStock || 0}</strong> · Total: <strong>${c.totalStock || 0}</strong></span>
+                      </div>
+                      <div class="flex gap-1 items-center">
+                        <button type="button" class="btn btn-outline btn-sm" style="padding:2px 8px; font-size:11px;" onclick="toggleItemFreeStatus('${escapeHtml(c.itemId)}')" title="Toggle Free Item status">${c.isFreeItem ? 'Set Paid' : 'Set Free'}</button>
+                        <button type="button" class="btn-ghost text-xs" onclick="openEditDeviceModal('${escapeHtml(c.itemId)}')" title="Edit Item">${ICONS.edit}</button>
+                        <button type="button" class="btn btn-outline btn-sm" style="padding:2px 8px; font-size:11px; color:var(--red); border-color:var(--gray-300);" onclick="removeItemFromGroupAction('${escapeHtml(c.itemId)}')">Remove from Group</button>
+                      </div>
+                    </div>
+                  `).join('')
+                }
+              </div>
+            </div>
+          `;
+        }).join('');
       }
 
-      treeEl.innerHTML = parents.map(p => {
-        const groupKids = children.filter(c => String(c.parentId) === String(p.itemId));
-        return `
-          <div class="hierarchy-group-card">
-            <div class="hierarchy-group-header">
-              <div>
-                <div class="flex items-center gap-2 flex-wrap">
-                  <span class="badge-parent">PARENT GROUP</span>
-                  <strong class="text-sm">${escapeHtml(p.deviceName)}</strong>
-                  <span class="badge badge-gray">${escapeHtml(p.category || '—')}</span>
-                  <span class="text-xs font-mono text-gray">ID: ${escapeHtml(p.itemId)}</span>
-                  ${p.hoItemId ? `<span class="text-xs font-mono text-gray">· HO ID: ${escapeHtml(p.hoItemId)}</span>` : ''}
-                </div>
-                <div class="text-xs text-gray mt-1">
-                  Aggregated Stock — Main: <strong>${p.mainStock || 0}</strong> · Retail: <strong>${p.retailStock || 0}</strong> · Total: <strong style="color:var(--brand-dark);">${p.totalStock || 0}</strong> · HO Stock: <strong>${p.hoStock || 0}</strong> · Diff: <strong>${p.stockDiff > 0 ? ('+' + p.stockDiff) : (p.stockDiff || 0)}</strong>
-                </div>
-              </div>
-              <div class="flex gap-1">
-                <button type="button" class="btn btn-outline btn-sm" onclick="openEditDeviceModal('${escapeHtml(p.itemId)}')">${ICONS.edit} Edit Group</button>
-                <button type="button" class="btn-ghost" style="color:var(--red);" onclick="removeDevice('${escapeHtml(p.itemId)}')" title="Delete Parent Group">${ICONS.trash}</button>
-              </div>
-            </div>
-            <div class="hierarchy-children-list">
-              ${groupKids.length === 0
-                ? `<div class="text-xs text-gray" style="padding:4px 8px;">No Sub-Devices assigned to this group yet. Use the Quick Assign box above to attach sizes or free items.</div>`
-                : groupKids.map(c => `
-                  <div class="hierarchy-child-item">
-                    <div>
-                      <span style="color:#64748b; font-family:monospace; margin-right:4px;">└</span>
-                      <strong>${escapeHtml(c.deviceName)}</strong>
-                      ${c.isFreeItem ? `<span class="badge-free" style="margin-left:4px;">FREE</span>` : ''}
-                      <span class="text-xs font-mono text-gray" style="margin-left:6px;">(${escapeHtml(c.itemId)})</span>
-                      <span class="text-xs text-gray" style="margin-left:8px;">Main: ${c.mainStock || 0} · Retail: <strong>${c.retailStock || 0}</strong> · Total: <strong>${c.totalStock || 0}</strong></span>
-                    </div>
-                    <div class="flex gap-1 items-center">
-                      <button type="button" class="btn btn-outline btn-sm" style="padding:2px 8px; font-size:11px;" onclick="toggleItemFreeStatus('${escapeHtml(c.itemId)}')" title="Toggle Free Item status">${c.isFreeItem ? 'Set Paid' : 'Set Free'}</button>
-                      <button type="button" class="btn-ghost text-xs" onclick="openEditDeviceModal('${escapeHtml(c.itemId)}')" title="Edit Sub-Device">${ICONS.edit}</button>
-                      <button type="button" class="btn btn-outline btn-sm" style="padding:2px 8px; font-size:11px;" onclick="quickAssignChildParent('${escapeHtml(c.itemId)}', '')">Unassign</button>
-                    </div>
-                  </div>
-                `).join('')
-              }
-            </div>
-          </div>
-        `;
-      }).join('');
-
-      const standaloneKids = children.filter(c => !c.parentId);
-      if (standaloneKids.length > 0) {
-        treeEl.innerHTML += `
+      const ungroupedItems = items.filter(i => !i.groupId);
+      if (ungroupedItems.length > 0) {
+        html += `
           <div class="hierarchy-group-card" style="margin-top:16px; border-color:var(--gray-300);">
             <div class="hierarchy-group-header" style="background:var(--gray-100);">
               <div>
-                <strong class="text-sm">Standalone Sub-Devices (${standaloneKids.length})</strong>
-                <div class="text-xs text-gray">Devices currently not assigned to any Parent Group. Manage Free Item status or assign to a Parent Group above.</div>
+                <strong class="text-sm">Ungrouped / Standalone Items (${ungroupedItems.length})</strong>
+                <div class="text-xs text-gray">Items not currently in any Group. Use "Assign to Group" above to add any item (including Free Items) into a Group.</div>
               </div>
             </div>
             <div class="hierarchy-children-list">
-              ${standaloneKids.map(c => `
+              ${ungroupedItems.map(c => `
                 <div class="hierarchy-child-item">
                   <div>
-                    <span style="color:#94a3b8; font-family:monospace; margin-right:4px;">•</span>
                     <strong>${escapeHtml(c.deviceName)}</strong>
-                    ${c.isFreeItem ? `<span class="badge-free" style="margin-left:4px;">FREE</span>` : `<span class="badge badge-blue" style="margin-left:4px;">PO</span>`}
+                    ${c.isFreeItem ? `<span class="badge-free" style="margin-left:4px;">FREE</span>` : ''}
                     <span class="badge badge-gray" style="margin-left:4px;">${escapeHtml(c.category || '—')}</span>
-                    <span class="text-xs font-mono text-gray" style="margin-left:6px;">(${escapeHtml(c.itemId)})</span>
+                    <span class="text-xs font-mono text-gray" style="margin-left:6px;">(${escapeHtml(c.itemId)} · HO: ${escapeHtml(c.hoItemId || '-')})</span>
                     <span class="text-xs text-gray" style="margin-left:8px;">Main: ${c.mainStock || 0} · Retail: <strong>${c.retailStock || 0}</strong> · Total: <strong>${c.totalStock || 0}</strong></span>
                   </div>
                   <div class="flex gap-1 items-center">
@@ -5334,6 +6502,272 @@ function exportStatisticsCSV() {
             </div>
           </div>
         `;
+      }
+
+      treeEl.innerHTML = html;
+    }
+
+    function openGroupModal(groupId) {
+      recalculateInventoryHierarchy();
+      const isEdit = Boolean(groupId);
+      const g = isEdit ? (state.groups || []).find(x => String(x.groupId) === String(groupId)) : null;
+      document.getElementById('modal-group-title').innerText = isEdit ? `Edit Group (${g ? g.groupName : groupId})` : 'Create Group';
+      document.getElementById('grp-modal-id').value      = g ? g.groupId : '';
+      document.getElementById('grp-modal-name').value    = g ? (g.groupName || '') : '';
+      document.getElementById('grp-modal-hoid').value    = g ? (g.hoItemId || '') : '';
+      document.getElementById('grp-modal-buy').value     = g ? (g.buyPrice || 0) : '';
+      document.getElementById('grp-modal-sell').value    = g ? (g.sellPrice || 0) : '';
+      document.getElementById('grp-modal-hostock').value = g ? (g.hoStock || 0) : 0;
+
+      // Requirement 1.3: Sub-items reorder list when editing an existing Group
+      const subWrap = document.getElementById('grp-modal-subitems-wrap');
+      if (isEdit && g) {
+        const members = (state.inventory || []).filter(i => String(i.groupId) === String(g.groupId));
+        let savedOrder = Array.isArray(g.subItemOrder) ? g.subItemOrder.map(x => String(x)) : [];
+        if (savedOrder.length === 0) {
+          try {
+            const raw = localStorage.getItem('inr_group_suborder_' + g.groupId);
+            if (raw) savedOrder = JSON.parse(raw).map(x => String(x));
+          } catch (e) {}
+        }
+        members.sort((a, b) => {
+          if (savedOrder.length > 0) {
+            const idxA = savedOrder.indexOf(String(a.itemId));
+            const idxB = savedOrder.indexOf(String(b.itemId));
+            if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+            if (idxA !== -1) return -1;
+            if (idxB !== -1) return 1;
+          }
+          return String(a.deviceName || '').localeCompare(String(b.deviceName || ''));
+        });
+        state.groupModalSubOrder = members.map(m => String(m.itemId));
+        if (subWrap) subWrap.classList.toggle('hidden', members.length === 0);
+        renderGroupModalSubItemsList();
+      } else {
+        state.groupModalSubOrder = [];
+        if (subWrap) subWrap.classList.add('hidden');
+      }
+
+      openModal('modal-group');
+    }
+
+    function renderGroupModalSubItemsList() {
+      const listEl = document.getElementById('grp-modal-subitems-list');
+      if (!listEl) return;
+      const orderIds = state.groupModalSubOrder || [];
+      if (orderIds.length === 0) {
+        listEl.innerHTML = `<div class="text-xs text-gray">No sub-items in this group.</div>`;
+        return;
+      }
+      listEl.innerHTML = orderIds.map((itemId, idx) => {
+        const inv = (state.inventory || []).find(i => String(i.itemId) === String(itemId));
+        const name = inv ? inv.deviceName : itemId;
+        const isFirst = idx === 0;
+        const isLast = idx === orderIds.length - 1;
+        return `
+          <div class="settings-item" style="margin-bottom:4px; padding:6px 10px;">
+            <div class="flex items-center gap-2">
+              <span class="text-xs text-gray font-mono" style="min-width:20px;">${idx + 1}.</span>
+              <span class="font-medium text-sm">${escapeHtml(name)}</span>
+              <span class="text-xs font-mono text-gray">(${escapeHtml(itemId)})</span>
+            </div>
+            <div class="flex gap-1">
+              <button type="button" class="btn-ghost" onclick="moveGroupModalSubItem(${idx}, -1)" ${isFirst ? 'disabled style="opacity:0.25; cursor:default;"' : ''} title="Move Up">▲</button>
+              <button type="button" class="btn-ghost" onclick="moveGroupModalSubItem(${idx}, 1)" ${isLast ? 'disabled style="opacity:0.25; cursor:default;"' : ''} title="Move Down">▼</button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function moveGroupModalSubItem(idx, dir) {
+      const arr = state.groupModalSubOrder || [];
+      const targetIdx = idx + dir;
+      if (targetIdx < 0 || targetIdx >= arr.length) return;
+      const tmp = arr[idx];
+      arr[idx] = arr[targetIdx];
+      arr[targetIdx] = tmp;
+      renderGroupModalSubItemsList();
+    }
+
+    function saveGroupModal() {
+      const groupId   = (document.getElementById('grp-modal-id')?.value || '').trim();
+      const groupName = (document.getElementById('grp-modal-name')?.value || '').trim();
+      const hoItemId  = (document.getElementById('grp-modal-hoid')?.value || '').trim();
+      const buyPrice  = Number(document.getElementById('grp-modal-buy')?.value) || 0;
+      const sellPrice = Number(document.getElementById('grp-modal-sell')?.value) || 0;
+      const hoStock   = Number(document.getElementById('grp-modal-hostock')?.value) || 0;
+      const subItemOrder = Array.isArray(state.groupModalSubOrder) ? state.groupModalSubOrder.slice() : [];
+
+      if (!groupName) {
+        showToast('Group Name is required');
+        return;
+      }
+
+      if (groupId && subItemOrder.length > 0) {
+        try {
+          localStorage.setItem('inr_group_suborder_' + groupId, JSON.stringify(subItemOrder));
+        } catch (e) {}
+      }
+
+      closeModal();
+      setSyncIndicator(true);
+
+      if (isApiConfigured()) {
+        const action = groupId ? 'editGroup' : 'createGroup';
+        const payload = { groupId, groupName, hoItemId, buyPrice, sellPrice, hoStock, subItemOrder };
+        callApi(action, payload)
+          .then(() => {
+            setSyncIndicator(false);
+            showToast(groupId ? 'Group updated!' : 'Group created!');
+            fetchDataFromServer();
+          })
+          .catch(err => {
+            setSyncIndicator(false);
+            showToast('Failed: ' + (err.message || err));
+          });
+      } else {
+        setSyncIndicator(false);
+        if (!Array.isArray(state.groups)) state.groups = [];
+        if (groupId) {
+          const grp = state.groups.find(g => String(g.groupId) === String(groupId));
+          if (grp) {
+            grp.groupName = groupName;
+            grp.hoItemId  = hoItemId;
+            grp.buyPrice  = buyPrice;
+            grp.sellPrice = sellPrice;
+            grp.hoStock   = hoStock;
+            grp.subItemOrder = subItemOrder;
+          }
+          (state.inventory || []).forEach(i => {
+            if (String(i.groupId) === String(groupId)) {
+              i.buyPrice  = buyPrice;
+              i.sellPrice = sellPrice;
+            }
+          });
+        } else {
+          const newGid = 'GRP-' + getToday().replace(/-/g, '') + '-' + Date.now().toString().slice(-6);
+          state.groups.push({
+            groupId: newGid,
+            groupName,
+            hoItemId,
+            buyPrice,
+            sellPrice,
+            hoStock,
+            hoLastChecked: '',
+            subItemOrder: []
+          });
+          if (hoItemId) {
+            (state.inventory || []).forEach(i => {
+              if (!i.groupId && String(i.hoItemId || '').trim() === hoItemId) {
+                i.groupId = newGid;
+                i.ungroupedManual = false;
+                i.buyPrice = buyPrice;
+                i.sellPrice = sellPrice;
+              }
+            });
+          }
+        }
+        recalculateInventoryHierarchy();
+        showToast(groupId ? 'Group updated (mock)' : 'Group created (mock)');
+        renderCurrentTab();
+      }
+    }
+
+    function handleDeleteGroup(groupId) {
+      const members = (state.inventory || []).filter(i => String(i.groupId) === String(groupId));
+      if (members.length > 0) {
+        showToast('Cannot delete Group while it still has member items. Remove all items from the Group first.');
+        return;
+      }
+      const grp = (state.groups || []).find(g => String(g.groupId) === String(groupId));
+      const label = grp ? grp.groupName : groupId;
+      verifyPasscodeThen('delete_settings', state.currentLang === 'th' ? `ยืนยันการลบกลุ่ม "${label}"?` : `Delete empty Group "${label}"?`, () => {
+        if (isApiConfigured()) {
+          setSyncIndicator(true);
+          callApi('deleteGroup', { groupId })
+            .then(() => {
+              setSyncIndicator(false);
+              showToast('Group deleted!');
+              fetchDataFromServer();
+            })
+            .catch(err => {
+              setSyncIndicator(false);
+              showToast('Failed: ' + (err.message || err));
+            });
+        } else {
+          state.groups = (state.groups || []).filter(g => String(g.groupId) !== String(groupId));
+          recalculateInventoryHierarchy();
+          renderGroupsSettings();
+          showToast('Group deleted (mock)');
+        }
+      });
+    }
+
+    function submitQuickGroupAssign() {
+      const itemId  = document.getElementById('grp-assign-item-select')?.value || '';
+      const groupId = document.getElementById('grp-assign-group-select')?.value || '';
+      if (!itemId) {
+        showToast('Please select an Inventory Device first');
+        return;
+      }
+      if (!groupId) {
+        showToast('Please select a Target Group');
+        return;
+      }
+      assignItemToGroupAction(itemId, groupId);
+    }
+
+    function assignItemToGroupAction(itemId, groupId) {
+      if (isApiConfigured()) {
+        setSyncIndicator(true);
+        callApi('assignItemToGroup', { itemId, groupId })
+          .then(() => {
+            setSyncIndicator(false);
+            showToast('Assigned item to Group!');
+            fetchDataFromServer();
+          })
+          .catch(err => {
+            setSyncIndicator(false);
+            showToast('Failed: ' + (err.message || err));
+          });
+      } else {
+        const item = (state.inventory || []).find(i => String(i.itemId) === String(itemId));
+        const grp  = (state.groups || []).find(g => String(g.groupId) === String(groupId));
+        if (item && grp) {
+          item.groupId = grp.groupId;
+          item.ungroupedManual = false;
+          item.buyPrice = grp.buyPrice;
+          item.sellPrice = grp.sellPrice;
+          recalculateInventoryHierarchy();
+          renderGroupsSettings();
+          showToast('Assigned item to Group (mock)');
+        }
+      }
+    }
+
+    function removeItemFromGroupAction(itemId) {
+      if (isApiConfigured()) {
+        setSyncIndicator(true);
+        callApi('removeItemFromGroup', { itemId })
+          .then(() => {
+            setSyncIndicator(false);
+            showToast('Removed item from Group (now Standalone)');
+            fetchDataFromServer();
+          })
+          .catch(err => {
+            setSyncIndicator(false);
+            showToast('Failed: ' + (err.message || err));
+          });
+      } else {
+        const item = (state.inventory || []).find(i => String(i.itemId) === String(itemId));
+        if (item) {
+          item.groupId = '';
+          item.ungroupedManual = true;
+          recalculateInventoryHierarchy();
+          renderGroupsSettings();
+          showToast('Removed item from Group (mock)');
+        }
       }
     }
 
@@ -5362,57 +6796,28 @@ function exportStatisticsCSV() {
         item.isFreeItem = newFree;
         if (newFree) item.buyPrice = 0;
         recalculateInventoryHierarchy();
-        renderHierarchySettings();
+        renderGroupsSettings();
         showToast(newFree ? `Marked "${item.deviceName}" as Free item (mock)` : `Set "${item.deviceName}" as PO item (mock)`);
       }
     }
 
-    function submitQuickHierarchyAssign() {
-      const childId  = document.getElementById('hier-assign-child-select')?.value || '';
-      const parentId = document.getElementById('hier-assign-parent-select')?.value || '';
-      if (!childId) {
-        showToast('Please select a Child Sub-Device first');
-        return;
-      }
-      quickAssignChildParent(childId, parentId);
-    }
-
-    function quickAssignChildParent(childItemId, parentId) {
-      if (isApiConfigured()) {
-        setSyncIndicator(true);
-        callApi('assignChildParent', { childItemId, parentId })
-          .then(() => {
-            setSyncIndicator(false);
-            showToast(parentId ? 'Assigned Sub-Device to Parent Group!' : 'Unassigned Sub-Device (now Standalone)');
-            fetchDataFromServer();
-          })
-          .catch(err => {
-            setSyncIndicator(false);
-            showToast('Failed: ' + (err.message || err));
-          });
-      } else {
-        const child = state.inventory.find(i => String(i.itemId) === String(childItemId));
-        if (child) {
-          child.parentId = parentId || '';
-          recalculateInventoryHierarchy();
-          renderHierarchySettings();
-          showToast(parentId ? 'Assigned Sub-Device (mock)' : 'Unassigned Sub-Device (mock)');
-        }
-      }
-    }
-
     // ════════════════════════════════════════════════════════════════
-    // MODULE 2 & 3: EXCHANGE QUOTA TRACKER & CONSIGNMENT HOLD (BUFFER)
+    // MODULE 2 & 3: SUBSTITUTION AND EXCHANGE & CONSIGNMENT HOLD (BUFFER)
     // ════════════════════════════════════════════════════════════════
     function switchExchangeSubTab(sub) {
-      state.exchangeSubTab = sub;
-      document.querySelectorAll('#ex-subtabs .sub-tab').forEach(btn => {
-        btn.classList.toggle('active', btn.dataset.ex === sub);
+      const target = (sub === 'consignment' || sub === 'loans') ? sub : 'quota';
+      state.exchangeSubTab = target;
+      document.querySelectorAll('#ex-subtabs button').forEach(btn => {
+        const isMatch = btn.dataset.ex === target;
+        btn.classList.toggle('on', isMatch);
+        btn.classList.toggle('active', isMatch);
       });
       const qPanel = document.getElementById('ex-panel-quota');
       const cPanel = document.getElementById('ex-panel-consignment');
-      if (qPanel) qPanel.classList.toggle('hidden', sub !== 'quota');
-      if (cPanel) cPanel.classList.toggle('hidden', sub !== 'consignment');
+      const lPanel = document.getElementById('ex-panel-loans');
+      if (qPanel) qPanel.classList.toggle('hidden', target !== 'quota');
+      if (cPanel) cPanel.classList.toggle('hidden', target !== 'consignment');
+      if (lPanel) lPanel.classList.toggle('hidden', target !== 'loans');
       renderExchangeTab();
     }
 
@@ -5422,13 +6827,19 @@ function exportStatisticsCSV() {
       const consignments = state.consignments || [];
       const activeQuotaCount = quotas.filter(q => String(q.status || 'Active') === 'Active').length;
       const holdingCsgCount  = consignments.filter(c => String(c.status || 'Holding') === 'Holding').length;
+      const openLoansCount   = (state.loans || []).filter(l => l.status !== 'Fully Returned').length;
 
       const qCountEl = document.getElementById('ex-quota-active-count');
       if (qCountEl) qCountEl.innerText = activeQuotaCount;
       const cCountEl = document.getElementById('ex-csg-holding-count');
       if (cCountEl) cCountEl.innerText = holdingCsgCount;
+      const lCountEl = document.getElementById('ex-loans-open-count');
+      if (lCountEl) lCountEl.innerText = String(openLoansCount);
+      if (state.exchangeSubTab === 'loans') {
+        renderLoanTab();
+      }
 
-      // 1. Render Exchange Quota Tracker Table
+      // 1. Render Substitution Quotas Table (Requirement 3.2 & 3.3)
       const qBody = document.getElementById('ex-quota-table-body');
       if (qBody) {
         const statusFilter = document.getElementById('ex-quota-filter-status')?.value || '';
@@ -5443,15 +6854,13 @@ function exportStatisticsCSV() {
         });
 
         if (filteredQuotas.length === 0) {
-          qBody.innerHTML = '<tr><td colspan="8" class="empty-state">No substitution quota rules found. Click "+ New Exchange Rule" to create one.</td></tr>';
+          qBody.innerHTML = '<tr><td colspan="5" class="empty-state">ไม่พบรายการตัดของทดแทน คลิก "รายการตัดของทดแทน" เพื่อเพิ่มรายการใหม่</td></tr>';
         } else {
           qBody.innerHTML = filteredQuotas.map(q => {
             const total = Number(q.totalQuota) || 1;
             const used  = Number(q.currentUsed) || 0;
-            const rem   = Math.max(0, total - used);
             const pct   = Math.min(100, Math.round((used / total) * 100));
             const isDone = q.status === 'Completed' || used >= total;
-            const histCount = Array.isArray(q.history) ? q.history.length : 0;
             const physInv = state.inventory.find(i => String(i.itemId) === String(q.physicalItemId));
             const retailNow = physInv ? (Number(physInv.retailStock) || 0) : 0;
             const usedPieces = getQuotaUsedPieces(q);
@@ -5459,38 +6868,30 @@ function exportStatisticsCSV() {
 
             return `
               <tr>
-                <td class="text-xs text-gray">${formatDate(q.createdDate)}<div class="font-mono">${q.quotaId || ''}</div></td>
-                <td>
-                  <div class="font-semibold">${getDeviceName(q.physicalItemId)}</div>
-                  <div class="text-xs text-gray">Retail stock: <strong>${retailNow}</strong></div>
+                <td class="col-ex-fit">
+                  <a href="javascript:void(0)" class="device-name-link font-semibold" style="color:var(--brand-dark); text-decoration:underline;" onclick="openExchangeHistoryModal('${escapeHtml(q.quotaId)}')" title="ดู / แก้ไขรายละเอียดรายการทดแทน">${escapeHtml(getDeviceName(q.physicalItemId))}</a>
+                  <div class="text-xs text-gray">คลังปลีก: <strong>${retailNow}</strong></div>
                 </td>
-                <td>
-                  <span class="badge badge-purple">${getDeviceName(q.substitutedItemId)}</span>
+                <td class="col-ex-fit">
+                  <span class="font-semibold" style="color:#6d28d9;">${escapeHtml(getDeviceName(q.substitutedItemId))}</span>
                 </td>
-                <td>
+                <td class="col-ex-quota" data-sort="${used}">
                   <div class="flex justify-between text-xs font-semibold mb-2">
-                    <span>${used} / ${total} units</span>
+                    <span>${used} / ${total} ชิ้น</span>
                     <span>${pct}%</span>
                   </div>
                   <div class="progress-track">
                     <div class="progress-fill ${isDone ? 'done' : ''}" style="width:${pct}%;"></div>
                   </div>
-                  <div class="text-xs text-gray mt-1" style="font-size:11px;">
-                    <span>Used: <strong>${formatPiecesList(usedPieces)}</strong></span>
-                    &nbsp;|&nbsp;
-                    <span style="color:var(--brand-dark);">Available: <strong>${formatPiecesList(availPieces)}</strong></span>
+                  <div class="text-xs mt-1" style="font-size:11px; line-height:1.45;">
+                    <div style="color:var(--brand-dark);">Available: <strong>${formatPiecesList(availPieces)}</strong></div>
+                    <div class="text-gray">Used: <strong>${formatPiecesList(usedPieces)}</strong></div>
                   </div>
                 </td>
-                <td class="center font-bold" style="color:${rem === 0 ? 'var(--gray-400)' : 'var(--brand-dark)'};">${rem}</td>
-                <td class="center">
-                  <span class="badge ${isDone ? 'badge-purple' : 'badge-ok'}">${isDone ? 'Completed' : 'Active'}</span>
+                <td class="center col-ex-fit">
+                  <span class="badge ${isDone ? 'badge-purple' : 'badge-ok'}">${isDone ? 'เสร็จสิ้น' : 'กำลังดำเนินการ'}</span>
                 </td>
-                <td class="text-sm text-gray">${q.notes || '—'}</td>
-                <td class="center" style="white-space:nowrap;">
-                  <button class="btn btn-outline btn-sm" onclick="openExchangeHistoryModal('${escapeHtml(q.quotaId)}')" title="View Case History">${ICONS.list} Cases (${histCount})</button>
-                  <button class="btn-ghost" onclick="openExchangeQuotaModal('${escapeHtml(q.quotaId)}')" title="Edit Rule">${ICONS.edit}</button>
-                  <button class="btn-ghost" style="color:var(--red);" onclick="removeExchangeQuota('${escapeHtml(q.quotaId)}')" title="Delete">${ICONS.trash}</button>
-                </td>
+                <td class="col-ex-notes text-sm text-gray">${escapeHtml(q.notes || '—')}</td>
               </tr>
             `;
           }).join('');
@@ -5507,8 +6908,8 @@ function exportStatisticsCSV() {
           if (cStatus && String(c.status) !== cStatus) return false;
           if (!cSearch) return true;
           return (
-            String(c.vendorName || '').toLowerCase().includes(cSearch) ||
-            String(c.itemName || '').toLowerCase().includes(cSearch) ||
+            String(c.vendorName || c.vendor || '').toLowerCase().includes(cSearch) ||
+            String(c.itemName || getDeviceName(c.itemId) || '').toLowerCase().includes(cSearch) ||
             String(c.contactPerson || '').toLowerCase().includes(cSearch) ||
             String(c.pickupRep || '').toLowerCase().includes(cSearch) ||
             String(c.holdId || '').toLowerCase().includes(cSearch)
@@ -5516,36 +6917,37 @@ function exportStatisticsCSV() {
         });
 
         if (filteredCsg.length === 0) {
-          cBody.innerHTML = '<tr><td colspan="8" class="empty-state">No consignment or vendor quarantine hold items found.</td></tr>';
+          cBody.innerHTML = '<tr><td colspan="8" class="empty-state">ไม่พบรายการรับฝาก</td></tr>';
         } else {
           cBody.innerHTML = filteredCsg.map(c => {
             const isHolding = String(c.status || 'Holding') === 'Holding';
             const pickupInfo = (!isHolding && (c.pickupDate || c.pickupRep))
-              ? `<div class="text-xs" style="color:var(--brand-dark); margin-top:2px;">Picked up on <strong>${formatDate(c.pickupDate)}</strong> by <strong>${c.pickupRep || '—'}</strong></div>`
+              ? `<div class="text-xs" style="color:var(--brand-dark); margin-top:2px;">รับคืนเมื่อ <strong>${formatDate(c.pickupDate)}</strong> โดย <strong>${escapeHtml(c.pickupRep || '—')}</strong></div>`
               : '';
+            const cDate = c.dateDeposited || c.date || '';
+            const cQty = c.quantity !== undefined ? c.quantity : (c.qty ?? 0);
             return `
               <tr>
-                <td class="text-xs text-gray">${formatDate(c.dateDeposited)}<div class="font-mono">${c.holdId || ''}</div></td>
-                <td class="font-semibold">${c.vendorName || '—'}</td>
+                <td class="text-xs text-gray" data-sort="${escapeHtml(String(cDate))}">${formatDate(cDate)}<div class="font-mono">${escapeHtml(c.holdId || '')}</div></td>
+                <td class="font-semibold">${escapeHtml(c.vendorName || c.vendor || '—')}</td>
                 <td>
-                  <div>${c.contactPerson || '—'}</div>
-                  <div class="text-xs text-gray">${c.contactPhone || ''}</div>
+                  <div>${escapeHtml(c.contactPerson || '—')}</div>
+                  <div class="text-xs text-gray">${escapeHtml(c.contactPhone || '')}</div>
                 </td>
                 <td>
-                  <div class="font-medium">${c.itemName || getDeviceName(c.itemId)}</div>
-                  <span class="badge badge-purple" style="margin-top:2px;">Buffer (Locked from Procedure Use)</span>
+                  <div class="font-medium">${escapeHtml(c.itemName || getDeviceName(c.itemId))}</div>
                 </td>
-                <td class="center font-bold">${c.quantity}</td>
+                <td class="center font-bold">${cQty}</td>
                 <td class="center">
-                  <span class="badge ${isHolding ? 'badge-amber' : 'badge-ok'}">${isHolding ? 'Holding' : 'Returned'}</span>
+                  <span class="badge ${isHolding ? 'badge-amber' : 'badge-ok'}">${isHolding ? 'รับฝากไว้' : 'คืนแล้ว'}</span>
                 </td>
                 <td class="text-sm">
-                  <div class="text-gray">${c.notes || '—'}</div>
+                  <div class="text-gray">${escapeHtml(c.notes || '—')}</div>
                   ${pickupInfo}
                 </td>
                 <td class="center" style="white-space:nowrap;">
-                  ${isHolding ? `<button class="btn btn-brand btn-sm" onclick="openConsignmentReturnModal('${escapeHtml(c.holdId)}')">${ICONS.check} Mark as Returned</button>` : ''}
-                  <button class="btn-ghost" style="color:var(--red);" onclick="removeConsignmentHold('${escapeHtml(c.holdId)}')" title="Delete">${ICONS.trash}</button>
+                  ${isHolding ? `<button class="btn btn-brand btn-sm" onclick="openConsignmentReturnModal('${escapeHtml(c.holdId)}')">${ICONS.check} รับคืน</button>` : ''}
+                  <button class="btn-ghost" style="color:var(--red);" onclick="removeConsignmentHold('${escapeHtml(c.holdId)}')" title="ลบ">${ICONS.trash}</button>
                 </td>
               </tr>
             `;
@@ -5607,6 +7009,10 @@ function exportStatisticsCSV() {
         showToast('Total Quota must be greater than 0');
         return;
       }
+      if (totalQuota < currentUsed) {
+        showToast(`Total Quota (${totalQuota}) cannot be set lower than Current Used (${currentUsed})`);
+        return;
+      }
       if (currentUsed >= totalQuota) status = 'Completed';
 
       const payload = {
@@ -5652,47 +7058,160 @@ function exportStatisticsCSV() {
     function openExchangeHistoryModal(quotaId) {
       const q = (state.exchangeQuotas || []).find(x => String(x.quotaId) === String(quotaId));
       if (!q) return;
+      state.activeExDetailQuotaId = q.quotaId;
+      toggleExDetailEdit(false);
+
+      const total = Number(q.totalQuota) || 1;
+      const used  = Number(q.currentUsed) || 0;
+      const isDone = q.status === 'Completed' || used >= total;
       const usedPieces = getQuotaUsedPieces(q);
       const availPieces = getQuotaAvailablePieces(q);
-      document.getElementById('modal-ex-hist-title').innerText = `Case History — ${q.quotaId}`;
+
+      const usedSet = new Set(usedPieces.map(Number));
+      const piecesGridHtml = Array.from({ length: total }, (_, idx) => {
+        const n = idx + 1;
+        const isU = usedSet.has(n);
+        return `<span class="${isU ? 'u' : ''}" title="#${n}: ${isU ? 'Used' : 'Available'}">${n}</span>`;
+      }).join('');
+
+      document.getElementById('modal-ex-hist-title').innerText = `Substitution Detail`;
       document.getElementById('modal-ex-hist-summary').innerHTML = `
-        <div class="flex justify-between items-center flex-wrap gap-2">
-          <div>
-            <strong>Physical Item:</strong> ${getDeviceName(q.physicalItemId)} &nbsp;→&nbsp;
-            <strong>Substituted For:</strong> <span class="badge badge-purple">${getDeviceName(q.substitutedItemId)}</span>
+        <div class="grid-2" style="gap:10px 24px;">
+          <div><span class="text-gray font-medium">วันที่สร้างรายการ:</span> <strong>${escapeHtml(formatDate(q.createdDate) || '—')}</strong></div>
+          <div><span class="text-gray font-medium">Status:</span> <span class="badge ${isDone ? 'badge-purple' : 'badge-ok'}">${isDone ? 'Completed' : 'Active'}</span></div>
+          <div><span class="text-gray font-medium">Physical Item:</span> <strong style="color:var(--black);">${escapeHtml(getDeviceName(q.physicalItemId))}</strong></div>
+          <div><span class="text-gray font-medium">Substituted Item:</span> <span class="badge badge-purple">${escapeHtml(getDeviceName(q.substitutedItemId))}</span></div>
+          <div><span class="text-gray font-medium">Current Used / Total Quota:</span> <strong>${used} / ${total}</strong></div>
+          <div><span class="text-gray font-medium">Notes:</span> <strong>${escapeHtml(q.notes || '—')}</strong></div>
+          <div style="grid-column: span 2; border-top:1px dashed var(--gray-200); padding-top:8px;">
+            <div style="color:var(--brand-dark);">Available: <strong>${formatPiecesList(availPieces)}</strong></div>
+            <div class="text-gray" style="margin-top:2px;">Used: <strong>${formatPiecesList(usedPieces)}</strong></div>
+            <div class="pieces">${piecesGridHtml}</div>
           </div>
-          <div>
-            <strong>Quota Used:</strong> ${q.currentUsed} / ${q.totalQuota} units
-            (<span class="badge ${q.status === 'Completed' ? 'badge-purple' : 'badge-ok'}">${q.status}</span>)
-          </div>
-        </div>
-        <div class="text-xs mt-2 pt-2" style="border-top:1px dashed var(--gray-200);">
-          <span>Used Pieces: <strong>${formatPiecesList(usedPieces)}</strong></span> &nbsp;|&nbsp;
-          <span style="color:var(--brand-dark);">Available Pieces: <strong>${formatPiecesList(availPieces)}</strong></span>
         </div>
       `;
+
+      // Pre-fill inline edit inputs
+      const editTotEl = document.getElementById('ex-detail-edit-total');
+      const editStEl  = document.getElementById('ex-detail-edit-status');
+      const editNtEl  = document.getElementById('ex-detail-edit-notes');
+      if (editTotEl) { editTotEl.value = total; editTotEl.min = Math.max(1, used); }
+      if (editStEl)  { editStEl.value = isDone ? 'Completed' : (q.status || 'Active'); }
+      if (editNtEl)  { editNtEl.value = q.notes || ''; }
+
+      const btnDel = document.getElementById('btn-ex-detail-delete');
+      if (btnDel) {
+        btnDel.onclick = () => {
+          removeExchangeQuota(q.quotaId);
+        };
+      }
+
       const tbody = document.getElementById('modal-ex-hist-body');
       const hist = Array.isArray(q.history) ? q.history : [];
       if (hist.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" class="empty-state">No procedure cases recorded under this quota yet.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="5" class="empty-state">No procedure cases recorded under this substitution record yet.</td></tr>';
       } else {
-        tbody.innerHTML = hist.map((h, i) => `
-          <tr>
-            <td>${i + 1}</td>
-            <td>${formatDate(h.date)}</td>
-            <td class="font-mono text-xs text-gray">${h.txnId || '—'}</td>
-            <td class="font-semibold">${h.hn || '—'}</td>
-            <td>${h.procedure || '—'}</td>
-            <td class="center font-mono font-bold" style="color:var(--purple-dark);">${h.pieceNo ? h.pieceNo : '—'}</td>
-            <td class="center font-bold">${h.qty || 0}</td>
-          </tr>
-        `).join('');
+        let runningPiece = 1;
+        tbody.innerHTML = hist.map((h) => {
+          const qtyUsed = Math.max(1, Number(h.qty) || 1);
+          let seqStr = '';
+          if (h.pieceNo !== undefined && h.pieceNo !== null && h.pieceNo !== '') {
+            const pNum = Number(h.pieceNo);
+            if (!isNaN(pNum) && qtyUsed > 1) {
+              seqStr = `${pNum}-${pNum + qtyUsed - 1}/${total}`;
+            } else {
+              seqStr = `${h.pieceNo}/${total}`;
+            }
+            if (!isNaN(pNum)) runningPiece = Math.max(runningPiece, pNum + qtyUsed);
+          } else {
+            const startP = runningPiece;
+            const endP = runningPiece + qtyUsed - 1;
+            seqStr = (qtyUsed > 1) ? `${startP}-${endP}/${total}` : `${startP}/${total}`;
+            runningPiece = endP + 1;
+          }
+          return `
+            <tr>
+              <td class="center font-mono font-bold" style="color:var(--purple-dark);">${escapeHtml(seqStr)}</td>
+              <td>${formatDate(h.date)}</td>
+              <td class="font-semibold">${escapeHtml(h.hn || '—')}</td>
+              <td>${escapeHtml(h.procedure || '—')}</td>
+              <td class="center font-bold">${qtyUsed}</td>
+            </tr>
+          `;
+        }).join('');
       }
       openModal('modal-exchange-history');
     }
 
+    function toggleExDetailEdit(show) {
+      const box = document.getElementById('modal-ex-detail-edit-box');
+      if (box) box.classList.toggle('hidden', !show);
+    }
+
+    function saveExDetailEdit() {
+      const quotaId = state.activeExDetailQuotaId;
+      const q = (state.exchangeQuotas || []).find(x => String(x.quotaId) === String(quotaId));
+      if (!q) return;
+
+      const totalQuota  = parseInt(document.getElementById('ex-detail-edit-total')?.value) || 0;
+      const currentUsed = Math.max(0, Number(q.currentUsed) || 0);
+      let status        = document.getElementById('ex-detail-edit-status')?.value || 'Active';
+      const notes       = (document.getElementById('ex-detail-edit-notes')?.value || '').trim();
+
+      if (totalQuota <= 0) {
+        showToast('Total Quota must be greater than 0');
+        return;
+      }
+      if (totalQuota < currentUsed) {
+        showToast(`Total Quota (${totalQuota}) cannot be set lower than Current Used (${currentUsed})`);
+        return;
+      }
+      if (currentUsed >= totalQuota) status = 'Completed';
+
+      const payload = {
+        quotaId: q.quotaId,
+        createdDate: q.createdDate || getToday(),
+        physicalItemId: q.physicalItemId,
+        substitutedItemId: q.substitutedItemId,
+        totalQuota,
+        currentUsed,
+        status,
+        notes
+      };
+
+      closeModal();
+      if (isApiConfigured()) {
+        appLoading.classList.remove('hidden');
+        appContent.classList.add('hidden');
+        callApi('saveExchangeQuota', payload)
+          .then(() => {
+            showToast('Substitution record updated!');
+            fetchDataFromServer();
+          })
+          .catch(err => {
+            showToast('Failed: ' + (err.message || err));
+            appLoading.classList.add('hidden');
+            appContent.classList.remove('hidden');
+          });
+      } else {
+        Object.assign(q, payload);
+        showToast('Substitution record updated (mock)');
+        renderCurrentTab();
+      }
+    }
+
     function removeExchangeQuota(quotaId) {
-      verifyPasscodeThen(state.currentLang === 'th' ? `ยืนยันการลบกฎโควตา ${quotaId}?` : `Remove substitution quota rule ${quotaId}?`, () => {
+      const q = (state.exchangeQuotas || []).find(x => String(x.quotaId) === String(quotaId));
+      const histCount = q && Array.isArray(q.history) ? q.history.length : 0;
+      const usedCount = q ? (Number(q.currentUsed) || 0) : 0;
+      if (histCount > 0 || usedCount > 0) {
+        const warnMsg = state.currentLang === 'th'
+          ? `คำเตือน: รายการทดแทนนี้มีประวัติการตัดใช้งานแล้ว (${histCount} เคส / ${usedCount} ชิ้น) การลบอาจกระทบความถูกต้องของประวัติการใช้งาน ต้องการดำเนินการต่อหรือไม่?`
+          : `Warning: This substitution record already has ${histCount} used case(s) (${usedCount} unit(s) used) in Case History. Deleting it may affect audit history. Do you want to proceed?`;
+        if (!confirm(warnMsg)) return;
+      }
+      closeModal();
+      verifyPasscodeThen('delete_swap', state.currentLang === 'th' ? `ยืนยันการลบกฎโควตา ${quotaId}?` : `Remove substitution quota rule ${quotaId}?`, () => {
         if (isApiConfigured()) {
           appLoading.classList.remove('hidden');
           appContent.classList.add('hidden');
@@ -5848,7 +7367,7 @@ function exportStatisticsCSV() {
     }
 
     function removeConsignmentHold(holdId) {
-      verifyPasscodeThen(state.currentLang === 'th' ? `ต้องการลบรายการฝากของ ${holdId} หรือไม่?` : `Delete consignment hold record ${holdId}?`, () => {
+      verifyPasscodeThen('delete_swap', state.currentLang === 'th' ? `ต้องการลบรายการฝากของ ${holdId} หรือไม่?` : `Delete consignment hold record ${holdId}?`, () => {
         if (isApiConfigured()) {
           appLoading.classList.remove('hidden');
           appContent.classList.add('hidden');
@@ -5873,183 +7392,113 @@ function exportStatisticsCSV() {
     // ════════════════════════════════════════════════════════════════
     // MODULE 4: LOAN & TRANSFER MANAGEMENT
     // ════════════════════════════════════════════════════════════════
-    function getDepartmentsForScope(scope) {
+    function cleanDepartmentName(name) {
+      return String(name || '').replace(/^(internal|external)\s*\|\s*/i, '').trim();
+    }
+
+    function getAllLoanDepartments() {
       const rawList = (state.settings && Array.isArray(state.settings.departments)) ? state.settings.departments : [];
-      const target = String(scope || 'Internal').toLowerCase();
-      const matched = [];
-      rawList.forEach(entry => {
-        const s = String(entry || '').trim();
-        if (!s) return;
-        if (s.includes('|')) {
-          const parts = s.split('|').map(p => p.trim());
-          if (parts[0].toLowerCase() === target) matched.push(parts.slice(1).join(' | '));
-        } else {
-          matched.push(s);
-        }
-      });
-      if (matched.length === 0) {
-        return target === 'external'
-          ? ['Operating Room (OR)', 'Siriraj Hospital', 'Chulalongkorn Hospital', 'Ramathibodi Hospital']
-          : ['BIR Room', 'Angio Suite', 'CT Room'];
+      const cleaned = Array.from(new Set(rawList.map(cleanDepartmentName).filter(Boolean)));
+      if (cleaned.length === 0) {
+        return ['BIR Room', 'Operating Room (OR)', 'Angio Suite', 'CT Room', 'โรงพยาบาลศิริราช'];
       }
-      return matched;
+      return cleaned;
+    }
+
+    function getDepartmentsForScope() {
+      return getAllLoanDepartments();
     }
 
     function renderLoanTab() {
       const loans = state.loans || [];
 
-      // Split active loans into Card 1 (We Owe Others — Inward) & Card 2 (Others Owe Us — Outward)
       const weOweList   = loans.filter(l => l.status !== 'Fully Returned' && (String(l.direction).includes('Inward') || String(l.direction).includes('We Borrowed')));
       const theyOweList = loans.filter(l => l.status !== 'Fully Returned' && (String(l.direction).includes('Outward') || String(l.direction).includes('They Borrowed')));
 
       const weOweUnits   = weOweList.reduce((s, l) => s + Math.max(0, (Number(l.totalQty) || 0) - (Number(l.returnedQty) || 0)), 0);
       const theyOweUnits = theyOweList.reduce((s, l) => s + Math.max(0, (Number(l.totalQty) || 0) - (Number(l.returnedQty) || 0)), 0);
 
-      const weBadge = document.getElementById('loan-we-owe-badge');
-      if (weBadge) weBadge.innerText = `${weOweList.length} active (${weOweUnits} ${t('stock_qty', 'pcs')})`;
-      const theyBadge = document.getElementById('loan-they-owe-badge');
-      if (theyBadge) theyBadge.innerText = `${theyOweList.length} active (${theyOweUnits} ${t('stock_qty', 'pcs')})`;
+      const kpiBorrow = document.getElementById('loan-kpi-borrow-units');
+      if (kpiBorrow) kpiBorrow.innerText = String(weOweUnits);
+      const kpiLend = document.getElementById('loan-kpi-lend-units');
+      if (kpiLend) kpiLend.innerText = String(theyOweUnits);
+      const exLoansCnt = document.getElementById('ex-loans-open-count');
+      if (exLoansCnt) exLoansCnt.innerText = String(weOweList.length + theyOweList.length);
 
-      function formatLoanStatusText(st) {
-        if (st === 'Partial') return t('tr_partial', 'Partial');
-        if (st === 'Fully Returned') return t('tr_fully', 'Fully Returned');
-        return t('tr_pending', st || 'Pending');
-      }
-
-      function formatLoanScopeText(sc) {
-        if (sc === 'External') return t('tr_external', 'External');
-        if (sc === 'Internal') return t('tr_internal', 'Internal');
-        return sc || '';
-      }
-
-      function buildActiveCardRows(list, emptyMsg, btnLabel) {
-        if (list.length === 0) {
-          return `<tr><td colspan="5" class="empty-state text-sm">${emptyMsg}</td></tr>`;
-        }
-        return list.map(l => {
-          const tot = Number(l.totalQty) || 0;
-          const ret = Number(l.returnedQty) || 0;
-          const rem = Math.max(0, tot - ret);
-          const scBadge = l.scope === 'External' ? 'badge-amber' : 'badge-blue';
-          const stBadge = l.status === 'Partial' ? 'badge-amber' : 'badge-low';
-          return `
-            <tr>
-              <td>
-                <div class="font-semibold">${l.department}</div>
-                <div class="text-xs text-gray">
-                  <span class="badge ${scBadge}" style="font-size:10px; padding:1px 6px;">${formatLoanScopeText(l.scope)}</span>
-                  ${formatDate(l.date)}
-                  ${l.docNo ? ` · <span class="font-mono">${t('tr_doc_no', 'Doc')}: ${l.docNo}</span>` : ''}
-                </div>
-              </td>
-              <td class="font-medium">${l.itemName || getDeviceName(l.itemId)}</td>
-              <td class="center">
-                <strong style="font-size:14px;">${rem}</strong>
-                <span class="text-xs text-gray">/ ${tot}</span>
-              </td>
-              <td class="center"><span class="badge ${stBadge}">${formatLoanStatusText(l.status)}</span></td>
-              <td class="center" style="white-space:nowrap;">
-                ${btnLabel === returnBtnTxt ? `<button class="btn btn-outline btn-sm" onclick="registerLoanItemAsInventory('${escapeHtml(l.loanId)}')" title="Register into Inventory with (Borrow) tag" style="margin-right:4px;">+ Inventory</button>` : ''}
-                <button class="btn btn-outline btn-sm" onclick="openLoanReturnModal('${escapeHtml(l.loanId)}')">${ICONS.check} ${btnLabel}</button>
-              </td>
-            </tr>
-          `;
-        }).join('');
-      }
-
-      const returnBtnTxt = state.currentLang === 'th' ? 'ส่งคืน' : 'Return';
-      const receiveBtnTxt = state.currentLang === 'th' ? 'รับคืน' : 'Receive';
-      const weEmptyMsg = state.currentLang === 'th' ? 'ไม่มีรายการขอยืมค้างส่ง' : 'No pending inward loans.';
-      const theyEmptyMsg = state.currentLang === 'th' ? 'ไม่มีรายการให้ยืมค้างรับคืน' : 'No pending outward loans.';
-
-      const weBody = document.getElementById('loan-we-owe-body');
-      if (weBody) weBody.innerHTML = buildActiveCardRows(weOweList, weEmptyMsg, returnBtnTxt);
-
-      const theyBody = document.getElementById('loan-they-owe-body');
-      if (theyBody) theyBody.innerHTML = buildActiveCardRows(theyOweList, theyEmptyMsg, receiveBtnTxt);
-
-      // Render Historical & All Loans Table
       const hBody = document.getElementById('loan-history-body');
-      if (hBody) {
-        const statusFilter = document.getElementById('loan-filter-status')?.value || '';
-        const scopeFilter  = document.getElementById('loan-filter-scope')?.value || '';
-        const searchQ      = (document.getElementById('loan-search')?.value || '').toLowerCase().trim();
+      if (!hBody) return;
 
-        const filtered = loans.filter(l => {
-          if (statusFilter === 'Active' && l.status === 'Fully Returned') return false;
-          if (statusFilter === 'Fully Returned' && l.status !== 'Fully Returned') return false;
-          if (scopeFilter && l.scope !== scopeFilter) return false;
-          if (!searchQ) return true;
-          return (
-            String(l.department || '').toLowerCase().includes(searchQ) ||
-            String(l.docNo || '').toLowerCase().includes(searchQ) ||
-            String(l.itemName || getDeviceName(l.itemId)).toLowerCase().includes(searchQ) ||
-            String(l.loanId || '').toLowerCase().includes(searchQ) ||
-            String(l.notes || '').toLowerCase().includes(searchQ)
-          );
-        });
+      const dirFilter    = document.getElementById('loan-filter-direction')?.value || '';
+      const statusFilter = document.getElementById('loan-filter-status')?.value || '';
+      const searchQ      = (document.getElementById('loan-search')?.value || '').toLowerCase().trim();
 
-        if (filtered.length === 0) {
-          hBody.innerHTML = '<tr><td colspan="9" class="empty-state">No loan or transfer records match the current filter.</td></tr>';
-        } else {
-          hBody.innerHTML = filtered.map(l => {
-            const tot = Number(l.totalQty) || 1;
-            const ret = Number(l.returnedQty) || 0;
-            const pct = Math.min(100, Math.round((ret / tot) * 100));
-            const isInward = String(l.direction).includes('Inward') || String(l.direction).includes('We Borrowed');
-            const isDone = l.status === 'Fully Returned';
-            const stBadge = isDone ? 'badge-ok' : (l.status === 'Partial' ? 'badge-amber' : 'badge-low');
-            const scBadge = l.scope === 'External' ? 'badge-amber' : 'badge-blue';
-            const histLogs = (Array.isArray(l.returnHistory) ? l.returnHistory : []).map(h =>
-              `<div class="text-xs" style="color:var(--brand-dark);">• ${formatDate(h.date)}: <strong>${h.qty} pcs</strong> by ${h.returnedBy}${h.notes ? ` (${h.notes})` : ''}</div>`
-            ).join('');
+      const filtered = loans.filter(l => {
+        const isInward = String(l.direction || '').includes('Inward') || String(l.direction || '').includes('We Borrowed');
+        if (dirFilter === 'Inward' && !isInward) return false;
+        if (dirFilter === 'Outward' && isInward) return false;
+        if (statusFilter === 'Active' && l.status === 'Fully Returned') return false;
+        if (statusFilter === 'Fully Returned' && l.status !== 'Fully Returned') return false;
+        if (!searchQ) return true;
+        return (
+          String(l.department || '').toLowerCase().includes(searchQ) ||
+          String(l.docNo || '').toLowerCase().includes(searchQ) ||
+          String(l.itemName || getDeviceName(l.itemId)).toLowerCase().includes(searchQ) ||
+          String(l.loanId || '').toLowerCase().includes(searchQ) ||
+          String(l.notes || '').toLowerCase().includes(searchQ)
+        );
+      });
 
-            return `
-              <tr>
-                <td class="text-xs text-gray">${formatDate(l.date)}<div class="font-mono">${l.loanId || ''}</div></td>
-                <td>
-                  <span class="badge ${scBadge}">${l.scope}</span>
-                  <div class="text-xs font-semibold mt-2" style="color:${isInward ? '#dc2626' : 'var(--brand-dark)'};">
-                    ${isInward ? 'We Borrowed (Inward)' : 'They Borrowed (Outward)'}
-                  </div>
-                </td>
-                <td class="font-semibold">${l.department}</td>
-                <td class="font-mono text-xs">${l.docNo ? `<span class="badge badge-gray">${l.docNo}</span>` : '<span class="text-gray">—</span>'}</td>
-                <td>
-                  <div class="font-medium">${l.itemName || getDeviceName(l.itemId)}</div>
-                  <div class="text-xs text-gray">Location: ${l.location || 'Main'}</div>
-                </td>
-                <td class="center" style="min-width:120px;">
-                  <div class="font-bold text-xs mb-2">${ret} / ${tot} pcs</div>
-                  <div class="progress-track">
-                    <div class="progress-fill ${isDone ? 'done' : ''}" style="width:${pct}%;"></div>
-                  </div>
-                </td>
-                <td class="center"><span class="badge ${stBadge}">${l.status}</span></td>
-                <td>
-                  ${l.notes ? `<div class="text-xs text-gray mb-2">${l.notes}</div>` : ''}
-                  ${histLogs || '<span class="text-xs text-gray">No returns logged yet</span>'}
-                </td>
-                <td class="center" style="white-space:nowrap;">
-                  ${!isDone ? `<button class="btn btn-outline btn-sm" onclick="openLoanReturnModal('${escapeHtml(l.loanId)}')">${ICONS.check} Record Return</button>` : ''}
-                  <button class="btn-ghost" style="color:var(--red);" onclick="removeLoanTransfer('${escapeHtml(l.loanId)}')" title="Delete">${ICONS.trash}</button>
-                </td>
-              </tr>
-            `;
-          }).join('');
-        }
+      if (filtered.length === 0) {
+        hBody.innerHTML = '<tr><td colspan="7" class="empty-state">ไม่พบรายการยืม-คืนที่ตรงตามเงื่อนไข</td></tr>';
+        return;
       }
+
+      hBody.innerHTML = filtered.map(l => {
+        const tot = Number(l.totalQty) || 0;
+        const ret = Number(l.returnedQty) || 0;
+        const rem = Math.max(0, tot - ret);
+        const isInward = String(l.direction || '').includes('Inward') || String(l.direction || '').includes('We Borrowed');
+        const isDone = l.status === 'Fully Returned' || rem === 0;
+        const stBadge = isDone ? 'badge-ok' : (l.status === 'Partial' ? 'badge-amber' : 'badge-low');
+        const statusTxt = isDone ? 'คืนครบแล้ว' : (l.status === 'Partial' ? 'คืนบางส่วน' : 'รอดำเนินการ');
+        const devName = l.itemName || getDeviceName(l.itemId);
+        const deptName = cleanDepartmentName(l.department || '—');
+        const histLogs = (Array.isArray(l.returnHistory) ? l.returnHistory : []).map(h =>
+          `<div class="text-xs" style="color:var(--g-d); margin-top:2px;">• ${escapeHtml(formatDate(h.date))}: คืน <strong>${h.qty}</strong> โดย ${escapeHtml(h.returnedBy || '—')}${h.notes ? ` (${escapeHtml(h.notes)})` : ''}</div>`
+        ).join('');
+
+        return `
+          <tr>
+            <td>
+              <div class="font-medium">${escapeHtml(devName)}</div>
+              ${l.notes ? `<div class="text-xs text-gray">${escapeHtml(l.notes)}</div>` : ''}
+              ${histLogs}
+            </td>
+            <td class="text-xs text-gray" data-sort="${escapeHtml(String(l.date || ''))}">${escapeHtml(formatDate(l.date))}</td>
+            <td>
+              <span class="badge ${isInward ? 'warn' : 'badge-blue'}">${isInward ? 'ยืม' : 'ให้ยืม'}</span>
+            </td>
+            <td class="font-semibold">${escapeHtml(deptName || '—')}</td>
+            <td class="font-mono text-xs">${l.docNo ? `<span class="badge badge-gray">${escapeHtml(l.docNo)}</span>` : '<span class="text-gray">—</span>'}</td>
+            <td class="center" data-sort="${rem}">
+              <strong>${rem}</strong>
+              <span class="text-xs text-gray">/ ${tot}</span>
+            </td>
+            <td class="center" style="white-space:nowrap;">
+              <div class="flex items-center justify-center gap-1">
+                <span class="badge ${stBadge}">${statusTxt}</span>
+                <button type="button" class="btn-ghost" style="color:var(--red); padding:2px 4px;" onclick="removeLoanTransfer('${escapeHtml(l.loanId)}')" title="ลบ">${ICONS.trash}</button>
+              </div>
+            </td>
+          </tr>
+        `;
+      }).join('');
     }
 
     function onLoanScopeChange() {
-      const scope = document.getElementById('loan-modal-scope')?.value || 'Internal';
-      const reqBadge = document.getElementById('loan-doc-req-badge');
-      if (reqBadge) reqBadge.classList.toggle('hidden', scope !== 'External');
-
-      const depts = getDepartmentsForScope(scope);
       const deptSel = document.getElementById('loan-modal-dept');
       if (deptSel) {
-        deptSel.innerHTML = depts.map(d => `<option value="${escapeHtml(d)}">${d}</option>`).join('');
+        deptSel.innerHTML = getAllLoanDepartments().map(d => `<option value="${escapeHtml(d)}">${escapeHtml(d)}</option>`).join('');
       }
     }
 
@@ -6060,16 +7509,15 @@ function exportStatisticsCSV() {
     function registerLoanItemAsInventory(loanId) {
       const l = (state.loans || []).find(x => String(x.loanId) === String(loanId));
       if (!l) return;
-      const borrowSuffix = state.currentLang === 'th' ? '(ยืม)' : '(Borrow)';
       let baseName = l.itemName || getDeviceName(l.itemId) || 'Borrowed Item';
       if (!baseName.includes('(Borrow)') && !baseName.includes('(ยืม)')) {
-        baseName = `${baseName} ${borrowSuffix}`;
+        baseName = `${baseName} (ยืม)`;
       }
       const remQty = Math.max(0, (Number(l.totalQty) || 0) - (Number(l.returnedQty) || 0));
 
       openAddDeviceModal();
       const modalTitleEl = document.getElementById('modal-device-title');
-      if (modalTitleEl) modalTitleEl.innerText = state.currentLang === 'th' ? 'ลงทะเบียนเวชภัณฑ์จากการยืม' : 'Register Borrowed Device to Inventory';
+      if (modalTitleEl) modalTitleEl.innerText = 'ลงทะเบียนเวชภัณฑ์จากการยืม';
       const nameEl = document.getElementById('inv-modal-name');
       if (nameEl) nameEl.value = baseName;
       const hoEl = document.getElementById('inv-modal-hoid');
@@ -6084,11 +7532,10 @@ function exportStatisticsCSV() {
       if (mainEl) mainEl.value = String(remQty);
       const totalEl = document.getElementById('inv-modal-total');
       if (totalEl) totalEl.value = String(remQty);
-      showToast(state.currentLang === 'th' ? `กรอกข้อมูลเวชภัณฑ์จากการยืม "${baseName}" เรียบร้อยแล้ว` : `Pre-filled inventory registration for "${baseName}"`);
+      showToast(`กรอกข้อมูลเวชภัณฑ์จากการยืม "${baseName}" เรียบร้อยแล้ว`);
     }
 
     function openLoanModal() {
-      document.getElementById('loan-modal-scope').value     = 'Internal';
       document.getElementById('loan-modal-direction').value = 'We Borrowed (Inward)';
       document.getElementById('loan-modal-docno').value     = '';
       document.getElementById('loan-modal-qty').value       = '1';
@@ -6102,13 +7549,13 @@ function exportStatisticsCSV() {
       onLoanScopeChange();
 
       const itemSel = document.getElementById('loan-modal-itemid');
-      itemSel.innerHTML = '<option value="">— Select Inventory Device —</option>' +
-        getTransactableInventory().map(i => `<option value="${escapeHtml(String(i.itemId))}">${i.deviceName}${i.isFreeItem ? ' [FREE]' : ''} (${i.category || '—'} · Main: ${i.mainStock || 0}, Retail: ${i.retailStock || 0})</option>`).join('');
+      itemSel.innerHTML = '<option value="">— เลือกอุปกรณ์ในคลัง —</option>' +
+        getTransactableInventory().map(i => `<option value="${escapeHtml(String(i.itemId))}">${escapeHtml(i.deviceName)}${i.isFreeItem ? ' [FREE]' : ''} (${escapeHtml(i.category || '—')} · คลัง INR: ${i.mainStock || 0}, ปลีก: ${i.retailStock || 0})</option>`).join('');
 
       const uList = document.getElementById('loan-user-datalist');
       if (uList) {
         uList.innerHTML = getUsersList().map(u => {
-          const fn = `${u.name || ''} ${u.surname || ''}`.trim();
+          const fn = String(u.nickname || `${u.name || ''} ${u.surname || ''}`).trim();
           return `<option value="${escapeHtml(fn)}">`;
         }).join('');
       }
@@ -6117,9 +7564,9 @@ function exportStatisticsCSV() {
     }
 
     function saveNewLoanModal() {
-      const scope      = document.getElementById('loan-modal-scope').value;
+      const scope      = 'Internal';
       const direction  = document.getElementById('loan-modal-direction').value;
-      const department = document.getElementById('loan-modal-dept').value.trim();
+      const department = cleanDepartmentName(document.getElementById('loan-modal-dept').value);
       const docNo      = document.getElementById('loan-modal-docno').value.trim();
       const itemId     = document.getElementById('loan-modal-itemid').value;
       const totalQty   = parseInt(document.getElementById('loan-modal-qty').value) || 0;
@@ -6128,22 +7575,16 @@ function exportStatisticsCSV() {
       const tech       = document.getElementById('loan-modal-tech').value.trim();
       const notes      = document.getElementById('loan-modal-notes').value.trim();
 
-      if (!department) { showToast('Please select a Department / Facility'); return; }
-      if (!itemId)     { showToast('Please select a Device / Item'); return; }
-      if (totalQty <= 0) { showToast('Quantity must be greater than 0'); return; }
-      if (scope === 'External' && !docNo) {
-        showToast('Transfer Slip / Doc No. is mandatory for External loans/transfers!');
-        document.getElementById('loan-modal-docno').focus();
-        return;
-      }
+      if (!department) { showToast('กรุณาเลือกหน่วยงาน'); return; }
+      if (!itemId)     { showToast('กรุณาเลือกชื่ออุปกรณ์'); return; }
+      if (totalQty <= 0) { showToast('จำนวนต้องมากกว่า 0'); return; }
 
       const itemName = getDeviceName(itemId);
       const shouldRegisterInv = document.getElementById('loan-register-inv-check')?.checked;
       if (shouldRegisterInv) {
-        const borrowSuffix = state.currentLang === 'th' ? '(ยืม)' : '(Borrow)';
         let regName = itemName;
         if (!regName.includes('(Borrow)') && !regName.includes('(ยืม)')) {
-          regName = `${regName} ${borrowSuffix}`;
+          regName = `${regName} (ยืม)`;
         }
         const existingInv = state.inventory.find(i => String(i.itemId) === String(itemId));
         const newDevPayload = {
@@ -6183,11 +7624,11 @@ function exportStatisticsCSV() {
         appContent.classList.add('hidden');
         callApi('addLoanTransfer', payload)
           .then(() => {
-            showToast('Loan / Transfer recorded!');
+            showToast('บันทึกการยืม / ให้ยืมเรียบร้อยแล้ว');
             fetchDataFromServer();
           })
           .catch(err => {
-            showToast('Failed: ' + (err.message || err));
+            showToast('บันทึกล้มเหลว: ' + (err.message || err));
             appLoading.classList.add('hidden');
             appContent.classList.remove('hidden');
           });
@@ -6209,58 +7650,114 @@ function exportStatisticsCSV() {
           inv.totalStock = inv.mainStock + inv.retailStock;
           inv.stockDiff  = inv.totalStock - inv.hoStock;
         }
-        showToast('Loan / Transfer recorded (mock)');
+        showToast('บันทึกการยืม / ให้ยืมเรียบร้อยแล้ว (mock)');
         renderLoanTab();
       }
     }
 
     function openLoanReturnModal(loanId) {
+      const openLoans = (state.loans || []).filter(l => {
+        if (l.status === 'Fully Returned') return false;
+        const rem = Math.max(0, (Number(l.totalQty) || 0) - (Number(l.returnedQty) || 0));
+        return rem > 0;
+      });
+      if (openLoans.length === 0) {
+        showToast('ไม่มีรายการยืม-คืนที่ค้างคืน');
+        return;
+      }
+
+      const sel = document.getElementById('loan-ret-select');
+      if (sel) {
+        sel.innerHTML = `<option value="">-- เลือกรายการปัจจุบัน --</option>` +
+          openLoans.map(l => {
+            const rem = Math.max(0, (Number(l.totalQty) || 0) - (Number(l.returnedQty) || 0));
+            const isInward = String(l.direction || '').includes('Inward') || String(l.direction || '').includes('We Borrowed');
+            const dirLabel = isInward ? 'ยืม' : 'ให้ยืม';
+            const devName = l.itemName || getDeviceName(l.itemId);
+            const deptName = cleanDepartmentName(l.department || '—');
+            return `<option value="${escapeHtml(String(l.loanId))}">${escapeHtml(devName)} (${dirLabel} · ${escapeHtml(deptName)} · คงเหลือ ${rem})</option>`;
+          }).join('');
+
+        if (loanId && openLoans.some(l => String(l.loanId) === String(loanId))) {
+          sel.value = String(loanId);
+        } else if (openLoans.length === 1) {
+          sel.value = String(openLoans[0].loanId);
+        } else {
+          sel.value = '';
+        }
+      }
+
+      document.getElementById('loan-ret-date').value  = getToday();
+      document.getElementById('loan-ret-by').value    = '';
+      document.getElementById('loan-ret-notes').value = '';
+      onLoanReturnSelectChange(sel ? sel.value : (loanId || ''));
+      openModal('modal-loan-return');
+    }
+
+    function onLoanReturnSelectChange(loanId) {
+      const idEl = document.getElementById('loan-ret-id');
+      const sumEl = document.getElementById('loan-ret-summary');
+      const qtyInput = document.getElementById('loan-ret-qty');
+      if (!loanId) {
+        if (idEl) idEl.value = '';
+        if (qtyInput) { qtyInput.value = '1'; qtyInput.removeAttribute('max'); }
+        if (sumEl) sumEl.innerHTML = '<div class="text-xs text-gray">กรุณาเลือกรายการที่ต้องการคืนด้านบน</div>';
+        return;
+      }
+
       const l = (state.loans || []).find(x => String(x.loanId) === String(loanId));
       if (!l) return;
       const tot = Number(l.totalQty) || 0;
       const ret = Number(l.returnedQty) || 0;
       const rem = Math.max(0, tot - ret);
+      const isInward = String(l.direction || '').includes('Inward') || String(l.direction || '').includes('We Borrowed');
+      const dirLabel = isInward ? 'ยืม' : 'ให้ยืม';
+      const deptName = cleanDepartmentName(l.department || '—');
+      const devName = l.itemName || getDeviceName(l.itemId);
 
-      document.getElementById('loan-ret-id').value    = l.loanId;
-      document.getElementById('loan-ret-date').value  = getToday();
-      const qtyInput = document.getElementById('loan-ret-qty');
-      qtyInput.value = rem;
-      qtyInput.max   = rem;
-      document.getElementById('loan-ret-by').value    = '';
-      document.getElementById('loan-ret-notes').value = '';
-
-      document.getElementById('loan-ret-summary').innerHTML = `
-        <div class="flex justify-between items-center">
-          <strong>${l.itemName || getDeviceName(l.itemId)}</strong>
-          <span class="badge ${l.scope === 'External' ? 'badge-amber' : 'badge-blue'}">${l.scope} · ${l.department}</span>
-        </div>
-        <div class="text-xs text-gray mt-2">
-          Direction: <strong>${l.direction}</strong> &nbsp;|&nbsp;
-          Total: <strong>${tot}</strong> &nbsp;|&nbsp;
-          Returned so far: <strong>${ret}</strong> &nbsp;|&nbsp;
-          <span style="color:var(--red); font-weight:700;">Remaining Balance: ${rem}</span>
-        </div>
-      `;
-      openModal('modal-loan-return');
+      if (idEl) idEl.value = l.loanId;
+      if (qtyInput) {
+        qtyInput.value = rem;
+        qtyInput.max   = rem;
+      }
+      if (sumEl) {
+        sumEl.innerHTML = `
+          <div class="flex justify-between items-center gap-2">
+            <strong>${escapeHtml(devName)}</strong>
+            <span class="badge ${isInward ? 'warn' : 'badge-blue'}">${dirLabel} · ${escapeHtml(deptName)}</span>
+          </div>
+          <div class="text-xs text-gray mt-2">
+            วันที่: <strong>${escapeHtml(formatDate(l.date))}</strong> &nbsp;|&nbsp;
+            จำนวนทั้งหมด: <strong>${tot}</strong> &nbsp;|&nbsp;
+            คืนแล้ว: <strong>${ret}</strong> &nbsp;|&nbsp;
+            <span style="color:var(--red); font-weight:700;">คงเหลือ: ${rem}</span>
+          </div>
+        `;
+      }
     }
 
     function confirmLoanReturn() {
-      const loanId     = document.getElementById('loan-ret-id').value;
+      const selEl      = document.getElementById('loan-ret-select');
+      const loanId     = document.getElementById('loan-ret-id').value || (selEl ? selEl.value : '');
       const returnDate = document.getElementById('loan-ret-date').value || getToday();
       const returnQty  = parseInt(document.getElementById('loan-ret-qty').value) || 0;
       const returnedBy = document.getElementById('loan-ret-by').value.trim();
       const notes      = document.getElementById('loan-ret-notes').value.trim();
 
       const l = (state.loans || []).find(x => String(x.loanId) === String(loanId));
-      if (!l) return;
+      if (!l) {
+        showToast('กรุณาเลือกรายการที่ต้องการคืน');
+        return;
+      }
       const rem = Math.max(0, (Number(l.totalQty) || 0) - (Number(l.returnedQty) || 0));
 
       if (returnQty <= 0 || returnQty > rem) {
-        showToast(`Return Quantity must be between 1 and ${rem}`);
+        showToast(`จำนวนที่คืนต้องอยู่ระหว่าง 1 ถึง ${rem}`);
         return;
       }
       if (!returnedBy) {
-        showToast('Please enter Returned By (Staff / Representative name)');
+        showToast('กรุณากรอกชื่อผู้คืน / ผู้ยืม');
+        document.getElementById('loan-ret-by').focus();
         return;
       }
 
@@ -6270,11 +7767,11 @@ function exportStatisticsCSV() {
         appContent.classList.add('hidden');
         callApi('recordLoanReturn', { loanId, returnDate, returnQty, returnedBy, notes, location: l.location })
           .then(res => {
-            showToast(`Return logged (${res.newStatus || 'Updated'})!`);
+            showToast(`บันทึกการคืนเรียบร้อย (${res.newStatus || 'อัปเดตแล้ว'})`);
             fetchDataFromServer();
           })
           .catch(err => {
-            showToast('Failed: ' + (err.message || err));
+            showToast('บันทึกล้มเหลว: ' + (err.message || err));
             appLoading.classList.add('hidden');
             appContent.classList.remove('hidden');
           });
@@ -6295,13 +7792,13 @@ function exportStatisticsCSV() {
           inv.totalStock = inv.mainStock + inv.retailStock;
           inv.stockDiff  = inv.totalStock - inv.hoStock;
         }
-        showToast(`Return logged: ${l.status} (mock)`);
+        showToast(`บันทึกการคืนเรียบร้อย: ${l.status === 'Fully Returned' ? 'คืนครบแล้ว' : 'คืนบางส่วน'} (mock)`);
         renderLoanTab();
       }
     }
 
     function removeLoanTransfer(loanId) {
-      verifyPasscodeThen(state.currentLang === 'th' ? `ต้องการลบรายการยืม/โอนย้าย ${loanId} หรือไม่?` : `Delete loan/transfer record ${loanId}?`, () => {
+      verifyPasscodeThen('delete_swap', state.currentLang === 'th' ? `ต้องการลบรายการยืม/โอนย้าย ${loanId} หรือไม่?` : `Delete loan/transfer record ${loanId}?`, () => {
         if (isApiConfigured()) {
           appLoading.classList.remove('hidden');
           appContent.classList.add('hidden');
@@ -6343,9 +7840,12 @@ function exportStatisticsCSV() {
     }
 
     function switchAssetSubTab(sub) {
-      state.assetSubTab = sub;
-      document.querySelectorAll('#asset-subtabs .sub-tab').forEach(btn => {
-        btn.classList.toggle('active', btn.dataset.asub === sub);
+      state.assetSubTab = sub === 'archive' ? 'archive' : 'active';
+      state.assetFilterDue = false;
+      document.querySelectorAll('#asset-subtabs button').forEach(btn => {
+        const isMatch = btn.dataset.asub === state.assetSubTab;
+        btn.classList.toggle('on', isMatch);
+        btn.classList.toggle('active', isMatch);
       });
       const statusSel = document.getElementById('asset-filter-status');
       if (statusSel) statusSel.value = '';
@@ -6353,29 +7853,44 @@ function exportStatisticsCSV() {
     }
 
     function quickFilterAssetStatus(status) {
-      if (status === 'Damaged' || status === 'Condemned') {
-        state.assetSubTab = 'archive';
-      } else {
-        state.assetSubTab = 'active';
-      }
-      document.querySelectorAll('#asset-subtabs .sub-tab').forEach(btn => {
-        btn.classList.toggle('active', btn.dataset.asub === state.assetSubTab);
-      });
       const statusSel = document.getElementById('asset-filter-status');
-      if (statusSel) statusSel.value = status || '';
+      if (status === '__due__') {
+        state.assetSubTab = 'active';
+        state.assetFilterDue = !state.assetFilterDue;
+        if (statusSel) statusSel.value = '';
+      } else {
+        state.assetFilterDue = false;
+        if (status === 'Damaged' || status === 'Condemned') {
+          state.assetSubTab = 'archive';
+        } else {
+          state.assetSubTab = 'active';
+        }
+        if (statusSel) {
+          const cur = statusSel.value;
+          statusSel.value = (cur === status) ? '' : (status || '');
+        }
+      }
+      document.querySelectorAll('#asset-subtabs button').forEach(btn => {
+        const isMatch = btn.dataset.asub === state.assetSubTab;
+        btn.classList.toggle('on', isMatch);
+        btn.classList.toggle('active', isMatch);
+      });
       renderAssetsTab();
     }
 
     function setAssetCatChip(cat) {
       const catSel = document.getElementById('asset-filter-cat');
       if (catSel) catSel.value = cat || '';
-      document.querySelectorAll('#asset-cat-chips .filter-chip').forEach(ch => {
-        ch.classList.toggle('active', (ch.dataset.chipCat || '') === (cat || ''));
+      document.querySelectorAll('#asset-cat-chips button').forEach(ch => {
+        const isMatch = (ch.dataset.chipCat || '') === (cat || '');
+        ch.classList.toggle('on', isMatch);
+        ch.classList.toggle('active', isMatch);
       });
       renderAssetsTab();
     }
 
     function resetAssetFilters() {
+      state.assetFilterDue = false;
       const searchEl = document.getElementById('asset-search-input');
       const catEl    = document.getElementById('asset-filter-cat');
       const statusEl = document.getElementById('asset-filter-status');
@@ -6384,8 +7899,10 @@ function exportStatisticsCSV() {
       if (catEl)    catEl.value = '';
       if (statusEl) statusEl.value = '';
       if (roomEl)   roomEl.value = '';
-      document.querySelectorAll('#asset-cat-chips .filter-chip').forEach(ch => {
-        ch.classList.toggle('active', (ch.dataset.chipCat || '') === '');
+      document.querySelectorAll('#asset-cat-chips button').forEach(ch => {
+        const isMatch = (ch.dataset.chipCat || '') === '';
+        ch.classList.toggle('on', isMatch);
+        ch.classList.toggle('active', isMatch);
       });
       renderAssetsTab();
     }
@@ -6444,6 +7961,10 @@ function exportStatisticsCSV() {
       if (elKpiStb) elKpiStb.innerText = cntStandby;
       if (elKpiDmg) elKpiDmg.innerText = cntDamaged;
       if (elKpiDue) elKpiDue.innerText = cntDue;
+      const elTabAct = document.getElementById('asset-tab-active-count');
+      const elTabArc = document.getElementById('asset-tab-archive-count');
+      if (elTabAct) elTabAct.innerText = String(cntActive + cntRepair + cntStandby);
+      if (elTabArc) elTabArc.innerText = String(cntDamaged);
 
       // 2. Populate Room filter dropdown dynamically
       const roomSel = document.getElementById('asset-filter-room');
@@ -6459,14 +7980,27 @@ function exportStatisticsCSV() {
 
       // Sync category chips with select
       const catVal = document.getElementById('asset-filter-cat')?.value || '';
-      document.querySelectorAll('#asset-cat-chips .filter-chip').forEach(ch => {
-        ch.classList.toggle('active', (ch.dataset.chipCat || '') === catVal);
+      document.querySelectorAll('#asset-cat-chips button').forEach(ch => {
+        const isMatch = (ch.dataset.chipCat || '') === catVal;
+        ch.classList.toggle('on', isMatch);
+        ch.classList.toggle('active', isMatch);
       });
 
       const searchQ   = (document.getElementById('asset-search-input')?.value || '').toLowerCase().trim();
       const statusVal = document.getElementById('asset-filter-status')?.value || '';
       const roomVal   = document.getElementById('asset-filter-room')?.value || '';
       const isArchive = state.assetSubTab === 'archive';
+
+      document.querySelectorAll('#asset-subtabs button').forEach(btn => {
+        const isMatch = btn.dataset.asub === (state.assetSubTab || 'active');
+        btn.classList.toggle('on', isMatch);
+        btn.classList.toggle('active', isMatch);
+      });
+      document.querySelectorAll('#asset-kpi-strip button[data-akpi]').forEach(btn => {
+        const k = btn.dataset.akpi;
+        const isOn = (k === '__due__' && !!state.assetFilterDue) || (!state.assetFilterDue && !!statusVal && k === statusVal);
+        btn.classList.toggle('active-filter', isOn);
+      });
 
       const titleEl = document.getElementById('asset-table-title');
       if (titleEl) {
@@ -6480,7 +8014,8 @@ function exportStatisticsCSV() {
         const inArchive = (st === 'Damaged' || st === 'Condemned');
         if (isArchive !== inArchive) return false;
         if (catVal && String(a.category || '') !== catVal) return false;
-        if (statusVal && st !== statusVal) return false;
+        if (state.assetFilterDue && !isAssetMaintDueOrAction(a)) return false;
+        if (!state.assetFilterDue && statusVal && st !== statusVal) return false;
         if (roomVal && String(a.room || '') !== roomVal) return false;
         if (searchQ) {
           const hay = [a.assetId, a.hospitalCode, a.serialNumber, a.assetName, a.category, a.room, a.notes].join(' ').toLowerCase();
@@ -6775,7 +8310,7 @@ function exportStatisticsCSV() {
                 <div class="text-xs mt-1" style="color:#7f1d1d;">
                   <strong>Date:</strong> ${formatDate(di.damageDate)} &nbsp;|&nbsp;
                   <strong>Memo / Tracking No.:</strong> <span class="font-mono">${escapeHtml(di.memoNo || '—')}</span> &nbsp;|&nbsp;
-                  <strong>Recorded By:</strong> ${escapeHtml(di.recordedBy || '—')}
+                  <strong>ผู้บันทึก:</strong> ${escapeHtml(di.recordedBy || '—')}
                 </div>
                 <div class="text-xs mt-1" style="color:#7f1d1d;"><strong>Cause of Damage:</strong> ${escapeHtml(di.cause || '—')}</div>
               </div>
@@ -6911,7 +8446,7 @@ function exportStatisticsCSV() {
     }
 
     function removeAssetMaintenanceLog(assetId, logId) {
-      verifyPasscodeThen(state.currentLang === 'th' ? `ต้องการลบประวัติการบำรุงรักษา ${logId} หรือไม่?` : `Delete maintenance log entry ${logId}?`, () => {
+      verifyPasscodeThen('delete_assets', state.currentLang === 'th' ? `ต้องการลบประวัติการบำรุงรักษา ${logId} หรือไม่?` : `Delete maintenance log entry ${logId}?`, () => {
         setSyncIndicator(true);
         if (isApiConfigured()) {
           callApi('deleteAssetMaintenanceLog', { assetId, logId })
@@ -6978,50 +8513,53 @@ function exportStatisticsCSV() {
       const recordedBy   = document.getElementById('asset-dmg-by').value.trim();
 
       if (!cause)      { showToast('Please enter the Cause of Damage / Reason'); return; }
-      if (!recordedBy) { showToast('Please enter Recorded By (Staff Name)'); return; }
+      if (!recordedBy) { showToast('กรุณาระบุชื่อผู้บันทึก'); return; }
 
       const payload = { assetId, targetStatus, damageDate, cause, memoNo, recordedBy };
-      if (state.pendingDamagePhoto) {
-        payload.base64Photo   = state.pendingDamagePhoto.base64;
-        payload.photoFileName = state.pendingDamagePhoto.fileName;
-        payload.photoMimeType = state.pendingDamagePhoto.mimeType;
+      const photoCopy = state.pendingDamagePhoto ? { ...state.pendingDamagePhoto } : null;
+      if (photoCopy) {
+        payload.base64Photo   = photoCopy.base64;
+        payload.photoFileName = photoCopy.fileName;
+        payload.photoMimeType = photoCopy.mimeType;
       }
 
-      closeModal();
-      setSyncIndicator(true);
+      verifyPasscodeThen('delete_assets', state.currentLang === 'th' ? `ยืนยันการบันทึกจำหน่าย/ชำรุดครุภัณฑ์ ${assetId} (${targetStatus})?` : `Mark asset ${assetId} as ${targetStatus} (move to archive)?`, () => {
+        closeModal();
+        setSyncIndicator(true);
 
-      if (isApiConfigured()) {
-        callApi('markAssetDamaged', payload)
-          .then(res => {
-            setSyncIndicator(false);
-            showToast(`Asset ${assetId} marked as ${res.status} and moved to archive.`);
-            fetchDataFromServer();
-          })
-          .catch(err => {
-            setSyncIndicator(false);
-            showToast('Failed: ' + (err.message || err));
-          });
-      } else {
-        setSyncIndicator(false);
-        const a = (state.assets || []).find(x => String(x.assetId) === String(assetId));
-        if (a) {
-          a.status = targetStatus;
-          a.damageInfo = {
-            damageDate,
-            cause,
-            memoNo,
-            photoUrl: state.pendingDamagePhoto ? state.pendingDamagePhoto.base64 : '',
-            recordedBy,
-            targetStatus
-          };
+        if (isApiConfigured()) {
+          callApi('markAssetDamaged', payload)
+            .then(res => {
+              setSyncIndicator(false);
+              showToast(`Asset ${assetId} marked as ${res.status} and moved to archive.`);
+              fetchDataFromServer();
+            })
+            .catch(err => {
+              setSyncIndicator(false);
+              showToast('Failed: ' + (err.message || err));
+            });
+        } else {
+          setSyncIndicator(false);
+          const a = (state.assets || []).find(x => String(x.assetId) === String(assetId));
+          if (a) {
+            a.status = targetStatus;
+            a.damageInfo = {
+              damageDate,
+              cause,
+              memoNo,
+              photoUrl: photoCopy ? photoCopy.base64 : '',
+              recordedBy,
+              targetStatus
+            };
+          }
+          showToast(`Asset ${assetId} marked as ${targetStatus} (mock)`);
+          renderAssetsTab();
         }
-        showToast(`Asset ${assetId} marked as ${targetStatus} (mock)`);
-        renderAssetsTab();
-      }
+      });
     }
 
     function removeAssetItem(assetId) {
-      verifyPasscodeThen(state.currentLang === 'th' ? `ต้องการลบครุภัณฑ์ ${assetId} ออกอย่างถาวรหรือไม่?` : `Delete asset ${assetId} permanently from registry?`, () => {
+      verifyPasscodeThen('delete_assets', state.currentLang === 'th' ? `ต้องการลบครุภัณฑ์ ${assetId} ออกอย่างถาวรหรือไม่?` : `Delete asset ${assetId} permanently from registry?`, () => {
         closeModal();
         setSyncIndicator(true);
         if (isApiConfigured()) {
@@ -7369,16 +8907,18 @@ function exportStatisticsCSV() {
     // ===== DATA ACTIONS (SERVER OR OFFLINE MOCK) =====
     function normalizeSettings(raw) {
       const s = raw || {};
-      const users = Array.isArray(s.users) ? s.users : (Array.isArray(s.techs) ? s.techs.map(t => ({
-        name: t.name || '',
-        surname: t.surname || '',
-        nickname: t.nickname || '',
-        position: t.position || 'Radiological Technologist',
-        authorization: t.authorization || 'Operational Staff',
-        phone: t.phone || t.tel || '',
-        tel: t.phone || t.tel || '',
-        dob: t.dob || ''
-      })) : []);
+      const rawUsers = Array.isArray(s.users) ? s.users : (Array.isArray(s.techs) ? s.techs : []);
+      const users = rawUsers.map((u, idx) => {
+        if (typeof u === 'string') {
+          return { userId: 'USR-' + String(idx + 1).padStart(3, '0'), nickname: u.trim(), name: u.trim() };
+        }
+        const nick = String(u.nickname || u.name || '').trim();
+        return {
+          userId: u.userId || ('USR-' + String(idx + 1).padStart(3, '0')),
+          nickname: nick,
+          name: nick
+        };
+      }).filter(u => u.nickname);
       const defaultDepts = [
         'Internal | BIR Room',
         'Internal | Angio Suite',
@@ -7408,6 +8948,7 @@ function exportStatisticsCSV() {
 
     function applyServerPayload(res) {
       state.inventory = res.inventory || [];
+      state.groups = Array.isArray(res.groups) ? res.groups : [];
       state.transactions = res.transactions || [];
       state.settings = normalizeSettings(res.settings);
       state.exchangeQuotas = Array.isArray(res.exchangeQuotas) ? res.exchangeQuotas : [];
@@ -7509,20 +9050,33 @@ function exportStatisticsCSV() {
 
     function loadOfflineMock() {
       setTimeout(() => {
+        if (!state.groups || state.groups.length === 0) {
+          state.groups = [
+            {
+              groupId: 'GRP-20260601-090000',
+              groupName: 'Solitaire Platinum',
+              hoItemId: '42203405SOL00001',
+              buyPrice: 85000,
+              sellPrice: 95000,
+              hoStock: 6,
+              hoLastChecked: '2026-10-25',
+              subItemOrder: ['STENT-260601090001', 'STENT-260601090002']
+            }
+          ];
+        }
         if (!state.inventory || state.inventory.length === 0) {
           state.inventory = [
-            {itemId:'1', hoItemId:'42203403INT00001', deviceName:'Introducer sheath 4', category:'Sheath', buyPrice:450, sellPrice:650, mainStock:10, retailStock:4, bufferStock:0, totalStock:14, hoStock:118, stockDiff:-104, stockMonth:25, exceedPercent:-88, orderEstimate:104, buyPoint:20, safetyStock:2, company:'Terumo Thailand'},
-            {itemId:'2', hoItemId:'42203403INT00004', deviceName:'Introducer sheath 5', category:'Sheath', buyPrice:480, sellPrice:700, mainStock:300, retailStock:7, bufferStock:2, totalStock:307, hoStock:255, stockDiff:52, stockMonth:40, exceedPercent:20, orderEstimate:0, buyPoint:50, safetyStock:22, company:'Terumo Thailand'},
-            {itemId:'3', hoItemId:'42203404SMO00006', deviceName:'Guidewire 0.038" 150 cm', category:'Guidewire', buyPrice:1200, sellPrice:1800, mainStock:120, retailStock:54, bufferStock:0, totalStock:174, hoStock:609, stockDiff:-435, stockMonth:60, exceedPercent:-71, orderEstimate:435, buyPoint:100, safetyStock:45, company:'Terumo Thailand'},
-            {itemId:'4', hoItemId:'42221604YSI00001', deviceName:'Y-side arm adapter', category:'Accessory', buyPrice:350, sellPrice:500, mainStock:475, retailStock:19, bufferStock:0, totalStock:494, hoStock:527, stockDiff:-33, stockMonth:80, exceedPercent:-6, orderEstimate:33, buyPoint:60, safetyStock:43, company:'Cordis Medical'},
-            {itemId:'5', hoItemId:'42203402IMA00004', deviceName:'Sim2 5 F 100 cm', category:'Catheter', buyPrice:850, sellPrice:1300, mainStock:490, retailStock:12, bufferStock:0, totalStock:502, hoStock:475, stockDiff:27, stockMonth:55, exceedPercent:5, orderEstimate:0, buyPoint:70, safetyStock:48, company:'Cordis Medical'},
-            {itemId:'6', hoItemId:'CM-IOP300', deviceName:'Iopamiro 300 (100 ml)', category:'Contrast Media', buyPrice:600, sellPrice:900, mainStock:20, retailStock:6, bufferStock:0, totalStock:26, hoStock:26, stockDiff:0, stockMonth:15, exceedPercent:0, orderEstimate:0, buyPoint:10, safetyStock:5, company:'Bracco Imaging'},
-            {itemId:'7', hoItemId:'CM-VIS320', deviceName:'Visipaque 320 (100 ml)', category:'Contrast Media', buyPrice:950, sellPrice:1400, mainStock:3, retailStock:1, bufferStock:0, totalStock:4, hoStock:4, stockDiff:0, stockMonth:10, exceedPercent:0, orderEstimate:6, buyPoint:8, safetyStock:5, company:'GE Healthcare'},
-            {itemId:'STENT-260601090000', hoItemId:'42203405SOL00001', deviceName:'Solitaire Platinum Stent Retriever (Group)', category:'Stent', buyPrice:85000, sellPrice:95000, mainStock:0, retailStock:0, bufferStock:0, totalStock:0, hoStock:6, ownHoStock:6, stockDiff:0, stockMonth:4, exceedPercent:0, orderEstimate:0, buyPoint:2, safetyStock:1, isFreeItem:false, isParent:true, parentId:'', company:'Medtronic Thailand'},
-            {itemId:'STENT-260601090001', hoItemId:'42203405SOL00001', deviceName:'Solitaire Platinum 4x40 mm', category:'Stent', buyPrice:85000, sellPrice:95000, mainStock:2, retailStock:2, bufferStock:0, totalStock:4, hoStock:0, stockDiff:4, stockMonth:2, exceedPercent:0, orderEstimate:0, buyPoint:1, safetyStock:1, isFreeItem:false, isParent:false, parentId:'STENT-260601090000', company:'Medtronic Thailand'},
-            {itemId:'STENT-260601090002', hoItemId:'42203405SOL00001', deviceName:'Solitaire Platinum 6x40 mm', category:'Stent', buyPrice:85000, sellPrice:95000, mainStock:1, retailStock:1, bufferStock:0, totalStock:2, hoStock:0, stockDiff:2, stockMonth:2, exceedPercent:0, orderEstimate:0, buyPoint:1, safetyStock:1, isFreeItem:false, isParent:false, parentId:'STENT-260601090000', company:'Medtronic Thailand'},
-            {itemId:'MICRO-260601090010', hoItemId:'42203406REB00018', deviceName:'Rebar 18 Microcatheter (PO)', category:'Microcatheter', buyPrice:18500, sellPrice:22000, mainStock:3, retailStock:2, bufferStock:0, totalStock:5, hoStock:5, stockDiff:0, stockMonth:4, exceedPercent:0, orderEstimate:0, buyPoint:2, safetyStock:1, isFreeItem:false, isParent:false, parentId:'', company:'Medtronic Thailand'},
-            {itemId:'MICRO-260601090011', hoItemId:'', deviceName:'Rebar 18 Microcatheter (Free)', category:'Microcatheter', buyPrice:0, sellPrice:0, mainStock:2, retailStock:2, bufferStock:0, totalStock:4, hoStock:0, stockDiff:0, stockMonth:0, exceedPercent:0, orderEstimate:0, buyPoint:0, safetyStock:0, isFreeItem:true, isParent:false, parentId:'', company:'Medtronic Thailand'}
+            {itemId:'1', hoItemId:'42203403INT00001', deviceName:'Introducer sheath 4', category:'Sheath', buyPrice:450, sellPrice:650, mainStock:10, retailStock:4, bufferStock:0, totalStock:14, hoStock:118, stockDiff:-104, stockMonth:25, exceedPercent:-88, orderEstimate:104, buyPoint:20, safetyStock:2, company:'Terumo Thailand', groupId:'', hoLastChecked:'2026-10-20'},
+            {itemId:'2', hoItemId:'42203403INT00004', deviceName:'Introducer sheath 5', category:'Sheath', buyPrice:480, sellPrice:700, mainStock:300, retailStock:7, bufferStock:2, totalStock:307, hoStock:255, stockDiff:52, stockMonth:40, exceedPercent:20, orderEstimate:0, buyPoint:50, safetyStock:22, company:'Terumo Thailand', groupId:'', hoLastChecked:'2026-10-20'},
+            {itemId:'3', hoItemId:'42203404SMO00006', deviceName:'Guidewire 0.038" 150 cm', category:'Guidewire', buyPrice:1200, sellPrice:1800, mainStock:120, retailStock:54, bufferStock:0, totalStock:174, hoStock:609, stockDiff:-435, stockMonth:60, exceedPercent:-71, orderEstimate:435, buyPoint:100, safetyStock:45, company:'Terumo Thailand', groupId:'', hoLastChecked:''},
+            {itemId:'4', hoItemId:'42221604YSI00001', deviceName:'Y-side arm adapter', category:'Accessory', buyPrice:350, sellPrice:500, mainStock:475, retailStock:19, bufferStock:0, totalStock:494, hoStock:527, stockDiff:-33, stockMonth:80, exceedPercent:-6, orderEstimate:33, buyPoint:60, safetyStock:43, company:'Cordis Medical', groupId:'', hoLastChecked:''},
+            {itemId:'5', hoItemId:'42203402IMA00004', deviceName:'Sim2 5 F 100 cm', category:'Catheter', buyPrice:850, sellPrice:1300, mainStock:490, retailStock:12, bufferStock:0, totalStock:502, hoStock:475, stockDiff:27, stockMonth:55, exceedPercent:5, orderEstimate:0, buyPoint:70, safetyStock:48, company:'Cordis Medical', groupId:'', hoLastChecked:''},
+            {itemId:'6', hoItemId:'CM-IOP300', deviceName:'Iopamiro 300 (100 ml)', category:'Contrast Media', buyPrice:600, sellPrice:900, mainStock:20, retailStock:6, bufferStock:0, totalStock:26, hoStock:26, stockDiff:0, stockMonth:15, exceedPercent:0, orderEstimate:0, buyPoint:10, safetyStock:5, company:'Bracco Imaging', groupId:'', hoLastChecked:''},
+            {itemId:'7', hoItemId:'CM-VIS320', deviceName:'Visipaque 320 (100 ml)', category:'Contrast Media', buyPrice:950, sellPrice:1400, mainStock:3, retailStock:1, bufferStock:0, totalStock:4, hoStock:4, stockDiff:0, stockMonth:10, exceedPercent:0, orderEstimate:6, buyPoint:8, safetyStock:5, company:'GE Healthcare', groupId:'', hoLastChecked:''},
+            {itemId:'STENT-260601090001', hoItemId:'42203405SOL00001', deviceName:'Solitaire Platinum 4x40 mm', category:'Stent', buyPrice:85000, sellPrice:95000, mainStock:2, retailStock:2, bufferStock:0, totalStock:4, hoStock:0, stockDiff:0, stockMonth:4, exceedPercent:0, orderEstimate:0, buyPoint:2, safetyStock:1, isFreeItem:false, groupId:'GRP-20260601-090000', company:'Medtronic Thailand', hoLastChecked:''},
+            {itemId:'STENT-260601090002', hoItemId:'42203405SOL00001', deviceName:'Solitaire Platinum 6x40 mm', category:'Stent', buyPrice:85000, sellPrice:95000, mainStock:1, retailStock:1, bufferStock:0, totalStock:2, hoStock:0, stockDiff:0, stockMonth:2, exceedPercent:0, orderEstimate:0, buyPoint:2, safetyStock:1, isFreeItem:false, groupId:'GRP-20260601-090000', company:'Medtronic Thailand', hoLastChecked:''},
+            {itemId:'MICRO-260601090010', hoItemId:'42203406REB00018', deviceName:'Rebar 18 Microcatheter (PO)', category:'Microcatheter', buyPrice:18500, sellPrice:22000, mainStock:3, retailStock:2, bufferStock:0, totalStock:5, hoStock:5, stockDiff:0, stockMonth:4, exceedPercent:0, orderEstimate:0, buyPoint:2, safetyStock:1, isFreeItem:false, groupId:'', company:'Medtronic Thailand', hoLastChecked:''},
+            {itemId:'MICRO-260601090011', hoItemId:'', deviceName:'Rebar 18 Microcatheter (Free)', category:'Microcatheter', buyPrice:0, sellPrice:0, mainStock:2, retailStock:2, bufferStock:0, totalStock:4, hoStock:0, stockDiff:0, stockMonth:0, exceedPercent:0, orderEstimate:0, buyPoint:0, safetyStock:0, isFreeItem:true, groupId:'', company:'Medtronic Thailand', hoLastChecked:''}
           ];
           recalculateInventoryHierarchy();
         }
@@ -7538,8 +9092,8 @@ function exportStatisticsCSV() {
             },
             {
               id: 'ANN-260602091500',
-              title: 'การจัดการโครงสร้าง Parent / Sub-Device ในหน้าคลังเวชภัณฑ์',
-              content: 'รายการที่เป็น GROUP (Parent) ใช้สำหรับดูยอดรวมทุกขนาดและเทียบยอด HO Stock เท่านั้น การเบิกใช้งานจริง (Procedure Use / Stock In-Out / Adjustment) ให้เลือกที่รายการย่อย (Sub-Device) เสมอ',
+              title: 'การจัดการกลุ่มอุปกรณ์ (Group) และกระทบยอด HO',
+              content: 'อุปกรณ์ที่ใช้รหัส HO Item ID เดียวกันตั้งแต่ 2 รายการขึ้นไปจะถูกจัดรวมเป็น Group อัตโนมัติเพื่อเทียบยอด HO Stock ร่วมกัน และสามารถคลิกชื่อ Group เพื่อเปลี่ยนชื่อหรือจัดลำดับรายการย่อยได้',
               priority: 2,
               badge: 'Notice',
               updatedAt: '2026-06-02 09:15'
@@ -7553,8 +9107,8 @@ function exportStatisticsCSV() {
             shifts: ['In-time', 'On-call', 'SMC'],
             categories: ['Sheath', 'Guidewire', 'Catheter', 'Microcatheter', 'Coil', 'Stent', 'Balloon', 'Contrast Media', 'Accessory'],
             users: [
-              {name:'Somsak', surname:'Siri', nickname:'Sak', position:'Radiological Technologist', authorization:'System Administrator', phone:'081-234-5678', dob:'1990-05-12'},
-              {name:'Nattaporn', surname:'Rakthai', nickname:'Nat', position:'Registered Nurse', authorization:'Operational Staff', phone:'089-876-5432', dob:'1994-11-23'}
+              {userId:'USR-001', nickname:'Sak', name:'Sak'},
+              {userId:'USR-002', nickname:'Nat', name:'Nat'}
             ]
           });
         }
@@ -8212,6 +9766,72 @@ function exportStatisticsCSV() {
       renderProcurementTab();
     }
 
+    function exportProcurementCSV() {
+      recalculateProcurementState();
+      const sub = state.procurementSubTab || 'ebidding';
+      const fy = state.procurementFy || getCurrentFiscalYearClient();
+      const activeStatusFilter = document.getElementById('proc-status-filter')?.value || '';
+      const searchQ = (document.getElementById('proc-search-input')?.value || '').trim().toLowerCase();
+      const matchFy = itemFy => (fy === 'All' || !fy || String(itemFy) === String(fy));
+
+      const specs = {
+        ebidding: {
+          rows: state.ebiddings || [],
+          headers: ['E-Bidding ID', 'FY', 'HO Item ID', 'Device Name', 'Company', 'Unit Price', 'Budget Plan Qty', 'Total Value', 'Effective Status', 'Remarks'],
+          hay: r => `${r.ebiddingId} ${r.hoItemId} ${r.deviceName} ${r.company} ${r.remarks} ${r.effectiveStatus}`,
+          map: r => [r.ebiddingId, r.fiscalYear, r.hoItemId, r.deviceName, r.company, r.unitPrice, r.budgetPlanQty, r.totalValue, r.effectiveStatus, r.remarks]
+        },
+        contracts: {
+          rows: state.contracts || [],
+          headers: ['Contract ID', 'Contract Number', 'Linked E-Bidding', 'FY', 'Start Date', 'End Date', 'HO Item ID', 'Device Name', 'Company', 'Unit Price', 'Contract Qty', 'Ordered Qty', 'Remaining Qty', 'Effective Status', 'Remarks'],
+          hay: r => `${r.contractId} ${r.contractNumber} ${r.linkedEBiddingId} ${r.hoItemId} ${r.deviceName} ${r.company} ${r.remarks} ${r.effectiveStatus}`,
+          map: r => [r.contractId, r.contractNumber, r.linkedEBiddingId, r.fiscalYear, r.contractStartDate, r.contractEndDate, r.hoItemId, r.deviceName, r.company, r.unitPrice, r.totalContractQty, r.orderedQty, r.remainingQty, r.effectiveStatus, r.remarks]
+        },
+        contract_po: {
+          rows: state.contractPOs || [],
+          headers: ['PO ID', 'Issue Date', 'FY', 'Linked Contract ID', 'Contract No.', 'HO Item ID', 'Device Name', 'Company', 'Unit Price', 'Ordered Qty', 'Order Value', 'Effective Status', 'Remarks'],
+          hay: r => `${r.poId} ${r.linkedContractId} ${r.contractNumber} ${r.hoItemId} ${r.deviceName} ${r.company} ${r.remarks} ${r.effectiveStatus}`,
+          map: r => [r.poId, r.poIssueDate, r.fiscalYear, r.linkedContractId, r.contractNumber, r.hoItemId, r.deviceName, r.company, r.unitPrice, r.orderedQty, r.orderValue, r.effectiveStatus, r.remarks]
+        },
+        specific_purchase: {
+          rows: state.specificPurchases || [],
+          headers: ['Specific PO ID', 'Issue Date', 'FY', 'HO Item ID', 'Device Name', 'Company', 'Unit Price', 'Budget Plan Qty', 'Ordered Qty', 'Order Value', 'Remaining Qty', 'Effective Status', 'Remarks'],
+          hay: r => `${r.spId} ${r.hoItemId} ${r.deviceName} ${r.company} ${r.remarks} ${r.effectiveStatus}`,
+          map: r => [r.spId, r.poIssueDate, r.fiscalYear, r.hoItemId, r.deviceName, r.company, r.unitPrice, r.budgetPlanQty, r.orderedQty, r.orderValue, r.remainingQty, r.effectiveStatus, r.remarks]
+        },
+        receiving: {
+          rows: state.receivings || [],
+          headers: ['Receiving ID', 'Receiving Date', 'Source Type', 'Source Order ID', 'FY', 'HO Item ID', 'Device Name', 'Company', 'Recv Qty', 'Total Value', 'Stock-In Txn ID', 'Effective Status', 'Remarks'],
+          hay: r => `${r.receivingId} ${r.sourceType} ${r.sourceRecordId} ${r.hoItemId} ${r.deviceName} ${r.company} ${r.stockInTxnId} ${r.remarks} ${r.effectiveStatus}`,
+          map: r => [r.receivingId, r.receivingDate, r.sourceType, r.sourceRecordId, r.fiscalYear, r.hoItemId, r.deviceName, r.company, r.quantity, r.totalValue, r.stockInTxnId, r.effectiveStatus, r.remarks]
+        }
+      };
+
+      const cfg = specs[sub];
+      if (!cfg) return;
+      const filtered = cfg.rows.filter(r => {
+        if (!matchFy(r.fiscalYear)) return false;
+        if (activeStatusFilter && r.effectiveStatus !== activeStatusFilter) return false;
+        if (searchQ && !cfg.hay(r).toLowerCase().includes(searchQ)) return false;
+        return true;
+      });
+      if (filtered.length === 0) {
+        showToast(state.currentLang === 'th' ? 'ไม่พบข้อมูลจัดซื้อสำหรับส่งออก' : 'No procurement records to export');
+        return;
+      }
+      const esc = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
+      const csv = '\uFEFF' + [cfg.headers.map(esc).join(','), ...filtered.map(r => cfg.map(r).map(esc).join(','))].join('\r\n');
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `INR_Procurement_${sub}_FY${fy}_${new Date().toISOString().slice(0, 10)}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+
     function openProcurementAddModal() {
       const sub = state.procurementSubTab || 'ebidding';
       if (sub === 'ebidding') openEBiddingModal('');
@@ -8242,8 +9862,10 @@ function exportStatisticsCSV() {
       }
 
       // Highlight active sub-tab
-      document.querySelectorAll('#proc-subtabs .sub-tab').forEach(btn => {
-        btn.classList.toggle('active', btn.dataset.proc === sub);
+      document.querySelectorAll('#proc-subtabs button').forEach(btn => {
+        const isMatch = btn.dataset.proc === sub;
+        btn.classList.toggle('on', isMatch);
+        btn.classList.toggle('active', isMatch);
       });
 
       // Update primary add button label
@@ -8841,23 +10463,44 @@ function exportStatisticsCSV() {
         resultsEl.classList.add('hidden');
         return;
       }
-      const matches = (state.inventory || []).filter(item => {
+      const groupMatches = (state.groups || []).filter(g => {
+        const hay = `${g.groupName || ''} ${g.hoItemId || ''} ${g.groupId || ''} ${g.company || ''}`.toLowerCase();
+        return hay.includes(q);
+      }).map(g => ({
+        isGroup: true,
+        id: g.groupId,
+        deviceName: g.groupName,
+        hoItemId: g.hoItemId,
+        company: g.company,
+        buyPrice: g.buyPrice
+      }));
+
+      const itemMatches = (state.inventory || []).filter(item => {
         const hay = `${item.deviceName || ''} ${item.hoItemId || ''} ${item.itemId || ''} ${item.company || ''}`.toLowerCase();
         return hay.includes(q);
-      }).slice(0, 12);
+      }).map(item => ({
+        isGroup: false,
+        id: item.itemId,
+        deviceName: item.deviceName,
+        hoItemId: item.hoItemId,
+        company: item.company,
+        buyPrice: item.buyPrice
+      }));
+
+      const matches = [...groupMatches, ...itemMatches].slice(0, 12);
 
       if (matches.length === 0) {
-        resultsEl.innerHTML = `<div class="search-item text-xs text-gray">No matching inventory item found</div>`;
+        resultsEl.innerHTML = `<div class="search-item text-xs text-gray">No matching inventory item or group found</div>`;
         resultsEl.classList.remove('hidden');
         return;
       }
 
       resultsEl.innerHTML = matches.map(item => {
-        const parentTag = item.isParent ? `<span class="badge" style="background:#e0e7ff; color:#3730a3; margin-left:4px;">GROUP</span>` : '';
+        const grpTag = item.isGroup ? `<span class="badge" style="background:#e0e7ff; color:#3730a3; margin-left:4px;">GROUP</span>` : '';
         return `
-          <div class="search-item" onclick="selectProcItemPicker('${escHtml(prefix)}', '${escHtml(item.itemId)}')">
+          <div class="search-item" onclick="selectProcItemPicker('${escHtml(prefix)}', '${escHtml(item.id)}')">
             <div>
-              <div class="font-semibold text-sm">${escHtml(item.deviceName)}${parentTag}</div>
+              <div class="font-semibold text-sm">${escHtml(item.deviceName)}${grpTag}</div>
               <div class="text-xs text-gray">HO ID: <span class="mono">${escHtml(item.hoItemId || '-')}</span> | Company: ${escHtml(item.company || '-')}</div>
             </div>
             <div class="right text-xs font-semibold" style="color:var(--brand-dark);">฿${Number(item.buyPrice || 0).toLocaleString()}</div>
@@ -8868,20 +10511,21 @@ function exportStatisticsCSV() {
     }
 
     function selectProcItemPicker(prefix, itemId) {
-      const item = (state.inventory || []).find(i => String(i.itemId) === String(itemId));
+      const grp = (state.groups || []).find(g => String(g.groupId) === String(itemId));
+      const item = grp ? null : (state.inventory || []).find(i => String(i.itemId) === String(itemId));
       const resultsEl = document.getElementById(`${prefix}-item-picker-results`);
       if (resultsEl) resultsEl.classList.add('hidden');
       const pickerInput = document.getElementById(`${prefix}-item-picker-input`);
       if (pickerInput) pickerInput.value = '';
-      if (!item) return;
+      if (!grp && !item) return;
 
-      let hoId = item.hoItemId || '';
-      let company = item.company || '';
-      if ((!hoId || !company) && item.parentId) {
-        const parent = (state.inventory || []).find(p => String(p.itemId) === String(item.parentId));
-        if (parent) {
-          if (!hoId) hoId = parent.hoItemId || '';
-          if (!company) company = parent.company || '';
+      let hoId = grp ? (grp.hoItemId || '') : (item.hoItemId || '');
+      let company = grp ? (grp.company || '') : (item.company || '');
+      if (item && (!hoId || !company) && item.groupId) {
+        const parentGrp = (state.groups || []).find(g => String(g.groupId) === String(item.groupId));
+        if (parentGrp) {
+          if (!hoId) hoId = parentGrp.hoItemId || '';
+          if (!company) company = parentGrp.company || '';
         }
       }
 
@@ -8891,8 +10535,8 @@ function exportStatisticsCSV() {
       const compEl = document.getElementById(`${prefix}-modal-company`);
 
       if (hoidEl) hoidEl.value = hoId;
-      if (devEl) devEl.value = item.deviceName || '';
-      if (priceEl) priceEl.value = Number(item.buyPrice) || 0;
+      if (devEl) devEl.value = grp ? (grp.groupName || '') : (item.deviceName || '');
+      if (priceEl) priceEl.value = grp ? (Number(grp.buyPrice) || 0) : (Number(item.buyPrice) || 0);
       if (compEl) compEl.value = company;
 
       if (prefix === 'eb') updateEBiddingModalCalc();
@@ -9041,7 +10685,7 @@ function exportStatisticsCSV() {
           renderProcurementTab();
           showToast('E-Bidding deleted (Mock)');
         }
-      });
+      }, 'delete_procurement');
     }
 
     // ── 2. Contract Modal Functions ──
@@ -9209,7 +10853,7 @@ function exportStatisticsCSV() {
           renderProcurementTab();
           showToast('Contract deleted (Mock)');
         }
-      });
+      }, 'delete_procurement');
     }
 
     // ── 3. Contract Purchase Order (PO Lot) Modal Functions ──
@@ -9407,7 +11051,7 @@ function exportStatisticsCSV() {
           renderProcurementTab();
           showToast('Contract PO deleted (Mock)');
         }
-      });
+      }, 'delete_procurement');
     }
 
     // ── 4. Specific-Method Purchase Modal Functions ──
@@ -9595,7 +11239,7 @@ function exportStatisticsCSV() {
           renderProcurementTab();
           showToast('Specific Purchase deleted (Mock)');
         }
-      });
+      }, 'delete_procurement');
     }
 
     // ── 5. Goods Receiving & Item ID Allocation Modal Functions ──
@@ -9739,20 +11383,20 @@ function exportStatisticsCSV() {
     function buildInitialReceivingAllocations(hoItemId, deviceName, targetQty, existingAllocs) {
       const cleanHo = String(hoItemId || '').trim();
       const cleanDev = String(deviceName || '').trim().toLowerCase();
-      const parentIdsMatchingHo = new Set(
-        (state.inventory || [])
-          .filter(i => i.isParent && cleanHo && String(i.hoItemId || '').trim() === cleanHo)
-          .map(i => String(i.itemId))
+      const groupIdsMatchingHo = new Set(
+        (state.groups || [])
+          .filter(g => (cleanHo && String(g.hoItemId || '').trim() === cleanHo) || (cleanDev && String(g.groupName || '').trim().toLowerCase() === cleanDev))
+          .map(g => String(g.groupId))
       );
 
-      // Candidate non-parent inventory items matching HO Item ID (directly or via Parent Group)
+      // Candidate inventory items matching HO Item ID (directly or via Group ID)
       let candidates = (state.inventory || []).filter(i => {
-        if (i.isParent) return false;
         if (cleanHo) {
           if (String(i.hoItemId || '').trim() === cleanHo) return true;
-          if (i.parentId && parentIdsMatchingHo.has(String(i.parentId))) return true;
+          if (i.groupId && groupIdsMatchingHo.has(String(i.groupId))) return true;
           return false;
         }
+        if (i.groupId && groupIdsMatchingHo.has(String(i.groupId))) return true;
         return cleanDev && String(i.deviceName || '').trim().toLowerCase() === cleanDev;
       });
 
@@ -9868,14 +11512,13 @@ function exportStatisticsCSV() {
       }
       const existingIds = new Set((state.receivingDraftAllocations || []).map(r => String(r.itemId)));
       const matches = (state.inventory || []).filter(i => {
-        if (i.isParent) return false;
         if (existingIds.has(String(i.itemId))) return false;
         const hay = `${i.deviceName || ''} ${i.itemId || ''} ${i.hoItemId || ''}`.toLowerCase();
         return hay.includes(q);
       }).slice(0, 10);
 
       if (matches.length === 0) {
-        resEl.innerHTML = `<div class="search-item text-xs text-gray">No other non-parent Inventory items match</div>`;
+        resEl.innerHTML = `<div class="search-item text-xs text-gray">No other Inventory items match</div>`;
         resEl.classList.remove('hidden');
         return;
       }
@@ -9899,7 +11542,7 @@ function exportStatisticsCSV() {
       if (inpEl) inpEl.value = '';
 
       const inv = (state.inventory || []).find(i => String(i.itemId) === String(itemId));
-      if (!inv || inv.isParent) return;
+      if (!inv) return;
       if (!Array.isArray(state.receivingDraftAllocations)) state.receivingDraftAllocations = [];
       if (state.receivingDraftAllocations.some(r => String(r.itemId) === String(itemId))) return;
 
@@ -10147,7 +11790,7 @@ function exportStatisticsCSV() {
           renderProcurementTab();
           showToast('Receiving deleted (Mock)');
         }
-      });
+      }, 'delete_procurement');
     }
 
     // ── 6. Unified Cancel Action with Rule 0.6 Integrity Checks ──
@@ -10187,44 +11830,42 @@ function exportStatisticsCSV() {
         }
       }
 
-      if (!confirm(`Mark ${entity.toUpperCase()} record "${label || id}" as Cancelled?\n\nCancelled records are excluded from all quantity and value calculations.`)) {
-        return;
-      }
-
-      setSyncIndicator(true);
-      if (isApiConfigured()) {
-        callApi('cancelRecord', { entity: ent, id })
-          .then(() => {
-            setSyncIndicator(false);
-            showToast('Record marked as Cancelled');
-            fetchDataFromServer();
-          })
-          .catch(err => {
-            setSyncIndicator(false);
-            showToast('Failed: ' + (err.message || err));
-          });
-      } else {
-        setSyncIndicator(false);
-        if (ent === 'ebidding') {
-          const r = (state.ebiddings || []).find(x => x.ebiddingId === id);
-          if (r) r.manualStatus = 'Cancelled';
-        } else if (ent === 'contract') {
-          const r = (state.contracts || []).find(x => x.contractId === id);
-          if (r) r.manualStatus = 'Cancelled';
-        } else if (ent === 'contract_po') {
-          const r = (state.contractPOs || []).find(x => x.poId === id);
-          if (r) r.manualStatus = 'Cancelled';
-        } else if (ent === 'specific_purchase') {
-          const r = (state.specificPurchases || []).find(x => x.spId === id);
-          if (r) r.manualStatus = 'Cancelled';
-        } else if (ent === 'receiving') {
-          const r = (state.receivings || []).find(x => x.receivingId === id);
-          if (r) r.manualStatus = 'Cancelled';
+      verifyPasscodeThen('delete_procurement', state.currentLang === 'th' ? `ยืนยันการยกเลิกรายการ ${entity.toUpperCase()} "${label || id}"?` : `Mark ${entity.toUpperCase()} record "${label || id}" as Cancelled?`, () => {
+        setSyncIndicator(true);
+        if (isApiConfigured()) {
+          callApi('cancelRecord', { entity: ent, id })
+            .then(() => {
+              setSyncIndicator(false);
+              showToast('Record marked as Cancelled');
+              fetchDataFromServer();
+            })
+            .catch(err => {
+              setSyncIndicator(false);
+              showToast('Failed: ' + (err.message || err));
+            });
+        } else {
+          setSyncIndicator(false);
+          if (ent === 'ebidding') {
+            const r = (state.ebiddings || []).find(x => x.ebiddingId === id);
+            if (r) r.manualStatus = 'Cancelled';
+          } else if (ent === 'contract') {
+            const r = (state.contracts || []).find(x => x.contractId === id);
+            if (r) r.manualStatus = 'Cancelled';
+          } else if (ent === 'contract_po') {
+            const r = (state.contractPOs || []).find(x => x.poId === id);
+            if (r) r.manualStatus = 'Cancelled';
+          } else if (ent === 'specific_purchase') {
+            const r = (state.specificPurchases || []).find(x => x.spId === id);
+            if (r) r.manualStatus = 'Cancelled';
+          } else if (ent === 'receiving') {
+            const r = (state.receivings || []).find(x => x.receivingId === id);
+            if (r) r.manualStatus = 'Cancelled';
+          }
+          recalculateProcurementState();
+          renderProcurementTab();
+          showToast('Record marked as Cancelled (Mock)');
         }
-        recalculateProcurementState();
-        renderProcurementTab();
-        showToast('Record marked as Cancelled (Mock)');
-      }
+      });
     }
 
     // ===== MAIN EVENT BINDINGS =====
@@ -10264,14 +11905,15 @@ function exportStatisticsCSV() {
         // Procedure Tab Events
         safeAddListener('proc-device-search', 'input', debounce(renderProcDeviceResults, 120));
         safeAddListener('proc-device-cat', 'change', renderProcDeviceResults);
-        
+        safeAddListener('proc-hist-search', 'input', debounce(renderProcHistory, 120));
+
         safeAddListener('btn-submit-procedure', 'click', () => {
           const hn = document.getElementById('proc-hn').value.trim();
-          if (!hn) { showToast('Please enter patient HN'); return; }
+          if (!hn) { showToast('กรุณากรอก HN ผู้ป่วย'); return; }
 
           const selectedProcs = Array.from(document.querySelectorAll('#proc-procedures-list input[type="checkbox"]:checked')).map(cb => cb.value);
           if (selectedProcs.length === 0) {
-            showToast('Please select at least one procedure type');
+            showToast('กรุณาเลือกหัตถการอย่างน้อย 1 รายการ');
             return;
           }
 
@@ -10282,8 +11924,8 @@ function exportStatisticsCSV() {
 
           if (state.cart.length === 0) {
             if (!confirm(isActivateOrOff
-              ? 'No devices in cart. Submit case record (Initial Activate INR Code / Off case)?'
-              : 'Cart is empty. Submit procedure case record without supplies?')) {
+              ? 'ไม่มีรายการอุปกรณ์ในตะกร้า ต้องการบันทึกเคส (Activate INR Code / Off case) หรือไม่?'
+              : 'ไม่มีรายการอุปกรณ์ในตะกร้า ต้องการบันทึกเคสโดยไม่มีอุปกรณ์หรือไม่?')) {
               return;
             }
           }
@@ -10296,11 +11938,11 @@ function exportStatisticsCSV() {
               const vol = Number(ci.volumeMl);
               const btl = Number(ci.qty);
               if (!vol || vol <= 0) {
-                showToast(`Please enter Volume (ml) for contrast media: "${ci.deviceName}"`);
+                showToast(`กรุณากรอกปริมาตร (ml) สำหรับสารทึบรังสี: "${ci.deviceName}"`);
                 return;
               }
               if (!btl || btl <= 0) {
-                showToast(`Please enter Quantity (ขวด) for contrast media: "${ci.deviceName}"`);
+                showToast(`กรุณากรอกจำนวน (ขวด) สำหรับสารทึบรังสี: "${ci.deviceName}"`);
                 return;
               }
             }
@@ -10316,7 +11958,7 @@ function exportStatisticsCSV() {
                   ci.pieceNo = avail[0];
                 }
               } else if (!ci.pieceNo) {
-                showToast(`No available quota pieces remaining for substituted item: "${ci.deviceName}"`);
+                showToast(`โควตาชิ้นส่วนสำหรับ "${ci.deviceName}" หมดแล้ว`);
                 return;
               }
             }
@@ -10356,7 +11998,7 @@ function exportStatisticsCSV() {
             const currentRetail = inv ? inv.retailStock : 0;
             if (currentRetail - ci.qty < 0) {
               const devName = inv ? inv.deviceName : ci.itemId;
-              warnings.push(`${devName}: Retail stock will drop below 0 (Current: ${currentRetail}, Need: ${ci.qty})`);
+              warnings.push(`${devName}: สต็อกคลังปลีกจะติดลบ (ปัจจุบัน: ${currentRetail}, ใช้: ${ci.qty})`);
             }
           });
 
@@ -10367,13 +12009,14 @@ function exportStatisticsCSV() {
               callApi('submitProcedureUse', payload)
                 .then(() => {
                   setSyncIndicator(false);
-                  showToast('Procedure logged successfully!');
+                  showToast('บันทึกเคสเรียบร้อยแล้ว');
                   state.cart = [];
                   document.getElementById('proc-hn').value = '';
-                  document.getElementById('proc-complications').value = '';
                   document.querySelectorAll('#proc-procedures-list input[type="checkbox"]').forEach(cb => cb.checked = false);
                   updateProcCountBadge();
                   document.querySelectorAll('#proc-techs input[type="checkbox"]').forEach(cb => cb.checked = false);
+                  const compEl = document.getElementById('proc-complications');
+                  if (compEl) compEl.value = '';
                   fetchDataFromServer();
                 })
                 .catch(err => {
@@ -10384,40 +12027,51 @@ function exportStatisticsCSV() {
               // Offline Mock Mode
               setSyncIndicator(false);
               const txGroupId = 'TXN-' + Date.now();
+              const mockHeader = {
+                date: payload.date,
+                patientHN: payload.patientHN,
+                disease: payload.disease,
+                procedure: payload.procedure,
+                shift: payload.shift,
+                tech: payload.tech,
+                complication: payload.complication,
+                contrast: payload.contrast || ''
+              };
+
               if (payload.devices.length === 0) {
                 state.transactions.unshift({
                   id: txGroupId,
-                  date: payload.date,
+                  date: mockHeader.date,
                   type: 'Procedure Use',
-                  hn: payload.patientHN,
+                  hn: mockHeader.patientHN,
                   itemId: '',
                   qty: 0,
                   fromLoc: 'Retail',
                   toLoc: '',
-                  disease: payload.disease,
-                  procedure: payload.procedure,
-                  shift: payload.shift,
-                  tech: payload.tech,
-                  complication: payload.complication,
-                  contrast: payload.contrast || ''
+                  disease: mockHeader.disease,
+                  procedure: mockHeader.procedure,
+                  shift: mockHeader.shift,
+                  tech: mockHeader.tech,
+                  complication: mockHeader.complication,
+                  contrast: mockHeader.contrast || ''
                 });
               } else {
                 payload.devices.forEach(d => {
                   state.transactions.unshift({
                     id: txGroupId,
-                    date: payload.date,
+                    date: mockHeader.date,
                     type: 'Procedure Use',
-                    hn: payload.patientHN,
+                    hn: mockHeader.patientHN,
                     itemId: d.itemId,
                     qty: d.quantity,
                     fromLoc: 'Retail',
                     toLoc: '',
-                    disease: payload.disease,
-                    procedure: payload.procedure,
-                    shift: payload.shift,
-                    tech: payload.tech,
-                    complication: payload.complication,
-                    contrast: payload.contrast || ''
+                    disease: mockHeader.disease,
+                    procedure: mockHeader.procedure,
+                    shift: mockHeader.shift,
+                    tech: mockHeader.tech,
+                    complication: mockHeader.complication,
+                    contrast: mockHeader.contrast || ''
                   });
                   const inv = state.inventory.find(i => String(i.itemId) === String(d.itemId));
                   if (inv) {
@@ -10445,10 +12099,10 @@ function exportStatisticsCSV() {
                     if (!Array.isArray(exRule.history)) exRule.history = [];
                     exRule.history.push({
                       txnId: txGroupId,
-                      date: payload.date,
-                      hn: payload.patientHN,
+                      date: mockHeader.date,
+                      hn: mockHeader.patientHN,
                       qty: Number(d.quantity) || 0,
-                      procedure: payload.procedure,
+                      procedure: mockHeader.procedure,
                       pieceNo: pNo
                     });
                     if (exRule.currentUsed >= exRule.totalQuota) {
@@ -10459,12 +12113,13 @@ function exportStatisticsCSV() {
               }
               state.cart = [];
               document.getElementById('proc-hn').value = '';
-              document.getElementById('proc-complications').value = '';
               document.querySelectorAll('#proc-procedures-list input[type="checkbox"]').forEach(cb => cb.checked = false);
               updateProcCountBadge();
               document.querySelectorAll('#proc-techs input[type="checkbox"]').forEach(cb => cb.checked = false);
+              const compEl = document.getElementById('proc-complications');
+              if (compEl) compEl.value = '';
               recalculateInventoryHierarchy();
-              showToast('Procedure logged (Mock)');
+              showToast('บันทึกเคสเรียบร้อยแล้ว (Mock)');
               renderCurrentTab();
             }
           }
@@ -10485,6 +12140,11 @@ function exportStatisticsCSV() {
       });
 
       safeAddListener('btn-submit-stock', 'click', () => {
+        const userNick = (document.getElementById('stock-modal-user')?.value || '').trim();
+        if (!userNick) {
+          showToast('กรุณาเลือกผู้บันทึก');
+          return;
+        }
         const actionEl = document.querySelector('input[name="stock-action"]:checked');
         const action = actionEl ? actionEl.value : 'Stock In'; // 'Stock In' or 'Stock Out'
         const valid = state.stockLines.every(l => l.itemId && l.qty > 0);
@@ -10497,7 +12157,7 @@ function exportStatisticsCSV() {
           quantity: l.qty,
           destination: action === 'Stock In' ? l.loc : '',
           source: action === 'Stock Out' ? l.loc : '',
-          tech: '',
+          tech: userNick,
           complication: l.notes || ''
         }));
 
@@ -10557,7 +12217,7 @@ function exportStatisticsCSV() {
                 disease: '',
                 procedure: '',
                 shift: '',
-                tech: '',
+                tech: p.tech || userNick,
                 complication: p.complication,
                 contrast: ''
               });
@@ -10597,13 +12257,18 @@ function exportStatisticsCSV() {
       safeAddListener('adj-search-input', 'input', debounce(renderAdjustmentTab, 120));
       safeAddListener('btn-submit-adjustments', 'click', () => {
         if (state.adjBatch.length === 0) return;
+        const userNick = (document.getElementById('adj-modal-user')?.value || '').trim();
+        if (!userNick) {
+          showToast('กรุณาเลือกผู้บันทึก');
+          return;
+        }
 
         const payloads = state.adjBatch.map(a => ({
           date: getToday(),
           itemId: a.itemId,
           location: a.loc,
           delta: a.diff,
-          tech: '',
+          tech: userNick,
           complication: 'Actual: ' + a.count
         }));
 
@@ -10649,7 +12314,7 @@ function exportStatisticsCSV() {
                 disease: '',
                 procedure: '',
                 shift: '',
-                tech: '',
+                tech: p.tech || userNick,
                 complication: p.complication,
                 contrast: ''
               });
@@ -10679,12 +12344,279 @@ function exportStatisticsCSV() {
       });
 
       // Shift Tab Events
-        // Set default inputs
+        // Set default inputs & universal table sort/resize
         const procDate = document.getElementById('proc-date');
         if (procDate) procDate.value = getToday();
+        if (typeof initUniversalTableEnhancements === 'function') {
+          initUniversalTableEnhancements();
+        }
       } catch (err) {
         console.error('Error binding main events:', err);
       }
+    }
+
+    // ════════════════════════════════════════════════════════════════
+    // UNIVERSAL TABLE SORTING & COLUMN WIDTH RESIZING
+    // ════════════════════════════════════════════════════════════════
+    let _enhancingTables = false;
+
+    function parseTableSortValue(td) {
+      if (!td) return { type: 'empty', val: '' };
+      const ds = td.getAttribute('data-sort');
+      const raw = (ds !== null && ds !== '') ? String(ds).trim() : String(td.innerText || td.textContent || '').trim();
+      if (!raw || raw === '-' || raw === '—' || raw === '–') {
+        return { type: 'empty', val: '' };
+      }
+
+      // ISO date YYYY-MM-DD (optionally with time)
+      const isoMatch = raw.match(/^(\d{4})-(\d{1,2})-(\d{1,2})(?:\s+(\d{1,2}):(\d{1,2}))?/);
+      if (isoMatch) {
+        const ts = Date.UTC(Number(isoMatch[1]), Number(isoMatch[2]) - 1, Number(isoMatch[3]), Number(isoMatch[4] || 0), Number(isoMatch[5] || 0));
+        if (!isNaN(ts)) return { type: 'num', val: ts };
+      }
+
+      // DD/MM/YYYY or DD-MM-YYYY
+      const dmyMatch = raw.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})/);
+      if (dmyMatch) {
+        let yr = Number(dmyMatch[3]);
+        if (yr < 100) yr += 2000;
+        const ts = Date.UTC(yr, Number(dmyMatch[2]) - 1, Number(dmyMatch[1]));
+        if (!isNaN(ts)) return { type: 'num', val: ts };
+      }
+
+      // Pure numbers / currency / percentage (e.g. ฿12,000, +5%, 30 ชิ้น)
+      const firstLine = raw.split(/\r?\n/)[0].trim();
+      const fracMatch = firstLine.match(/^(\d+(?:\.\d+)?)\s*\/\s*(\d+(?:\.\d+)?)/);
+      if (fracMatch) {
+        const num = Number(fracMatch[1]);
+        const den = Number(fracMatch[2]) || 1;
+        return { type: 'num', val: (num / den) * 1e6 + num };
+      }
+
+      const numMatch = firstLine.match(/^[+\-]?฿?\s*([\d,]+(?:\.\d+)?)\s*(?:%|pcs|pc|ชิ้น|ขวด|ml|รายการ|บาท)?$/i);
+      if (numMatch) {
+        const sign = firstLine.startsWith('-') ? -1 : 1;
+        const n = Number(numMatch[1].replace(/,/g, '')) * sign;
+        if (!isNaN(n)) return { type: 'num', val: n };
+      }
+
+      return { type: 'str', val: raw };
+    }
+
+    function compareTableSortValues(a, b, dirMul) {
+      if (a.type === 'empty' && b.type === 'empty') return 0;
+      if (a.type === 'empty') return 1;
+      if (b.type === 'empty') return -1;
+      if (a.type === 'num' && b.type === 'num') {
+        if (a.val === b.val) return 0;
+        return (a.val - b.val) * dirMul;
+      }
+      return String(a.val).localeCompare(String(b.val), 'th', { numeric: true, sensitivity: 'base' }) * dirMul;
+    }
+
+    function sortTableByColumn(table, colIdx) {
+      if (!table || !table.tBodies || table.tBodies.length === 0) return;
+      const tbody = table.tBodies[0];
+      const rows = Array.from(tbody.rows);
+      if (rows.length === 0) return;
+      if (rows.length === 1 && rows[0].querySelector('.empty, .empty-state')) return;
+
+      const prevCol = table.dataset.sortCol;
+      const prevDir = table.dataset.sortDir;
+      const dir = (prevCol === String(colIdx) && prevDir === 'asc') ? 'desc' : 'asc';
+      table.dataset.sortCol = String(colIdx);
+      table.dataset.sortDir = dir;
+
+      const headerRow = table.tHead && table.tHead.rows[table.tHead.rows.length - 1];
+      if (headerRow) {
+        Array.from(headerRow.cells).forEach((th, idx) => {
+          const ic = th.querySelector('.tbl-sort-icon');
+          if (!ic) return;
+          if (idx === colIdx) {
+            ic.textContent = dir === 'asc' ? '▲' : '▼';
+            ic.classList.add('sort-active');
+          } else {
+            ic.textContent = '⇅';
+            ic.classList.remove('sort-active');
+          }
+        });
+      }
+
+      // Group parent rows with any following expandable colspan detail rows (e.g. Contract PO Lots)
+      const chunks = [];
+      for (let i = 0; i < rows.length; i++) {
+        const r = rows[i];
+        if (r.querySelector('.empty, .empty-state')) continue;
+        const item = { row: r, children: [], sortVal: parseTableSortValue(r.cells[colIdx]) };
+        while (i + 1 < rows.length) {
+          const next = rows[i + 1];
+          const isDetail = (next.cells.length === 1 && (Number(next.cells[0].colSpan) || 1) > 1) || next.classList.contains('proc-lots-detail-row');
+          if (!isDetail) break;
+          item.children.push(next);
+          i++;
+        }
+        chunks.push(item);
+      }
+
+      const dirMul = dir === 'asc' ? 1 : -1;
+      chunks.sort((a, b) => compareTableSortValues(a.sortVal, b.sortVal, dirMul));
+
+      const frag = document.createDocumentFragment();
+      chunks.forEach(ch => {
+        frag.appendChild(ch.row);
+        ch.children.forEach(c => frag.appendChild(c));
+      });
+      tbody.appendChild(frag);
+    }
+
+    function attachTableSorting(table) {
+      if (!table || table.id === 'inv-print-area' || table.getAttribute('data-no-table-enhance') === '1') return;
+      if (!table.tHead || table.tHead.rows.length === 0) return;
+      const headerRow = table.tHead.rows[table.tHead.rows.length - 1];
+      if (!headerRow) return;
+
+      Array.from(headerRow.cells).forEach((th, colIdx) => {
+        if ((Number(th.colSpan) || 1) > 1) return;
+        if (th.hasAttribute('onclick')) return;
+        if (th.dataset.tblSortBound === '1') return;
+
+        const label = String(th.innerText || th.textContent || '').replace(/[▲▼⇅]/g, '').trim().toLowerCase();
+        if (!label || ['action', 'actions', 'จัดการ', 'การกระทำ'].includes(label)) return;
+
+        th.dataset.tblSortBound = '1';
+        th.classList.add('tbl-sortable');
+
+        if (!th.querySelector('.tbl-sort-icon')) {
+          const ic = document.createElement('span');
+          ic.className = 'tbl-sort-icon';
+          ic.setAttribute('aria-hidden', 'true');
+          ic.textContent = '⇅';
+          const resizer = th.querySelector('.col-resizer');
+          if (resizer) {
+            th.insertBefore(ic, resizer);
+          } else {
+            th.appendChild(ic);
+          }
+        }
+
+        th.addEventListener('click', (e) => {
+          if (e.target && e.target.closest && e.target.closest('.col-resizer')) return;
+          if ((Date.now() - Number(table.dataset.lastResizeTs || 0)) < 250) return;
+          sortTableByColumn(table, colIdx);
+        });
+      });
+    }
+
+    function attachColumnResizers(table) {
+      if (!table || table.getAttribute('data-no-table-enhance') === '1' || !table.tHead || table.tHead.rows.length === 0) return;
+      const headerRow = table.tHead.rows[table.tHead.rows.length - 1];
+      if (!headerRow) return;
+
+      Array.from(headerRow.cells).forEach((th) => {
+        if ((Number(th.colSpan) || 1) > 1) return;
+        if (th.querySelector('.col-resizer')) return;
+
+        const resizer = document.createElement('span');
+        resizer.className = 'col-resizer';
+        resizer.setAttribute('aria-hidden', 'true');
+        resizer.title = 'ลากเพื่อปรับความกว้างคอลัมน์ (ดับเบิลคลิกเพื่อรีเซ็ต)';
+
+        resizer.addEventListener('click', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+        });
+
+        resizer.addEventListener('dblclick', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          Array.from(headerRow.cells).forEach(cell => { cell.style.width = ''; });
+          table.style.tableLayout = '';
+          table.style.width = '';
+          table.style.minWidth = '';
+          delete table.dataset.colWidthsLocked;
+          table.dataset.lastResizeTs = String(Date.now());
+        });
+
+        resizer.addEventListener('pointerdown', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+
+          const visibleThs = Array.from(headerRow.cells).filter(c => getComputedStyle(c).display !== 'none');
+          if (table.dataset.colWidthsLocked !== '1') {
+            const measured = visibleThs.map(c => Math.max(44, Math.round(c.getBoundingClientRect().width)));
+            const sumW = measured.reduce((acc, w) => acc + w, 0);
+            if (sumW > 0) {
+              visibleThs.forEach((c, idx) => { c.style.width = measured[idx] + 'px'; });
+              table.style.tableLayout = 'fixed';
+              table.style.width = sumW + 'px';
+              table.style.minWidth = sumW + 'px';
+              table.dataset.colWidthsLocked = '1';
+            }
+          }
+
+          const startX = e.clientX;
+          const startColW = Math.max(44, Math.round(th.getBoundingClientRect().width));
+          const startTableW = Math.max(44, Math.round(table.getBoundingClientRect().width));
+
+          resizer.classList.add('resizing');
+          document.body.classList.add('col-resizing');
+
+          function onMove(ev) {
+            const dx = ev.clientX - startX;
+            const nextW = Math.max(44, Math.round(startColW + dx));
+            const delta = nextW - startColW;
+            const nextTableW = Math.max(44, Math.round(startTableW + delta));
+            th.style.width = nextW + 'px';
+            table.style.width = nextTableW + 'px';
+            table.style.minWidth = nextTableW + 'px';
+            table.dataset.lastResizeTs = String(Date.now());
+          }
+
+          function onUp() {
+            window.removeEventListener('pointermove', onMove);
+            window.removeEventListener('pointerup', onUp);
+            window.removeEventListener('pointercancel', onUp);
+            resizer.classList.remove('resizing');
+            document.body.classList.remove('col-resizing');
+            table.dataset.lastResizeTs = String(Date.now());
+          }
+
+          window.addEventListener('pointermove', onMove);
+          window.addEventListener('pointerup', onUp);
+          window.addEventListener('pointercancel', onUp);
+        });
+
+        th.appendChild(resizer);
+      });
+    }
+
+    function enhanceAllTables() {
+      if (_enhancingTables) return;
+      _enhancingTables = true;
+      try {
+        document.querySelectorAll('table').forEach(tbl => {
+          attachTableSorting(tbl);
+          attachColumnResizers(tbl);
+        });
+      } finally {
+        _enhancingTables = false;
+      }
+    }
+
+    let _tableObserverStarted = false;
+    function initUniversalTableEnhancements() {
+      enhanceAllTables();
+      if (_tableObserverStarted || typeof MutationObserver === 'undefined') return;
+      _tableObserverStarted = true;
+      const runDebounced = debounce(enhanceAllTables, 40);
+      const obs = new MutationObserver(() => {
+        if (_enhancingTables) return;
+        runDebounced();
+      });
+      ['view', 'modal-overlay'].forEach(id => {
+        const root = document.getElementById(id);
+        if (root) obs.observe(root, { childList: true, subtree: true });
+      });
     }
 
     // Mobile Touch Gesture: Swipe right from left edge (< 40px) to open sidebar; swipe left to close
