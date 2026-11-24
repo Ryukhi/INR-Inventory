@@ -16,7 +16,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@300;400;500;600;700&family=Noto+Sans+Thai:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=20261120c">
+  <link rel="stylesheet" href="styles.css?v=20261122b">
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 </head>
 <body>
@@ -845,7 +845,7 @@
               </button>
               <button type="button" data-proc="contracts" onclick="switchProcurementSubTab('contracts')">
                 <svg class="ic sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z"/><path d="m22 17.65-9.17 4.16a2 2 0 0 1-1.66 0L2 17.65"/><path d="m22 12.65-9.17 4.16a2 2 0 0 1-1.66 0L2 12.65"/></svg>
-                <span data-i18n="proc_sub_contracts">Contracts</span>
+                <span data-i18n="proc_sub_contracts">รายการที่มีสัญญา</span>
                 <em id="proc-count-contracts">0</em>
               </button>
               <button type="button" data-proc="contract_po" onclick="switchProcurementSubTab('contract_po')">
@@ -869,9 +869,9 @@
 
             <div class="card">
               <div class="bar no-print">
-                <select id="proc-fy-select" class="sel" style="min-width:120px; font-weight:600;" onchange="onProcurementFyChange(this.value)"></select>
+                <select id="proc-fy-select" class="sel" style="min-width:148px; font-weight:600;" onchange="onProcurementFyChange(this.value)"></select>
                 <select id="proc-status-filter" class="sel" style="min-width:155px;" onchange="renderProcurementTab()">
-                  <option value="">All Effective Statuses</option>
+                  <option value="">สถานะ</option>
                 </select>
                 <div class="search">
                   <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
@@ -884,7 +884,7 @@
                   </button>
                   <button type="button" class="btn btn-p" id="btn-proc-primary-add" onclick="openProcurementAddModal()">
                     <svg class="ic sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
-                    <span id="btn-proc-primary-add-label">Add E-Bidding Plan</span>
+                    <span id="btn-proc-primary-add-label">เพิ่มแผน E-Bidding</span>
                   </button>
                 </div>
               </div>
@@ -972,33 +972,25 @@
             </div>
           </div>
 
-          <!-- ================= 8. SETTINGS (HIDDEN BY DEFAULT UNTIL UNLOCKED) ================= -->
+          <!-- ================= 8. SETTINGS (DIRECT ACCESS) ================= -->
           <div id="tab-settings" class="tab-panel stack hidden">
             <div class="flex justify-between items-center flex-wrap gap-2">
               <div class="seg no-print" id="settings-subtabs">
                 <button type="button" class="on" data-sec="lists" onclick="switchSettingsSection('lists')">
                   <svg class="ic sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6h13"/><path d="M8 12h13"/><path d="M8 18h13"/><path d="M3 6h.01"/><path d="M3 12h.01"/><path d="M3 18h.01"/></svg>
-                  <span data-i18n="set_lists">Lists</span>
+                  <span data-i18n="set_lists">ตัวเลือก</span>
                 </button>
                 <button type="button" data-sec="users" onclick="switchSettingsSection('users')">
                   <svg class="ic sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-                  <span data-i18n="set_users">Users</span>
+                  <span data-i18n="set_users">ผู้ใช้</span>
                   <em id="settings-users-count">0</em>
                 </button>
                 <button type="button" data-sec="groups" onclick="switchSettingsSection('groups')">
                   <svg class="ic sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z"/><path d="m22 17.65-9.17 4.16a2 2 0 0 1-1.66 0L2 17.65"/><path d="m22 12.65-9.17 4.16a2 2 0 0 1-1.66 0L2 12.65"/></svg>
-                  <span data-i18n="set_groups">Groups</span>
+                  <span data-i18n="set_groups">กลุ่มรายการ</span>
                   <em id="settings-groups-count">0</em>
                 </button>
-                <button type="button" data-sec="security" onclick="switchSettingsSection('security')">
-                  <svg class="ic sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/></svg>
-                  <span data-i18n="set_security">Security</span>
-                </button>
               </div>
-              <button type="button" class="btn btn-o no-print" id="btn-lock-settings" onclick="lockSettings()">
-                <svg class="ic sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-                <span data-i18n="btn_lock_settings">Lock Settings</span>
-              </button>
             </div>
 
             <!-- Settings 1: Lists (5 Categories via Chips) -->
@@ -1034,28 +1026,33 @@
               </div>
             </div>
 
-            <!-- Settings 2: Users -->
+            <!-- Settings 2: Users ("User" Sheet: All 7 Fields) -->
             <div class="card hidden" id="settings-user-card">
               <div class="card-h">
                 <div>
                   <h3>
                     <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-                    <span data-i18n="set_users_title">User / Tech Management</span>
+                    <span data-i18n="set_users_title">จัดการผู้ใช้</span>
                   </h3>
-                  <div class="text-xs text-gray">Unified Nicknames used across Procedure Use, Inventory, Adjustment, and HO Reconciliation.</div>
+                  <div class="text-xs text-gray">ข้อมูลผู้ใช้จากชีต User (เพิ่ม แก้ไข หรือลบข้อมูลผู้ใช้ได้โดยตรง)</div>
                 </div>
                 <button type="button" class="btn btn-p btn-sm" onclick="openUserModal(-1)">
                   <svg class="ic sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
-                  <span>Add User Nickname</span>
+                  <span>เพิ่มผู้ใช้</span>
                 </button>
               </div>
               <div class="tw">
-                <table class="tbl">
+                <table class="tbl" id="settings-users-table">
                   <thead>
                     <tr>
-                      <th style="width:180px;">User ID</th>
-                      <th>Nickname</th>
-                      <th class="c center" style="width:140px;">Actions</th>
+                      <th>User name</th>
+                      <th>User surname</th>
+                      <th>User nickname</th>
+                      <th>Position</th>
+                      <th>Authorization</th>
+                      <th>Phone number</th>
+                      <th>Date of birth</th>
+                      <th class="c center" style="width:110px;">จัดการ</th>
                     </tr>
                   </thead>
                   <tbody id="settings-users-body"></tbody>
@@ -1094,48 +1091,6 @@
                   </div>
                 </div>
                 <div id="settings-groups-tree"></div>
-              </div>
-            </div>
-
-            <!-- Settings 4: Security (Server-Synced Per-Menu Passcodes) -->
-            <div class="card hidden" id="settings-security-card">
-              <div class="card-h">
-                <div>
-                  <h3>
-                    <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/></svg>
-                    <span data-i18n="sec_title">Server-Synced Security &amp; Deletion Passcodes</span>
-                  </h3>
-                  <div class="text-xs text-gray" data-i18n="sec_subtitle">Manage Settings access passcode and independent deletion passcodes for each menu (stored in Google Sheets Settings sheet; default: 1234).</div>
-                </div>
-              </div>
-              <div class="card-b security-grid">
-                <div id="security-scope-list"></div>
-                <form class="p-4 rounded border" style="background:var(--gray-50);" id="security-passcode-form" onsubmit="event.preventDefault(); saveNewPasscode();">
-                  <div class="flex items-center justify-between gap-2 mb-3">
-                    <strong class="text-sm" data-i18n="sec_change_heading">Update Passcode</strong>
-                    <span class="badge ok" id="sec-selected-scope-label">Settings Access</span>
-                  </div>
-                  <div class="stack" style="gap:12px;">
-                    <div class="f">
-                      <label data-i18n="sec_cur_pin">Current Passcode <span class="req">*</span></label>
-                      <input type="password" id="settings-cur-passcode" class="in" placeholder="••••" maxlength="16" autocomplete="off">
-                    </div>
-                    <div class="f">
-                      <label data-i18n="sec_new_pin">New Passcode (min 4 chars) <span class="req">*</span></label>
-                      <input type="password" id="settings-new-passcode" class="in" placeholder="Min 4 characters" maxlength="16" autocomplete="new-password">
-                    </div>
-                    <div class="f">
-                      <label data-i18n="sec_conf_pin">Confirm New Passcode <span class="req">*</span></label>
-                      <input type="password" id="settings-confirm-passcode" class="in" placeholder="Re-enter new passcode" maxlength="16" autocomplete="new-password">
-                    </div>
-                    <div class="flex justify-end pt-2">
-                      <button type="submit" class="btn btn-p" id="btn-save-passcode">
-                        <svg class="ic sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
-                        <span data-i18n="btn_save">Update Passcode</span>
-                      </button>
-                    </div>
-                  </div>
-                </form>
               </div>
             </div>
           </div>
@@ -1414,22 +1369,55 @@
       </div>
     </div>
 
-    <!-- Add/Edit User Nickname Modal -->
-    <div id="modal-user" class="modal hidden" style="max-width:440px;">
+    <!-- Add/Edit User Modal (7 Columns from "User" Sheet) -->
+    <div id="modal-user" class="modal hidden" style="max-width:560px;">
       <div class="modal-header">
-        <div class="modal-title" id="modal-user-title">Add User Nickname</div>
+        <div class="modal-title" id="modal-user-title">เพิ่มผู้ใช้</div>
         <button type="button" class="modal-close" onclick="closeModal()">✕</button>
       </div>
       <div class="modal-body space-y">
         <input type="hidden" id="user-modal-idx" value="">
+        <input type="hidden" id="user-modal-row-index" value="">
         <input type="hidden" id="user-modal-id" value="">
-        <div class="form-group">
-          <label class="form-label"><span>Nickname</span> <span class="req">*</span></label>
-          <input type="text" id="user-modal-nickname" class="form-input" placeholder="e.g. Sak, Nat, Ploy..." required>
+        <div class="device-modal-grid">
+          <div class="form-group">
+            <label class="form-label"><span>User name</span> <span class="req">*</span></label>
+            <input type="text" id="user-modal-name" class="form-input" placeholder="ชื่อจริง" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label"><span>User surname</span></label>
+            <input type="text" id="user-modal-surname" class="form-input" placeholder="นามสกุล">
+          </div>
+          <div class="form-group">
+            <label class="form-label"><span>User nickname</span> <span class="req">*</span></label>
+            <input type="text" id="user-modal-nickname" class="form-input" placeholder="ชื่อเล่น (ใช้แสดงในผู้บันทึก)" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label"><span>Position</span></label>
+            <input type="text" id="user-modal-position" class="form-input" placeholder="ตำแหน่ง">
+          </div>
+          <div class="form-group">
+            <label class="form-label"><span>Authorization</span></label>
+            <input type="text" id="user-modal-authorization" class="form-input" list="user-auth-options" placeholder="สิทธิ์การใช้งาน เช่น Admin, Staff">
+            <datalist id="user-auth-options">
+              <option value="Admin">
+              <option value="Staff">
+              <option value="User">
+              <option value="Viewer">
+            </datalist>
+          </div>
+          <div class="form-group">
+            <label class="form-label"><span>Phone number</span></label>
+            <input type="tel" id="user-modal-phone" class="form-input" placeholder="08x-xxx-xxxx">
+          </div>
+          <div class="form-group col-span-2">
+            <label class="form-label"><span>Date of birth</span></label>
+            <input type="date" id="user-modal-dob" class="form-input">
+          </div>
         </div>
         <div class="flex gap-2 mt-4 justify-end">
-          <button type="button" class="btn btn-outline" onclick="closeModal()">Cancel</button>
-          <button type="button" class="btn btn-brand" onclick="applyUserModal()">Save Nickname</button>
+          <button type="button" class="btn btn-outline" onclick="closeModal()">ยกเลิก</button>
+          <button type="button" class="btn btn-brand" onclick="applyUserModal()">บันทึก</button>
         </div>
       </div>
     </div>
@@ -2095,7 +2083,7 @@
       </div>
     </div>
 
-    <!-- Server-Synced Passcode Confirmation Modal (Supports settings_access & 7 delete_* Scopes) -->
+    <!-- Local Deletion Passcode Confirmation Modal (Default: 1234) -->
     <div id="modal-passcode-confirm" class="modal hidden" style="max-width:440px;">
       <div class="modal-header">
         <div class="modal-title" id="passcode-modal-title">ยืนยันรหัสผ่าน</div>
@@ -2118,21 +2106,19 @@
     </div>
 
     <!-- Asset QR Modal -->
-    <div id="modal-asset-qr" class="modal hidden" style="max-width:480px;">
+    <div id="modal-asset-qr" class="modal hidden" style="max-width:500px;">
       <div class="modal-header">
         <div class="modal-title">Asset QR Code Label</div>
         <button type="button" class="modal-close" onclick="closeModal()">✕</button>
       </div>
       <div class="modal-body space-y">
-        <div class="qr-label-card" id="asset-qr-card-print">
-          <img id="asset-qr-img" src="" alt="Asset QR Code">
-          <div class="font-bold text-base text-black" id="asset-qr-name">Asset Name</div>
-          <div class="font-mono font-bold text-sm text-brand" id="asset-qr-code" style="margin-top:2px;">CODE</div>
-          <div class="text-xs text-gray" id="asset-qr-meta" style="margin-top:4px;">S/N: - | Room: -</div>
+        <div class="qr-label-preview-wrap">
+          <div id="asset-qr-card-print"></div>
+          <div class="qr-label-preview-caption">ขนาดป้าย 75 × 35 มม. (เว้นขอบบน 6 มม. / ซ้าย-ขวา-ล่าง 1.5 มม.)</div>
         </div>
         <div class="flex justify-between items-center pt-2">
-          <button type="button" class="btn btn-outline btn-sm" onclick="closeModal()">Close</button>
-          <button type="button" class="btn btn-brand btn-sm" onclick="printAssetQrLabel()">Print Label</button>
+          <button type="button" class="btn btn-outline btn-sm" onclick="closeModal()">ปิด</button>
+          <button type="button" class="btn btn-brand btn-sm" onclick="printAssetQrLabel()">พิมพ์สติกเกอร์ 75×35 มม.</button>
         </div>
       </div>
     </div>
@@ -2179,65 +2165,64 @@
     <!-- PROCUREMENT MODAL 1: E-BIDDING -->
     <div id="modal-ebidding" class="modal hidden" style="max-width:640px;">
       <div class="modal-header">
-        <div class="modal-title" id="eb-modal-title">Add E-Bidding Plan</div>
+        <div class="modal-title" id="eb-modal-title">เพิ่มแผน E-Bidding</div>
         <button type="button" class="modal-close" onclick="closeModal()">✕</button>
       </div>
       <div class="modal-body space-y">
         <input type="hidden" id="eb-modal-id" value="">
-        <div class="form-group">
-          <label class="form-label">Quick Item Picker <span class="text-xs text-gray">(Search Device Name or HO ID)</span></label>
-          <input type="text" id="eb-item-picker-input" class="form-input" placeholder="Type Device Name or HO Item ID..." oninput="filterProcItemPicker('eb', this.value)" onfocus="filterProcItemPicker('eb', this.value)" autocomplete="off">
-          <div id="eb-item-picker-results" class="search-results hidden"></div>
-        </div>
-        <div class="grid-2">
-          <div class="form-group">
-            <label class="form-label">Fiscal Year (BE) <span class="req">*</span></label>
-            <input type="number" id="eb-modal-fy" class="form-input" placeholder="e.g. 2569" required>
+        <div class="eb-compact-row">
+          <div class="form-group eb-field-fy">
+            <label class="form-label">ปีงบประมาณ <span class="req">*</span></label>
+            <input type="number" id="eb-modal-fy" class="form-input" placeholder="เช่น 2570" required>
           </div>
-          <div class="form-group">
-            <label class="form-label">Manual Status</label>
+          <div class="form-group eb-field-status">
+            <label class="form-label">สถานะ</label>
             <select id="eb-modal-status" class="form-select">
-              <option value="Planned">Planned</option>
-              <option value="In Progress">In Progress</option>
-              <option value="Cancelled">Cancelled</option>
+              <option value="Planned">วางแผนแล้ว</option>
+              <option value="In Progress">อยู่ระหว่างดำเนินการ</option>
+              <option value="Cancelled">ยกเลิก</option>
             </select>
           </div>
         </div>
-        <div class="grid-2">
+        <div class="eb-device-hoid-row">
           <div class="form-group">
-            <label class="form-label">HO Item ID</label>
-            <input type="text" id="eb-modal-hoid" class="form-input" placeholder="e.g. 42203403INT00001">
+            <label class="form-label">Device <span class="req">*</span></label>
+            <div class="eb-picker-wrap">
+              <input type="text" id="eb-modal-device" class="form-input eb-picker-input" placeholder="พิมพ์ค้นหาหรือคลิกเลือก Device..." oninput="onEBiddingDeviceInput(this.value)" onfocus="openEBiddingDevicePicker(this.value, false)" onclick="openEBiddingDevicePicker(this.value, false)" autocomplete="off" required>
+              <button type="button" class="eb-picker-caret" tabindex="-1" onmousedown="event.preventDefault(); toggleEBiddingDevicePicker()" aria-label="แสดงรายการอุปกรณ์">▾</button>
+              <div id="eb-item-picker-results" class="eb-picker-results hidden"></div>
+            </div>
           </div>
           <div class="form-group">
-            <label class="form-label">Device Name <span class="req">*</span></label>
-            <input type="text" id="eb-modal-device" class="form-input" placeholder="Device Name..." required>
+            <label class="form-label">HO Item ID</label>
+            <input type="text" id="eb-modal-hoid" class="form-input" placeholder="เช่น 42203403INT00001">
           </div>
         </div>
         <div class="grid-3">
           <div class="form-group">
-            <label class="form-label">Unit Price (฿)</label>
+            <label class="form-label">ราคาต่อหน่วย (฿)</label>
             <input type="number" step="any" id="eb-modal-price" class="form-input" placeholder="0.00" oninput="updateEBiddingModalCalc()">
           </div>
           <div class="form-group">
-            <label class="form-label">Budget Plan Qty <span class="req">*</span></label>
+            <label class="form-label">จำนวนตามแผน <span class="req">*</span></label>
             <input type="number" id="eb-modal-qty" class="form-input" placeholder="0" min="1" oninput="updateEBiddingModalCalc()" required>
           </div>
           <div class="form-group">
-            <label class="form-label">Total Value</label>
+            <label class="form-label">มูลค่ารวม</label>
             <input type="text" id="eb-modal-total" class="form-input" readonly style="background:var(--line2); font-weight:700; color:var(--g-d);" value="฿0.00">
           </div>
         </div>
         <div class="form-group">
-          <label class="form-label">E-Bidding Company / Vendor</label>
-          <input type="text" id="eb-modal-company" list="company-datalist" class="form-input" placeholder="Select or type company...">
+          <label class="form-label">บริษัท / ผู้จำหน่าย</label>
+          <input type="text" id="eb-modal-company" list="company-datalist" class="form-input" placeholder="เลือกหรือพิมพ์ชื่อบริษัท...">
         </div>
         <div class="form-group">
-          <label class="form-label">Remarks</label>
-          <textarea id="eb-modal-remarks" class="form-textarea" rows="2" placeholder="Optional remarks..."></textarea>
+          <label class="form-label">หมายเหตุ</label>
+          <textarea id="eb-modal-remarks" class="form-textarea" rows="2" placeholder="หมายเหตุเพิ่มเติม..."></textarea>
         </div>
         <div class="flex justify-end gap-2 pt-2">
-          <button type="button" class="btn btn-outline" onclick="closeModal()">Cancel</button>
-          <button type="button" class="btn btn-brand" onclick="saveEBiddingModal()">Save E-Bidding</button>
+          <button type="button" class="btn btn-outline" onclick="closeModal()">ยกเลิก</button>
+          <button type="button" class="btn btn-brand" onclick="saveEBiddingModal()">บันทึกแผน E-Bidding</button>
         </div>
       </div>
     </div>
@@ -2258,7 +2243,7 @@
         </div>
         <div class="grid-3">
           <div class="form-group">
-            <label class="form-label">Fiscal Year</label>
+            <label class="form-label">ปีงบประมาณ</label>
             <input type="text" id="ct-modal-fy" class="form-input" readonly style="background:var(--line2);">
           </div>
           <div class="form-group">
@@ -2410,7 +2395,7 @@
             <input type="date" id="sp-modal-date" class="form-input" onchange="onSpecificPurchaseDateChange(this.value)" required>
           </div>
           <div class="form-group">
-            <label class="form-label">Fiscal Year</label>
+            <label class="form-label">ปีงบประมาณ</label>
             <input type="number" id="sp-modal-fy" class="form-input" oninput="updateSpecificPurchaseModalCalc()" required>
           </div>
           <div class="form-group">
@@ -2614,6 +2599,6 @@
     }, 4000);
   </script>
 
-  <script src="app.js?v=20261120c"></script>
+  <script src="app.js?v=20261122b"></script>
 </body>
 </html>
