@@ -419,13 +419,13 @@ window.__INR_MAIN_PARSED = true;
 
         // Procurement Sub-tabs
         proc_sub_ebidding: 'แผน E-Bidding',
-        proc_sub_contracts: 'สัญญาจะซื้อจะขาย',
+        proc_sub_contracts: 'รายการที่มีสัญญา',
         proc_sub_po: 'ใบสั่งซื้อตามสัญญา (PO)',
         proc_sub_sp: 'จัดซื้อเฉพาะเจาะจง',
         proc_sub_receiving: 'ตรวจรับพัสดุ',
-        proc_fy_label: 'ปีงบประมาณ (พ.ศ.):',
+        proc_fy_label: 'ปีงบประมาณ:',
         proc_add_ebidding: 'เพิ่มแผน E-Bidding',
-        proc_add_contract: 'สร้างสัญญาจะซื้อจะขาย',
+        proc_add_contract: 'เพิ่มรายการที่มีสัญญา',
         proc_add_po: 'ออกใบสั่งซื้อ (PO)',
         proc_add_sp: 'เพิ่มจัดซื้อเฉพาะเจาะจง',
         proc_add_receiving: 'บันทึกตรวจรับพัสดุ',
@@ -438,21 +438,12 @@ window.__INR_MAIN_PARSED = true;
         stat_cm: 'สารทึบรังสี',
         stat_shift: 'เวร',
 
-        // Settings Sub-tabs & Security
+        // Settings Sub-tabs
         set_lists: 'ตัวเลือก',
         set_users: 'ผู้ใช้',
         set_groups: 'กลุ่มรายการ',
-        set_security: 'ความปลอดภัย',
-        set_users_title: 'จัดการชื่อเล่นผู้ใช้ / บุคลากร',
+        set_users_title: 'จัดการผู้ใช้',
         set_groups_title: 'จัดการกลุ่มอุปกรณ์ (HO Item ID และราคากลุ่ม)',
-        btn_lock_settings: 'ล็อกตั้งค่า',
-        btn_unlock_settings: 'ปลดล็อกตั้งค่า',
-        sec_title: 'รหัสผ่านตั้งค่าและรหัสลบข้อมูลแยกตามเมนู (ซิงก์เซิร์ฟเวอร์)',
-        sec_subtitle: 'จัดการรหัสผ่านเข้าหน้าตั้งค่าและรหัสยืนยันการลบข้อมูลแยกตามแต่ละเมนู (บันทึกลง Google Sheets แท็บ Settings · เข้าหน้าตั้งค่า 0000 · ลบข้อมูล 1234)',
-        sec_change_heading: 'เปลี่ยนรหัสผ่าน',
-        sec_cur_pin: 'รหัสผ่านเดิม',
-        sec_new_pin: 'รหัสผ่านใหม่ (อย่างน้อย 4 ตัวอักษร)',
-        sec_conf_pin: 'ยืนยันรหัสผ่านใหม่',
 
         // Action Buttons
         btn_add_device: 'เพิ่มรายการ',
@@ -1015,15 +1006,9 @@ window.__INR_MAIN_PARSED = true;
 
     // ===== RENDER ENGINES =====
 
-    // ===== 8-MENU NAVIGATION, HIDDEN SETTINGS & MOBILE BOTTOM BAR =====
-    const SETTINGS_UNLOCK_KEY = 'inr_settings_unlocked';
-
+    // ===== 8-MENU NAVIGATION & SETTINGS ACCESS (DIRECT ACCESS) =====
     function isSettingsUnlocked() {
-      try {
-        return sessionStorage.getItem(SETTINGS_UNLOCK_KEY) === '1';
-      } catch (e) {
-        return false;
-      }
+      return true;
     }
 
     function openMoreSheet() {
@@ -1037,41 +1022,18 @@ window.__INR_MAIN_PARSED = true;
     }
 
     function handleAdminSettingsToggle() {
-      if (isSettingsUnlocked()) {
-        if (state.currentTab === 'settings') {
-          lockSettings();
-        } else {
-          switchTab('settings');
-        }
-      } else {
-        promptUnlockSettings();
-      }
+      switchTab('settings');
     }
 
     function promptUnlockSettings(targetSection) {
-      const msg = 'กรุณากรอกรหัสผ่าน 4 หลักเพื่อเข้าสู่หน้าตั้งค่า';
-      verifyPasscodeThen('settings_access', msg, () => {
-        try {
-          sessionStorage.setItem(SETTINGS_UNLOCK_KEY, '1');
-        } catch (e) {}
-        renderNavShell();
-        switchTab('settings');
-        if (targetSection && typeof switchSettingsSection === 'function') {
-          switchSettingsSection(targetSection);
-        }
-        showToast('ปลดล็อกเมนูตั้งค่าแล้ว');
-      });
+      switchTab('settings');
+      if (targetSection && typeof switchSettingsSection === 'function') {
+        switchSettingsSection(targetSection);
+      }
     }
 
     function lockSettings() {
-      try {
-        sessionStorage.removeItem(SETTINGS_UNLOCK_KEY);
-      } catch (e) {}
-      renderNavShell();
-      if (state.currentTab === 'settings') {
-        switchTab('dashboard');
-      }
-      showToast(state.currentLang === 'th' ? 'ล็อกเมนูตั้งค่าแล้ว' : 'Settings locked');
+      // Settings access no longer requires locking/unlocking
     }
 
     function renderNavShell() {
@@ -1154,15 +1116,6 @@ window.__INR_MAIN_PARSED = true;
         state.exchangeSubTab = 'loans';
       }
 
-      if (target === 'settings' && !isSettingsUnlocked()) {
-        promptUnlockSettings();
-        return;
-      }
-
-      if (state.currentTab === 'settings' && target !== 'settings') {
-        try { sessionStorage.removeItem(SETTINGS_UNLOCK_KEY); } catch (e) {}
-      }
-
       state.currentTab = target;
       closeMoreSheet();
       renderNavShell();
@@ -1209,10 +1162,6 @@ window.__INR_MAIN_PARSED = true;
             renderAssetsTab();
             break;
           case 'settings':
-            if (!isSettingsUnlocked()) {
-              switchTab('dashboard');
-              return;
-            }
             renderSettingsTab();
             break;
         }
@@ -1310,6 +1259,15 @@ window.__INR_MAIN_PARSED = true;
         return;
       }
 
+      if (e.target && e.target.id === 'eb-modal-device') {
+        const res = document.getElementById('eb-item-picker-results');
+        if (res && !res.classList.contains('hidden')) {
+          e.preventDefault();
+          if (typeof selectFirstEBiddingDeviceOption === 'function') selectFirstEBiddingDeviceOption();
+          return;
+        }
+      }
+
       if (e.target && (e.target.id === 'eb-item-picker-input' || e.target.id === 'sp-item-picker-input' || e.target.id === 'rc-alloc-search-input')) {
         e.preventDefault();
         return;
@@ -1352,68 +1310,37 @@ window.__INR_MAIN_PARSED = true;
       });
     });
 
-    // ===== SERVER-SYNCED PER-MENU PASSCODES (Settings Sheet) =====
+    // ===== LOCAL DELETION PASSCODE (Always Local, Default: 1234) =====
+    const LOCAL_DELETE_PASSCODE = '1234';
     const PASSCODE_SCOPE_META = {
-      settings_access: {
-        en: 'Settings Menu Access',
-        th: 'เข้าใช้งานเมนูตั้งค่า (Settings)',
-        descEn: 'Required to reveal and open the hidden Settings menu.',
-        descTh: 'ใช้สำหรับปลดล็อกเพื่อเปิดเมนูตั้งค่าที่ซ่อนไว้'
-      },
       delete_home: {
         en: 'Home — Announcements',
-        th: 'หน้าแรก — ลบประกาศ',
-        descEn: 'Deletion passcode for Announcements on Home.',
-        descTh: 'รหัสยืนยันการลบประกาศในหน้าแรก'
+        th: 'หน้าแรก — ลบประกาศ'
       },
       delete_cases: {
         en: 'Cases — Procedure Records',
-        th: 'บันทึกเคส — ลบเคสหัตถการ',
-        descEn: 'Deletion passcode for logged Procedure Cases.',
-        descTh: 'รหัสยืนยันการลบรายการเคสหัตถการ'
+        th: 'บันทึกเคส — ลบเคสหัตถการ'
       },
       delete_stock: {
         en: 'Stock — Items & Movements',
-        th: 'คลังเวชภัณฑ์ — ลบอุปกรณ์/ความเคลื่อนไหว',
-        descEn: 'Deletion passcode for Inventory Items and Stock Movements.',
-        descTh: 'รหัสยืนยันการลบอุปกรณ์ในคลังและประวัติความเคลื่อนไหว'
+        th: 'คลังเวชภัณฑ์ — ลบอุปกรณ์/ความเคลื่อนไหว'
       },
       delete_swap: {
         en: 'Swap & Loan — Quotas, Deposits & Loans',
-        th: 'ยืม-แลก-ฝาก — ลบรายการทดแทน/ของฝาก/ยืม-คืน',
-        descEn: 'Deletion passcode for Substitutions, Deposits, and Loans.',
-        descTh: 'รหัสยืนยันการลบรายการตัดของทดแทน ของฝาก และยืม-คืน'
+        th: 'ยืม-แลก-ฝาก — ลบรายการทดแทน/ของฝาก/ยืม-คืน'
       },
       delete_assets: {
         en: 'Assets — Registry, Logs & Condemn',
-        th: 'ครุภัณฑ์ — ลบครุภัณฑ์/ประวัติตรวจ/แทงชำรุด',
-        descEn: 'Passcode for deleting Assets, Maintenance logs, or Condemning assets.',
-        descTh: 'รหัสยืนยันการลบครุภัณฑ์ ประวัติซ่อมบำรุง หรือแทงชำรุด'
+        th: 'ครุภัณฑ์ — ลบครุภัณฑ์/ประวัติตรวจ/แทงชำรุด'
       },
       delete_procurement: {
         en: 'Procurement — Delete & Cancel',
-        th: 'จัดซื้อ — ลบ/ยกเลิกรายการจัดซื้อ',
-        descEn: 'Passcode for deleting or cancelling E-Bidding, Contracts, POs, and Receiving.',
-        descTh: 'รหัสยืนยันการลบหรือยกเลิกแผน สัญญา ใบสั่งซื้อ และการตรวจรับ'
+        th: 'จัดซื้อ — ลบ/ยกเลิกรายการจัดซื้อ'
       },
       delete_settings: {
         en: 'Settings — Lists, Users & Groups',
-        th: 'ตั้งค่า — ลบตัวเลือก/ผู้ใช้/กลุ่ม',
-        descEn: 'Deletion passcode for Lists, User Nicknames, and Groups.',
-        descTh: 'รหัสยืนยันการลบตัวเลือก รายชื่อผู้ใช้ และกลุ่มอุปกรณ์'
+        th: 'ตั้งค่า — ลบตัวเลือก/ผู้ใช้/กลุ่ม'
       }
-    };
-
-    // Offline / mock fallback store (settings_access defaults to '0000', delete scopes default to '1234')
-    const _mockPasscodes = {
-      settings_access: '0000',
-      delete_home: '1234',
-      delete_cases: '1234',
-      delete_stock: '1234',
-      delete_swap: '1234',
-      delete_assets: '1234',
-      delete_procurement: '1234',
-      delete_settings: '1234'
     };
 
     let pendingPasscodeAction = null;
@@ -1422,8 +1349,8 @@ window.__INR_MAIN_PARSED = true;
 
     function getPasscodeScopeLabel(scope) {
       const meta = PASSCODE_SCOPE_META[scope];
-      if (!meta) return scope || 'Security';
-      return state.currentLang === 'th' ? meta.th : meta.en;
+      if (!meta) return scope || 'ยืนยันการลบข้อมูล';
+      return meta.th || meta.en;
     }
 
     function verifyPasscodeThen(scopeOrDesc, descOrCallback, maybeCallback) {
@@ -1443,31 +1370,26 @@ window.__INR_MAIN_PARSED = true;
       pendingPasscodeAction = callback;
       _passcodeVerifying = false;
 
-      const isUnlock = scope === 'settings_access';
       const titleEl = document.getElementById('passcode-modal-title');
       if (titleEl) {
-        titleEl.innerText = isUnlock
-          ? (state.currentLang === 'th' ? 'ยืนยันรหัสผ่านเข้าหน้าตั้งค่า' : 'Unlock Admin Settings')
-          : (state.currentLang === 'th' ? 'กรุณายืนยันรหัสผ่าน' : 'Security Passcode Required');
-        titleEl.style.color = isUnlock ? 'var(--g-d)' : 'var(--red)';
+        titleEl.innerText = 'กรุณายืนยันรหัสผ่าน';
+        titleEl.style.color = 'var(--red)';
       }
 
       const scopeBadge = document.getElementById('passcode-scope-badge');
       if (scopeBadge) {
         scopeBadge.innerText = getPasscodeScopeLabel(scope);
-        scopeBadge.className = 'badge ' + (isUnlock ? 'ok' : 'warn');
+        scopeBadge.className = 'badge warn';
       }
 
       const descEl = document.getElementById('passcode-action-desc');
-      if (descEl) descEl.innerText = description || (state.currentLang === 'th' ? 'กรุณากรอกรหัสผ่านเพื่อดำเนินการต่อ' : 'Security passcode required to continue.');
+      if (descEl) descEl.innerText = description || 'กรุณากรอกรหัสผ่านเพื่อดำเนินการต่อ';
 
       const btn = document.getElementById('btn-passcode-confirm');
       if (btn) {
         btn.disabled = false;
-        btn.className = isUnlock ? 'btn btn-p' : 'btn btn-d';
-        btn.innerText = isUnlock
-          ? (state.currentLang === 'th' ? 'ปลดล็อก' : 'Unlock')
-          : (state.currentLang === 'th' ? 'ยืนยัน' : 'Confirm');
+        btn.className = 'btn btn-d';
+        btn.innerText = 'ยืนยัน';
       }
 
       const inputEl = document.getElementById('passcode-input');
@@ -1484,61 +1406,29 @@ window.__INR_MAIN_PARSED = true;
       verifyPasscodeThen(scope || 'delete_procurement', description, callback);
     }
 
-    async function submitPasscodeConfirm() {
-      if (_passcodeVerifying) return;
+    function submitPasscodeConfirm() {
       const inputEl = document.getElementById('passcode-input');
       const val = inputEl ? inputEl.value.trim() : '';
       const errEl = document.getElementById('passcode-error');
-      const btn = document.getElementById('btn-passcode-confirm');
-      const scope = pendingPasscodeScope || 'delete_stock';
-      const isUnlock = scope === 'settings_access';
 
       if (!val) {
         if (errEl) {
-          errEl.innerText = state.currentLang === 'th' ? 'กรุณากรอกรหัสผ่าน' : 'Please enter passcode.';
+          errEl.innerText = 'กรุณากรอกรหัสผ่าน';
           errEl.classList.remove('hidden');
         }
         if (inputEl) inputEl.focus();
         return;
       }
 
-      _passcodeVerifying = true;
-      const prevLabel = btn ? btn.innerText : '';
-      if (btn) {
-        btn.disabled = true;
-        btn.innerText = state.currentLang === 'th' ? 'กำลังตรวจสอบ...' : 'Verifying...';
-      }
-      if (errEl) errEl.classList.add('hidden');
-
-      let isValid = false;
-      let errMsg = '';
-      try {
-        if (isApiConfigured()) {
-          const res = await callApi('verifyPasscode', { scope, passcode: val });
-          isValid = Boolean(res && res.valid === true);
-          if (!isValid && res && res.error) errMsg = res.error;
-        } else {
-          const expected = _mockPasscodes[scope] || '1234';
-          isValid = (val === expected);
-        }
-      } catch (err) {
-        errMsg = (err && err.message) ? err.message : 'Verification error';
-      } finally {
-        _passcodeVerifying = false;
-        if (btn) {
-          btn.disabled = false;
-          btn.innerText = prevLabel || (isUnlock ? (state.currentLang === 'th' ? 'ปลดล็อก' : 'Unlock') : (state.currentLang === 'th' ? 'ยืนยัน' : 'Confirm'));
-        }
-      }
-
-      if (isValid) {
+      if (val === LOCAL_DELETE_PASSCODE) {
+        if (errEl) errEl.classList.add('hidden');
         const act = pendingPasscodeAction;
         pendingPasscodeAction = null;
         closePasscodeModal();
         if (typeof act === 'function') act();
       } else {
         if (errEl) {
-          errEl.innerText = errMsg || (state.currentLang === 'th' ? 'รหัสผ่านไม่ถูกต้อง กรุณาลองใหม่อีกครั้ง' : 'Incorrect passcode. Please try again.');
+          errEl.innerText = 'รหัสผ่านไม่ถูกต้อง กรุณาลองใหม่อีกครั้ง';
           errEl.classList.remove('hidden');
         }
         if (inputEl) {
@@ -1548,13 +1438,9 @@ window.__INR_MAIN_PARSED = true;
       }
     }
 
-    function onPasscodeInputChange(el) {
-      if (pendingPasscodeScope !== 'settings_access') return;
-      if (_passcodeVerifying) return;
-      const val = (el ? el.value : '').trim();
-      if (val.length === 4) {
-        submitPasscodeConfirm();
-      }
+    function onPasscodeInputChange() {
+      const errEl = document.getElementById('passcode-error');
+      if (errEl) errEl.classList.add('hidden');
     }
 
     function closePasscodeModal() {
@@ -1562,98 +1448,6 @@ window.__INR_MAIN_PARSED = true;
       _passcodeVerifying = false;
       document.getElementById('modal-passcode-confirm')?.classList.add('hidden');
       document.getElementById('modal-overlay')?.classList.add('hidden');
-    }
-
-    function selectSecurityScope(scope) {
-      if (!PASSCODE_SCOPE_META[scope]) return;
-      state.securitySelectedScope = scope;
-      const curInput = document.getElementById('settings-cur-passcode');
-      const newInput = document.getElementById('settings-new-passcode');
-      const confInput = document.getElementById('settings-confirm-passcode');
-      if (curInput) curInput.value = '';
-      if (newInput) newInput.value = '';
-      if (confInput) confInput.value = '';
-      renderSecuritySettings();
-    }
-
-    function renderSecuritySettings() {
-      const listEl = document.getElementById('security-scope-list');
-      const badgeEl = document.getElementById('sec-selected-scope-label');
-      const selected = PASSCODE_SCOPE_META[state.securitySelectedScope] ? state.securitySelectedScope : 'settings_access';
-      state.securitySelectedScope = selected;
-
-      if (badgeEl) {
-        badgeEl.innerText = getPasscodeScopeLabel(selected);
-        badgeEl.className = 'badge ' + (selected === 'settings_access' ? 'ok' : 'warn');
-      }
-      if (!listEl) return;
-
-      const scopes = Object.keys(PASSCODE_SCOPE_META);
-      listEl.innerHTML = scopes.map(sc => {
-        const m = PASSCODE_SCOPE_META[sc];
-        const title = state.currentLang === 'th' ? m.th : m.en;
-        const desc = state.currentLang === 'th' ? m.descTh : m.descEn;
-        const on = sc === selected;
-        return `
-          <button type="button" class="security-scope-btn ${on ? 'on' : ''}" data-scope="${sc}" onclick="selectSecurityScope('${sc}')">
-            <span class="kic">${sc === 'settings_access' ? ICONS.lock : ICONS.shield}</span>
-            <span style="flex:1; min-width:0;">
-              <b>${escapeHtml(title)}</b>
-              <small>${escapeHtml(desc)}</small>
-            </span>
-          </button>
-        `;
-      }).join('');
-    }
-
-    async function saveNewPasscode() {
-      const scope = PASSCODE_SCOPE_META[state.securitySelectedScope] ? state.securitySelectedScope : 'settings_access';
-      const curInput = document.getElementById('settings-cur-passcode');
-      const newInput = document.getElementById('settings-new-passcode');
-      const confInput = document.getElementById('settings-confirm-passcode');
-      const btn = document.getElementById('btn-save-passcode');
-
-      const cur = curInput ? curInput.value.trim() : '';
-      const nw = newInput ? newInput.value.trim() : '';
-      const cf = confInput ? confInput.value.trim() : '';
-
-      if (!cur) {
-        showToast(state.currentLang === 'th' ? 'กรุณากรอกรหัสผ่านเดิม' : 'Please enter current passcode');
-        return;
-      }
-      if (!nw || nw.length < 4) {
-        showToast(state.currentLang === 'th' ? 'รหัสผ่านใหม่ต้องมีอย่างน้อย 4 ตัวอักษร' : 'New passcode must be at least 4 characters');
-        return;
-      }
-      if (nw !== cf) {
-        showToast(state.currentLang === 'th' ? 'รหัสผ่านใหม่ไม่ตรงกัน' : 'New passcodes do not match');
-        return;
-      }
-
-      if (btn) btn.disabled = true;
-      setSyncIndicator(true);
-      try {
-        if (isApiConfigured()) {
-          await callApi('updatePasscode', { scope, currentPasscode: cur, newPasscode: nw });
-        } else {
-          if (cur !== (_mockPasscodes[scope] || '1234')) {
-            throw new Error(state.currentLang === 'th' ? 'รหัสผ่านเดิมไม่ถูกต้อง' : 'Current passcode is incorrect.');
-          }
-          _mockPasscodes[scope] = nw;
-        }
-        if (curInput) curInput.value = '';
-        if (newInput) newInput.value = '';
-        if (confInput) confInput.value = '';
-        showToast(
-          (state.currentLang === 'th' ? 'บันทึกรหัสผ่านใหม่สำเร็จ: ' : 'Passcode updated: ') +
-          getPasscodeScopeLabel(scope)
-        );
-      } catch (err) {
-        showToast((err && err.message) ? err.message : 'Failed to update passcode');
-      } finally {
-        setSyncIndicator(false);
-        if (btn) btn.disabled = false;
-      }
     }
 
     function setStockActionMode(mode) {
@@ -6024,6 +5818,7 @@ function exportStatisticsCSV() {
 
     function switchSettingsSection(sec) {
       let target = sec || state.settingsSection || 'lists';
+      if (target === 'security') target = 'lists';
       if (SETTINGS_LIST_KEYS.includes(target)) {
         state.settingsListKey = target;
         target = 'lists';
@@ -6061,6 +5856,10 @@ function exportStatisticsCSV() {
     function renderSettingsTab() {
       updateSettingsBadgeCounts();
       let rawSec = state.settingsSection || 'lists';
+      if (rawSec === 'security') {
+        rawSec = 'lists';
+        state.settingsSection = 'lists';
+      }
       if (SETTINGS_LIST_KEYS.includes(rawSec)) {
         state.settingsListKey = rawSec;
         rawSec = 'lists';
@@ -6081,28 +5880,16 @@ function exportStatisticsCSV() {
 
       const listCard = document.getElementById('settings-list-card');
       const userCard = document.getElementById('settings-user-card');
-      const secCard  = document.getElementById('settings-security-card');
       const grpCard  = document.getElementById('settings-groups-card');
 
       if (sec === 'groups' || sec === 'hierarchy') {
         if (listCard) listCard.classList.add('hidden');
         if (userCard) userCard.classList.add('hidden');
-        if (secCard)  secCard.classList.add('hidden');
         if (grpCard)  grpCard.classList.remove('hidden');
         renderGroupsSettings();
         return;
       } else {
         if (grpCard) grpCard.classList.add('hidden');
-      }
-
-      if (sec === 'security') {
-        if (listCard) listCard.classList.add('hidden');
-        if (userCard) userCard.classList.add('hidden');
-        if (secCard) secCard.classList.remove('hidden');
-        if (typeof renderSecuritySettings === 'function') renderSecuritySettings();
-        return;
-      } else {
-        if (secCard) secCard.classList.add('hidden');
       }
 
       if (sec === 'users') {
@@ -6112,18 +5899,28 @@ function exportStatisticsCSV() {
         const tbody = document.getElementById('settings-users-body');
         const users = state.settings.users || [];
         if (users.length === 0) {
-          tbody.innerHTML = '<tr><td colspan="3" class="empty-state">No User Nicknames configured yet. Click "+ Add Nickname" to add one.</td></tr>';
+          tbody.innerHTML = '<tr><td colspan="8" class="empty-state">ยังไม่มีข้อมูลผู้ใช้ คลิก "+ เพิ่มผู้ใช้" เพื่อเพิ่มรายการ</td></tr>';
         } else {
           tbody.innerHTML = users.map((u, idx) => {
-            const uid = u.userId || ('USR-' + String(idx + 1).padStart(3, '0'));
-            const nick = u.nickname || u.name || '';
+            const name = u.name || '';
+            const surname = u.surname || '';
+            const nick = u.nickname || '';
+            const pos = u.position || '';
+            const auth = u.authorization || '';
+            const phone = u.phone || '';
+            const dobStr = u.dob ? formatDateDDMMYYYY(u.dob) : '';
             return `
             <tr>
-              <td class="font-mono text-xs text-gray">${escapeHtml(uid)}</td>
-              <td class="font-semibold">${escapeHtml(nick)}</td>
+              <td class="font-medium">${escapeHtml(name || '—')}</td>
+              <td>${escapeHtml(surname || '—')}</td>
+              <td class="font-semibold">${escapeHtml(nick || '—')}</td>
+              <td>${escapeHtml(pos || '—')}</td>
+              <td>${auth ? `<span class="badge badge-blue">${escapeHtml(auth)}</span>` : '—'}</td>
+              <td class="font-mono text-xs">${escapeHtml(phone || '—')}</td>
+              <td class="text-xs text-gray">${escapeHtml(dobStr || '—')}</td>
               <td class="center" style="white-space:nowrap;">
-                <button class="btn-ghost" onclick="openUserModal(${idx})" title="Edit Nickname">${ICONS.edit}</button>
-                <button class="btn-ghost" style="color:var(--red);" onclick="removeUser(${idx})" title="Delete Nickname">${ICONS.trash}</button>
+                <button class="btn-ghost" onclick="openUserModal(${idx})" title="แก้ไขผู้ใช้">${ICONS.edit}</button>
+                <button class="btn-ghost" style="color:var(--red);" onclick="removeUser(${idx})" title="ลบผู้ใช้">${ICONS.trash}</button>
               </td>
             </tr>
           `;
@@ -6282,31 +6079,70 @@ function exportStatisticsCSV() {
       }
     }
 
+    function normalizeDateForInput(v) {
+      const s = String(v || '').trim();
+      if (!s) return '';
+      if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10);
+      const m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+      if (m) {
+        const dd = m[1].padStart(2, '0');
+        const mm = m[2].padStart(2, '0');
+        return `${m[3]}-${mm}-${dd}`;
+      }
+      return '';
+    }
+
     function openUserModal(idx) {
       const isEdit = idx >= 0;
       const u = isEdit ? ((state.settings.users || [])[idx] || {}) : {};
-      document.getElementById('modal-user-title').innerText = isEdit ? 'Edit User Nickname' : 'Add User Nickname';
+      document.getElementById('modal-user-title').innerText = isEdit ? 'แก้ไขข้อมูลผู้ใช้' : 'เพิ่มผู้ใช้';
       document.getElementById('user-modal-idx').value = String(idx);
+      const rowIdxEl = document.getElementById('user-modal-row-index');
+      if (rowIdxEl) rowIdxEl.value = u.rowIndex ? String(u.rowIndex) : '';
       const idEl = document.getElementById('user-modal-id');
       if (idEl) idEl.value = u.userId || '';
+      const nameEl = document.getElementById('user-modal-name');
+      if (nameEl) nameEl.value = u.name || '';
+      const surEl = document.getElementById('user-modal-surname');
+      if (surEl) surEl.value = u.surname || '';
       const nickEl = document.getElementById('user-modal-nickname');
-      if (nickEl) nickEl.value = u.nickname || u.name || '';
+      if (nickEl) nickEl.value = u.nickname || '';
+      const posEl = document.getElementById('user-modal-position');
+      if (posEl) posEl.value = u.position || '';
+      const authEl = document.getElementById('user-modal-authorization');
+      if (authEl) authEl.value = u.authorization || '';
+      const phoneEl = document.getElementById('user-modal-phone');
+      if (phoneEl) phoneEl.value = u.phone || '';
+      const dobEl = document.getElementById('user-modal-dob');
+      if (dobEl) dobEl.value = normalizeDateForInput(u.dob);
       openModal('modal-user');
     }
 
     function applyUserModal() {
       const idx = parseInt(document.getElementById('user-modal-idx').value);
+      const rowIndex = parseInt(document.getElementById('user-modal-row-index')?.value || '0') || 0;
       const userId = (document.getElementById('user-modal-id')?.value || '').trim();
+      const name = (document.getElementById('user-modal-name')?.value || '').trim();
+      const surname = (document.getElementById('user-modal-surname')?.value || '').trim();
       const nickname = (document.getElementById('user-modal-nickname')?.value || '').trim();
+      const position = (document.getElementById('user-modal-position')?.value || '').trim();
+      const authorization = (document.getElementById('user-modal-authorization')?.value || '').trim();
+      const phone = (document.getElementById('user-modal-phone')?.value || '').trim();
+      const dob = (document.getElementById('user-modal-dob')?.value || '').trim();
+
+      if (!name) {
+        showToast('กรุณากรอก User name');
+        return;
+      }
       if (!nickname) {
-        showToast('Nickname is required');
+        showToast('กรุณากรอก User nickname');
         return;
       }
 
       if (!Array.isArray(state.settings.users)) state.settings.users = [];
-      const dup = state.settings.users.some((u, i) => i !== idx && String(u.nickname || u.name || '').trim().toLowerCase() === nickname.toLowerCase());
+      const dup = state.settings.users.some((u, i) => i !== idx && String(u.nickname || '').trim().toLowerCase() === nickname.toLowerCase());
       if (dup) {
-        showToast('This Nickname already exists');
+        showToast('User nickname นี้มีอยู่ในระบบแล้ว');
         return;
       }
 
@@ -6314,55 +6150,85 @@ function exportStatisticsCSV() {
       if (isApiConfigured()) {
         setSyncIndicator(true);
         const isEdit = idx >= 0 && idx < state.settings.users.length;
-        const oldNick = isEdit ? (state.settings.users[idx].nickname || state.settings.users[idx].name || '') : '';
+        const origUser = isEdit ? state.settings.users[idx] : {};
         const action = isEdit ? 'editUser' : 'addUser';
-        const payload = isEdit ? { userId, oldNickname: oldNick, nickname } : { nickname };
+        const payload = isEdit
+          ? {
+              rowIndex: rowIndex || origUser.rowIndex || 0,
+              userId: userId || origUser.userId || '',
+              oldNickname: origUser.nickname || '',
+              oldName: origUser.name || '',
+              oldSurname: origUser.surname || '',
+              name,
+              surname,
+              nickname,
+              position,
+              authorization,
+              phone,
+              dob
+            }
+          : { name, surname, nickname, position, authorization, phone, dob };
         callApi(action, payload)
           .then(() => {
             setSyncIndicator(false);
-            showToast(isEdit ? 'Nickname updated!' : 'Nickname added!');
+            showToast(isEdit ? 'แก้ไขข้อมูลผู้ใช้สำเร็จ' : 'เพิ่มผู้ใช้สำเร็จ');
             fetchDataFromServer();
           })
           .catch(err => {
             setSyncIndicator(false);
-            showToast('Failed: ' + (err.message || err));
+            showToast('ไม่สำเร็จ: ' + (err.message || err));
           });
       } else {
         if (idx >= 0 && idx < state.settings.users.length) {
-          state.settings.users[idx].nickname = nickname;
-          state.settings.users[idx].name = nickname;
+          Object.assign(state.settings.users[idx], { name, surname, nickname, position, authorization, phone, dob });
         } else {
-          const newId = 'USR-' + String(state.settings.users.length + 1).padStart(3, '0');
-          state.settings.users.push({ userId: newId, nickname, name: nickname });
+          const newId = 'USR-' + (state.settings.users.length + 1);
+          state.settings.users.push({
+            rowIndex: state.settings.users.length + 2,
+            userId: newId,
+            name,
+            surname,
+            nickname,
+            position,
+            authorization,
+            phone,
+            dob
+          });
         }
         state.settings.techs = state.settings.users;
         renderSettingsTab();
-        showToast(idx >= 0 ? 'Nickname updated (mock)' : 'Nickname added (mock)');
+        showToast(idx >= 0 ? 'แก้ไขข้อมูลผู้ใช้สำเร็จ (mock)' : 'เพิ่มผู้ใช้สำเร็จ (mock)');
       }
     }
 
     function removeUser(idx) {
       const u = (state.settings.users || [])[idx];
       if (!u) return;
-      const nick = u.nickname || u.name || 'user';
-      verifyPasscodeThen('delete_settings', state.currentLang === 'th' ? `ยืนยันการลบชื่อเล่น "${nick}"?` : `Delete user nickname "${nick}"?`, () => {
+      const displayLabel = u.nickname || u.name || 'ผู้ใช้';
+      verifyPasscodeThen('delete_settings', `ยืนยันการลบผู้ใช้ "${displayLabel}"?`, () => {
         if (isApiConfigured()) {
           setSyncIndicator(true);
-          callApi('deleteUser', { userId: u.userId, nickname: nick })
+          callApi('deleteUser', {
+            rowIndex: u.rowIndex || 0,
+            userId: u.userId || '',
+            nickname: u.nickname || '',
+            name: u.name || '',
+            surname: u.surname || ''
+          })
             .then(() => {
               setSyncIndicator(false);
-              showToast('Nickname deleted');
+              showToast('ลบข้อมูลผู้ใช้แล้ว');
               fetchDataFromServer();
             })
             .catch(err => {
               setSyncIndicator(false);
-              showToast('Failed: ' + (err.message || err));
+              showToast('ไม่สำเร็จ: ' + (err.message || err));
             });
         } else {
           state.settings.users.splice(idx, 1);
           state.settings.techs = state.settings.users;
           renderSettingsTab();
-          showToast('Nickname deleted (mock)');
+          showToast('ลบข้อมูลผู้ใช้แล้ว (mock)');
         }
       });
     }
@@ -6390,7 +6256,7 @@ function exportStatisticsCSV() {
         itemSel.innerHTML = `<option value="">-- Select Inventory Device --</option>` +
           items.map(i => {
             const gObj = i.groupId ? groupById.get(String(i.groupId)) : null;
-            const gTag = gObj ? ` [in ${gObj.groupName}]` : ' [Ungrouped]';
+            const gTag = gObj ? ` [กลุ่ม: ${gObj.groupName}]` : '';
             const fTag = i.isFreeItem ? ' [FREE]' : '';
             return `<option value="${escapeHtml(String(i.itemId))}" ${String(i.itemId) === String(curItem) ? 'selected' : ''}>${escapeHtml(i.deviceName)}${fTag}${escapeHtml(gTag)}</option>`;
           }).join('');
@@ -6471,37 +6337,6 @@ function exportStatisticsCSV() {
             </div>
           `;
         }).join('');
-      }
-
-      const ungroupedItems = items.filter(i => !i.groupId);
-      if (ungroupedItems.length > 0) {
-        html += `
-          <div class="hierarchy-group-card" style="margin-top:16px; border-color:var(--gray-300);">
-            <div class="hierarchy-group-header" style="background:var(--gray-100);">
-              <div>
-                <strong class="text-sm">Ungrouped / Standalone Items (${ungroupedItems.length})</strong>
-                <div class="text-xs text-gray">Items not currently in any Group. Use "Assign to Group" above to add any item (including Free Items) into a Group.</div>
-              </div>
-            </div>
-            <div class="hierarchy-children-list">
-              ${ungroupedItems.map(c => `
-                <div class="hierarchy-child-item">
-                  <div>
-                    <strong>${escapeHtml(c.deviceName)}</strong>
-                    ${c.isFreeItem ? `<span class="badge-free" style="margin-left:4px;">FREE</span>` : ''}
-                    <span class="badge badge-gray" style="margin-left:4px;">${escapeHtml(c.category || '—')}</span>
-                    <span class="text-xs font-mono text-gray" style="margin-left:6px;">(${escapeHtml(c.itemId)} · HO: ${escapeHtml(c.hoItemId || '-')})</span>
-                    <span class="text-xs text-gray" style="margin-left:8px;">Main: ${c.mainStock || 0} · Retail: <strong>${c.retailStock || 0}</strong> · Total: <strong>${c.totalStock || 0}</strong></span>
-                  </div>
-                  <div class="flex gap-1 items-center">
-                    <button type="button" class="btn btn-outline btn-sm" style="padding:2px 8px; font-size:11px;" onclick="toggleItemFreeStatus('${escapeHtml(c.itemId)}')" title="Toggle Free Item status">${c.isFreeItem ? 'Set Paid' : 'Set Free'}</button>
-                    <button type="button" class="btn-ghost text-xs" onclick="openEditDeviceModal('${escapeHtml(c.itemId)}')" title="Edit Device">${ICONS.edit}</button>
-                  </div>
-                </div>
-              `).join('')}
-            </div>
-          </div>
-        `;
       }
 
       treeEl.innerHTML = html;
@@ -7922,9 +7757,386 @@ function exportStatisticsCSV() {
       return false;
     }
 
-    function buildQrCodeUrl(data, pxSize) {
-      const sz = pxSize || 150;
-      return 'https:\x2f\x2fapi.qrserver.com/v1/create-qr-code?size=' + sz + 'x' + sz + '&data=' + encodeURIComponent(String(data || ''));
+    // ===== OFFLINE ISO-18004 SVG QR CODE GENERATOR (BYTE MODE, ECC LEVEL M, V1-V10) =====
+    const QR_GF_EXP = new Uint8Array(256);
+    const QR_GF_LOG = new Uint8Array(256);
+    (() => {
+      let v = 1;
+      for (let i = 0; i < 255; i++) {
+        QR_GF_EXP[i] = v;
+        QR_GF_LOG[v] = i;
+        v <<= 1;
+        if (v & 0x100) v ^= 0x11d;
+      }
+      QR_GF_EXP[255] = QR_GF_EXP[0];
+    })();
+
+    const QR_M_SPECS = [
+      null,
+      { ver: 1, maxData: 16, ec: 10, groups: [[1, 16]], align: [] },
+      { ver: 2, maxData: 28, ec: 16, groups: [[1, 28]], align: [6, 18] },
+      { ver: 3, maxData: 44, ec: 26, groups: [[1, 44]], align: [6, 22] },
+      { ver: 4, maxData: 64, ec: 18, groups: [[2, 32]], align: [6, 26] },
+      { ver: 5, maxData: 86, ec: 24, groups: [[2, 43]], align: [6, 30] },
+      { ver: 6, maxData: 108, ec: 16, groups: [[4, 27]], align: [6, 34] },
+      { ver: 7, maxData: 124, ec: 18, groups: [[4, 31]], align: [6, 22, 38] },
+      { ver: 8, maxData: 154, ec: 22, groups: [[2, 38], [2, 39]], align: [6, 24, 42] },
+      { ver: 9, maxData: 182, ec: 22, groups: [[3, 36], [2, 37]], align: [6, 26, 46] },
+      { ver: 10, maxData: 216, ec: 26, groups: [[4, 43], [1, 44]], align: [6, 28, 50] }
+    ];
+
+    function qrGfMul(a, b) {
+      return (a === 0 || b === 0) ? 0 : QR_GF_EXP[(QR_GF_LOG[a] + QR_GF_LOG[b]) % 255];
+    }
+
+    function qrRsRemainder(dataBytes, ecLen) {
+      let gen = [1];
+      for (let i = 0; i < ecLen; i++) {
+        const next = new Array(gen.length + 1).fill(0);
+        const factor = QR_GF_EXP[i];
+        for (let j = 0; j < gen.length; j++) {
+          next[j] ^= gen[j];
+          next[j + 1] ^= qrGfMul(gen[j], factor);
+        }
+        gen = next;
+      }
+      const res = new Uint8Array(dataBytes.length + ecLen);
+      res.set(dataBytes);
+      for (let i = 0; i < dataBytes.length; i++) {
+        const coef = res[i];
+        if (coef !== 0) {
+          for (let j = 1; j < gen.length; j++) {
+            res[i + j] ^= qrGfMul(gen[j], coef);
+          }
+        }
+      }
+      return res.slice(dataBytes.length);
+    }
+
+    function qrEncodeUtf8(str) {
+      if (typeof TextEncoder !== 'undefined') return new TextEncoder().encode(str);
+      const out = [];
+      for (let i = 0; i < str.length; i++) {
+        let code = str.charCodeAt(i);
+        if (code < 0x80) out.push(code);
+        else if (code < 0x800) out.push(0xc0 | (code >> 6), 0x80 | (code & 0x3f));
+        else out.push(0xe0 | (code >> 12), 0x80 | ((code >> 6) & 0x3f), 0x80 | (code & 0x3f));
+      }
+      return new Uint8Array(out);
+    }
+
+    function qrBuildMatrix(text) {
+      let bytes = qrEncodeUtf8(String(text || ''));
+      let spec = null;
+      for (let v = 1; v <= 10; v++) {
+        const s = QR_M_SPECS[v];
+        const headerBits = 4 + (v <= 9 ? 8 : 16);
+        if (headerBits + bytes.length * 8 <= s.maxData * 8) {
+          spec = s;
+          break;
+        }
+      }
+      if (!spec) {
+        spec = QR_M_SPECS[10];
+        bytes = bytes.slice(0, 213);
+      }
+
+      const bits = [];
+      const pushBits = (val, len) => {
+        for (let i = len - 1; i >= 0; i--) bits.push((val >>> i) & 1);
+      };
+      pushBits(0b0100, 4);
+      pushBits(bytes.length, spec.ver <= 9 ? 8 : 16);
+      for (let i = 0; i < bytes.length; i++) pushBits(bytes[i], 8);
+
+      const maxDataBits = spec.maxData * 8;
+      const termLen = Math.min(4, maxDataBits - bits.length);
+      for (let i = 0; i < termLen; i++) bits.push(0);
+      while (bits.length % 8 !== 0) bits.push(0);
+      let padIdx = 0;
+      while (bits.length < maxDataBits) {
+        pushBits(padIdx % 2 === 0 ? 0xEC : 0x11, 8);
+        padIdx++;
+      }
+
+      const dataCodewords = new Uint8Array(spec.maxData);
+      for (let i = 0; i < spec.maxData; i++) {
+        let byteVal = 0;
+        for (let b = 0; b < 8; b++) byteVal = (byteVal << 1) | bits[i * 8 + b];
+        dataCodewords[i] = byteVal;
+      }
+
+      const dataBlocks = [];
+      const ecBlocks = [];
+      let offset = 0;
+      let maxBlockLen = 0;
+      spec.groups.forEach(([cnt, blkLen]) => {
+        if (blkLen > maxBlockLen) maxBlockLen = blkLen;
+        for (let c = 0; c < cnt; c++) {
+          const blk = dataCodewords.slice(offset, offset + blkLen);
+          offset += blkLen;
+          dataBlocks.push(blk);
+          ecBlocks.push(qrRsRemainder(blk, spec.ec));
+        }
+      });
+
+      const finalBits = [];
+      for (let i = 0; i < maxBlockLen; i++) {
+        for (let b = 0; b < dataBlocks.length; b++) {
+          if (i < dataBlocks[b].length) {
+            const cw = dataBlocks[b][i];
+            for (let k = 7; k >= 0; k--) finalBits.push((cw >>> k) & 1);
+          }
+        }
+      }
+      for (let i = 0; i < spec.ec; i++) {
+        for (let b = 0; b < ecBlocks.length; b++) {
+          const cw = ecBlocks[b][i];
+          for (let k = 7; k >= 0; k--) finalBits.push((cw >>> k) & 1);
+        }
+      }
+
+      const size = 17 + 4 * spec.ver;
+      const base = Array.from({ length: size }, () => new Uint8Array(size));
+      const isFunc = Array.from({ length: size }, () => new Uint8Array(size));
+      const setFunc = (r, c, dark) => {
+        if (r < 0 || c < 0 || r >= size || c >= size) return;
+        isFunc[r][c] = 1;
+        base[r][c] = dark ? 1 : 0;
+      };
+
+      const drawFinder = (cr, cc) => {
+        for (let dr = -4; dr <= 4; dr++) {
+          for (let dc = -4; dc <= 4; dc++) {
+            const d = Math.max(Math.abs(dr), Math.abs(dc));
+            setFunc(cr + dr, cc + dc, d === 3 || d <= 1 ? 1 : 0);
+          }
+        }
+      };
+      drawFinder(3, 3);
+      drawFinder(3, size - 4);
+      drawFinder(size - 4, 3);
+
+      for (let i = 8; i <= size - 9; i++) {
+        const dark = i % 2 === 0 ? 1 : 0;
+        setFunc(6, i, dark);
+        setFunc(i, 6, dark);
+      }
+
+      if (spec.align.length > 0) {
+        for (let i = 0; i < spec.align.length; i++) {
+          for (let j = 0; j < spec.align.length; j++) {
+            const ar = spec.align[i];
+            const ac = spec.align[j];
+            if ((ar < 8 && ac < 8) || (ar < 8 && ac >= size - 8) || (ar >= size - 8 && ac < 8)) continue;
+            for (let dr = -2; dr <= 2; dr++) {
+              for (let dc = -2; dc <= 2; dc++) {
+                const d = Math.max(Math.abs(dr), Math.abs(dc));
+                setFunc(ar + dr, ac + dc, d === 2 || d === 0 ? 1 : 0);
+              }
+            }
+          }
+        }
+      }
+
+      setFunc(size - 8, 8, 1);
+
+      // Reserve format info cells before data placement
+      for (let i = 0; i <= 5; i++) { setFunc(8, i, 0); setFunc(i, 8, 0); }
+      setFunc(8, 7, 0); setFunc(8, 8, 0); setFunc(7, 8, 0);
+      for (let i = 0; i < 7; i++) setFunc(size - 1 - i, 8, 0);
+      for (let i = 0; i < 8; i++) setFunc(8, size - 8 + i, 0);
+
+      // Version information for V7+
+      if (spec.ver >= 7) {
+        let rem = spec.ver << 12;
+        for (let i = 5; i >= 0; i--) {
+          if ((rem >>> (i + 12)) & 1) rem ^= (0x1F25 << i);
+        }
+        const verBits = (spec.ver << 12) | rem;
+        for (let i = 0; i < 18; i++) {
+          const bit = (verBits >>> i) & 1;
+          const a = size - 11 + (i % 3);
+          const b = Math.floor(i / 3);
+          setFunc(a, b, bit);
+          setFunc(b, a, bit);
+        }
+      }
+
+      // Place data bits in zigzag order
+      let bitIdx = 0;
+      let up = true;
+      for (let right = size - 1; right >= 1; right -= 2) {
+        if (right === 6) right = 5;
+        for (let vert = 0; vert < size; vert++) {
+          const r = up ? size - 1 - vert : vert;
+          for (let dx = 0; dx < 2; dx++) {
+            const c = right - dx;
+            if (!isFunc[r][c]) {
+              base[r][c] = bitIdx < finalBits.length ? finalBits[bitIdx++] : 0;
+            }
+          }
+        }
+        up = !up;
+      }
+
+      const maskPreds = [
+        (r, c) => (r + c) % 2 === 0,
+        (r, c) => r % 2 === 0,
+        (r, c) => c % 3 === 0,
+        (r, c) => (r + c) % 3 === 0,
+        (r, c) => (Math.floor(r / 2) + Math.floor(c / 3)) % 2 === 0,
+        (r, c) => ((r * c) % 2 + (r * c) % 3) === 0,
+        (r, c) => (((r * c) % 2 + (r * c) % 3) % 2) === 0,
+        (r, c) => (((r + c) % 2 + (r * c) % 3) % 2) === 0
+      ];
+
+      const writeFormatBits = (grid, maskId) => {
+        // EC Level M indicator = 00 (binary)
+        const data5 = (0 << 3) | maskId;
+        let rem = data5 << 10;
+        for (let i = 4; i >= 0; i--) {
+          if ((rem >>> (i + 10)) & 1) rem ^= (0x537 << i);
+        }
+        const fmt = ((data5 << 10) | rem) ^ 0x5412;
+        for (let i = 0; i <= 5; i++) grid[8][i] = (fmt >>> (14 - i)) & 1;
+        grid[8][7] = (fmt >>> 8) & 1;
+        grid[8][8] = (fmt >>> 7) & 1;
+        grid[7][8] = (fmt >>> 6) & 1;
+        for (let i = 0; i <= 5; i++) grid[5 - i][8] = (fmt >>> (5 - i)) & 1;
+
+        for (let i = 0; i <= 6; i++) grid[size - 1 - i][8] = (fmt >>> (14 - i)) & 1;
+        for (let i = 0; i <= 7; i++) grid[8][size - 8 + i] = (fmt >>> (7 - i)) & 1;
+      };
+
+      const calcPenalty = (grid) => {
+        let penalty = 0;
+        let darkCount = 0;
+        for (let r = 0; r < size; r++) {
+          let runColor = grid[r][0], runLen = 1;
+          if (runColor) darkCount++;
+          for (let c = 1; c < size; c++) {
+            const v = grid[r][c];
+            if (v) darkCount++;
+            if (v === runColor) runLen++;
+            else {
+              if (runLen >= 5) penalty += 3 + (runLen - 5);
+              runColor = v;
+              runLen = 1;
+            }
+          }
+          if (runLen >= 5) penalty += 3 + (runLen - 5);
+        }
+        for (let c = 0; c < size; c++) {
+          let runColor = grid[0][c], runLen = 1;
+          for (let r = 1; r < size; r++) {
+            const v = grid[r][c];
+            if (v === runColor) runLen++;
+            else {
+              if (runLen >= 5) penalty += 3 + (runLen - 5);
+              runColor = v;
+              runLen = 1;
+            }
+          }
+          if (runLen >= 5) penalty += 3 + (runLen - 5);
+        }
+        for (let r = 0; r < size - 1; r++) {
+          for (let c = 0; c < size - 1; c++) {
+            const v = grid[r][c];
+            if (v === grid[r][c + 1] && v === grid[r + 1][c] && v === grid[r + 1][c + 1]) penalty += 3;
+          }
+        }
+        const match11 = (seq) => (
+          seq[0] === 1 && seq[1] === 0 && seq[2] === 1 && seq[3] === 1 && seq[4] === 1 &&
+          seq[5] === 0 && seq[6] === 1 && (
+            (seq[7] === 0 && seq[8] === 0 && seq[9] === 0 && seq[10] === 0)
+          )
+        );
+        const match11Rev = (seq) => (
+          seq[0] === 0 && seq[1] === 0 && seq[2] === 0 && seq[3] === 0 &&
+          seq[4] === 1 && seq[5] === 0 && seq[6] === 1 && seq[7] === 1 && seq[8] === 1 && seq[9] === 0 && seq[10] === 1
+        );
+        for (let r = 0; r < size; r++) {
+          for (let c = 0; c <= size - 11; c++) {
+            const rowSlice = grid[r].slice(c, c + 11);
+            if (match11(rowSlice) || match11Rev(rowSlice)) penalty += 40;
+          }
+        }
+        for (let c = 0; c < size; c++) {
+          for (let r = 0; r <= size - 11; r++) {
+            const colSlice = [
+              grid[r][c], grid[r + 1][c], grid[r + 2][c], grid[r + 3][c], grid[r + 4][c],
+              grid[r + 5][c], grid[r + 6][c], grid[r + 7][c], grid[r + 8][c], grid[r + 9][c], grid[r + 10][c]
+            ];
+            if (match11(colSlice) || match11Rev(colSlice)) penalty += 40;
+          }
+        }
+        const pct = (darkCount * 100) / (size * size);
+        const prev5 = Math.floor(pct / 5) * 5;
+        const next5 = prev5 + 5;
+        penalty += Math.min(Math.abs(prev5 - 50), Math.abs(next5 - 50)) / 5 * 10;
+        return penalty;
+      };
+
+      let bestGrid = null;
+      let bestScore = Infinity;
+      for (let m = 0; m < 8; m++) {
+        const pred = maskPreds[m];
+        const cand = base.map((row, r) => row.map((val, c) => (!isFunc[r][c] && pred(r, c)) ? (val ^ 1) : val));
+        writeFormatBits(cand, m);
+        const score = calcPenalty(cand);
+        if (score < bestScore) {
+          bestScore = score;
+          bestGrid = cand;
+        }
+      }
+      return bestGrid;
+    }
+
+    function generateQrSvgHtml(text, opts) {
+      const margin = (opts && typeof opts.margin === 'number') ? opts.margin : 1;
+      const matrix = qrBuildMatrix(text);
+      const size = matrix.length;
+      const total = size + margin * 2;
+      const cmds = [];
+      for (let r = 0; r < size; r++) {
+        let c = 0;
+        while (c < size) {
+          if (matrix[r][c]) {
+            const start = c;
+            while (c < size && matrix[r][c]) c++;
+            const run = c - start;
+            cmds.push(`M${start + margin},${r + margin}h${run}v1h-${run}z`);
+          } else {
+            c++;
+          }
+        }
+      }
+      const clsAttr = opts && opts.className ? ` class="${escapeHtml(opts.className)}"` : '';
+      const styleAttr = opts && opts.style ? ` style="${escapeHtml(opts.style)}"` : '';
+      return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${total} ${total}" shape-rendering="crispEdges"${clsAttr}${styleAttr} role="img" aria-label="QR Code ${escapeHtml(String(text || ''))}"><rect width="${total}" height="${total}" fill="#FFFFFF"/><path d="${cmds.join('')}" fill="#000000"/></svg>`;
+    }
+
+    function buildAssetQrLabelHtml(a, forPrint) {
+      const qrData = String(a.hospitalCode || a.assetId || '').trim();
+      const qrSvgHtml = generateQrSvgHtml(qrData, { margin: 1 });
+      const guideHtml = forPrint ? '' : '<div class="qr-thermal-top-guide"></div>';
+      const cls = forPrint ? 'qr-thermal-sheet' : 'qr-thermal-sheet is-preview';
+      return `
+        <div class="${cls}">
+          ${guideHtml}
+          <div class="qr-thermal-inner">
+            <div class="qr-thermal-code-box">${qrSvgHtml}</div>
+            <div class="qr-thermal-text">
+              <div class="qr-t-header">INTERVENTIONAL NEURORADIOLOGY</div>
+              <div class="qr-t-code">หมายเลขครุภัณฑ์ : ${escapeHtml(qrData || '—')}</div>
+              <div class="qr-t-name">ชื่อครุภัณฑ์ : ${escapeHtml(a.assetName || '—')}</div>
+              <div class="qr-t-meta">S/N : ${escapeHtml(a.serialNumber || '—')}</div>
+              <div class="qr-t-meta">ห้อง : ${escapeHtml(a.room || '—')}</div>
+            </div>
+          </div>
+        </div>
+      `;
     }
 
     function buildImgHtml(srcUrl, className, styleText, altText, hideOnError) {
@@ -8263,11 +8475,10 @@ function exportStatisticsCSV() {
       document.getElementById('asset-detail-status-badge').innerHTML = getAssetStatusBadge(a.status);
 
       const qrData = a.hospitalCode || a.assetId;
-      const qrImgUrl = buildQrCodeUrl(qrData, 150);
       const photoBoxHtml = a.photoUrl
         ? buildImgHtml(escapeHtml(a.photoUrl), '', 'width:100%; height:190px; object-fit:cover; border-radius:8px; border:1px solid var(--gray-200);', escapeHtml(a.assetName), false)
         : '<div style="width:100%; height:190px; border-radius:8px; border:1px dashed var(--gray-300); background:var(--gray-50); display:flex; flex-direction:column; align-items:center; justify-content:center; color:var(--gray-400); font-size:12px;">No Asset Photo</div>';
-      const qrBoxImgHtml = buildImgHtml(qrImgUrl, '', 'width:120px; height:120px; margin:0 auto; display:block;', 'QR ' + escapeHtml(qrData), false);
+      const qrBoxImgHtml = `<div style="width:120px; height:120px; margin:0 auto; display:block;">${generateQrSvgHtml(qrData, { margin: 2, style: 'width:100%; height:100%; display:block;' })}</div>`;
 
       document.getElementById('asset-detail-top-box').innerHTML = `
         <div>${photoBoxHtml}</div>
@@ -8586,16 +8797,8 @@ function exportStatisticsCSV() {
       const a = (state.assets || []).find(x => String(x.assetId) === String(assetId));
       if (!a) return;
       state.selectedQrAssetId = a.assetId;
-      const qrData = a.hospitalCode || a.assetId;
-      const qrImgUrl = buildQrCodeUrl(qrData, 220);
-      const imgEl = document.getElementById('asset-qr-img');
-      if (imgEl) imgEl.src = qrImgUrl;
-      const nameEl = document.getElementById('asset-qr-name');
-      if (nameEl) nameEl.innerText = a.assetName;
-      const codeEl = document.getElementById('asset-qr-code');
-      if (codeEl) codeEl.innerText = qrData;
-      const metaEl = document.getElementById('asset-qr-meta');
-      if (metaEl) metaEl.innerText = `Asset ID: ${a.assetId} | S/N: ${a.serialNumber || '—'} | Room: ${a.room || '—'}`;
+      const container = document.getElementById('asset-qr-card-print');
+      if (container) container.innerHTML = buildAssetQrLabelHtml(a, false);
       openModal('modal-asset-qr');
     }
 
@@ -8603,25 +8806,32 @@ function exportStatisticsCSV() {
       const targetId = assetId || state.selectedQrAssetId || state.activeAssetDetailId;
       const a = (state.assets || []).find(x => String(x.assetId) === String(targetId));
       if (!a) return;
-      const qrData = a.hospitalCode || a.assetId;
-      const qrImgUrl = buildQrCodeUrl(qrData, 180);
-      const qrPrintImgHtml = buildImgHtml(qrImgUrl, '', 'width:110px; height:110px; flex-shrink:0;', 'QR', false);
-      const html = `
-        <div style="padding:20px; font-family:'Noto Sans', 'Noto Sans Thai', sans-serif;">
-          <div style="border:2px solid #111827; border-radius:10px; padding:16px; max-width:380px; display:flex; gap:14px; align-items:center;">
-            ${qrPrintImgHtml}
-            <div style="font-size:12px; line-height:1.4;">
-              <div style="font-weight:800; font-size:14px; color:#111827;">INR EQUIPMENT ASSET</div>
-              <div style="font-family:monospace; font-weight:700; font-size:15px; color:#059669; margin-top:2px;">${escapeHtml(a.hospitalCode || a.assetId)}</div>
-              <div style="font-weight:700; margin-top:4px;">${escapeHtml(a.assetName)}</div>
-              <div style="color:#4b5563; font-size:11px; margin-top:2px;">Asset ID: ${escapeHtml(a.assetId)}</div>
-              <div style="color:#4b5563; font-size:11px;">S/N: ${escapeHtml(a.serialNumber || '—')}</div>
-              <div style="color:#4b5563; font-size:11px;">Room: ${escapeHtml(a.room || '—')}</div>
-            </div>
-          </div>
-        </div>
-      `;
-      printStageHtml(html);
+      const stage = document.getElementById('print-stage');
+      if (!stage) return;
+
+      let dynStyle = document.getElementById('dynamic-print-page');
+      if (!dynStyle) {
+        dynStyle = document.createElement('style');
+        dynStyle.id = 'dynamic-print-page';
+        document.head.appendChild(dynStyle);
+      }
+      dynStyle.textContent = '@media print { @page { size: 75mm 35mm; margin: 0 !important; } }';
+
+      stage.innerHTML = buildAssetQrLabelHtml(a, true);
+      document.body.classList.add('printing-stage', 'printing-qr-label');
+
+      let cleaned = false;
+      const cleanup = () => {
+        if (cleaned) return;
+        cleaned = true;
+        document.body.classList.remove('printing-stage', 'printing-qr-label');
+        const st = document.getElementById('dynamic-print-page');
+        if (st && st.parentNode) st.parentNode.removeChild(st);
+        window.removeEventListener('afterprint', cleanup);
+      };
+      window.addEventListener('afterprint', cleanup);
+      window.print();
+      setTimeout(cleanup, 800);
     }
 
     function exportAssetsCSV() {
@@ -8910,15 +9120,31 @@ function exportStatisticsCSV() {
       const rawUsers = Array.isArray(s.users) ? s.users : (Array.isArray(s.techs) ? s.techs : []);
       const users = rawUsers.map((u, idx) => {
         if (typeof u === 'string') {
-          return { userId: 'USR-' + String(idx + 1).padStart(3, '0'), nickname: u.trim(), name: u.trim() };
+          const val = u.trim();
+          return {
+            rowIndex: idx + 2,
+            userId: 'USR-' + (idx + 1),
+            name: val,
+            surname: '',
+            nickname: val,
+            position: '',
+            authorization: '',
+            phone: '',
+            dob: ''
+          };
         }
-        const nick = String(u.nickname || u.name || '').trim();
         return {
-          userId: u.userId || ('USR-' + String(idx + 1).padStart(3, '0')),
-          nickname: nick,
-          name: nick
+          rowIndex: Number(u.rowIndex) || (idx + 2),
+          userId: u.userId || ('USR-' + (idx + 1)),
+          name: String(u.name || '').trim(),
+          surname: String(u.surname || '').trim(),
+          nickname: String(u.nickname || '').trim(),
+          position: String(u.position || '').trim(),
+          authorization: String(u.authorization || '').trim(),
+          phone: String(u.phone || '').trim(),
+          dob: String(u.dob || '').trim()
         };
-      }).filter(u => u.nickname);
+      }).filter(u => u.name || u.surname || u.nickname);
       const defaultDepts = [
         'Internal | BIR Room',
         'Internal | Angio Suite',
@@ -9107,8 +9333,8 @@ function exportStatisticsCSV() {
             shifts: ['In-time', 'On-call', 'SMC'],
             categories: ['Sheath', 'Guidewire', 'Catheter', 'Microcatheter', 'Coil', 'Stent', 'Balloon', 'Contrast Media', 'Accessory'],
             users: [
-              {userId:'USR-001', nickname:'Sak', name:'Sak'},
-              {userId:'USR-002', nickname:'Nat', name:'Nat'}
+              {rowIndex:2, userId:'USR-1', name:'Somsak', surname:'Siri', nickname:'Sak', position:'Radiologic Technologist', authorization:'Admin', phone:'081-234-5678', dob:'1990-05-15'},
+              {rowIndex:3, userId:'USR-2', name:'Nattapong', surname:'Jaidee', nickname:'Nat', position:'Nurse', authorization:'Staff', phone:'089-876-5432', dob:'1993-08-22'}
             ]
           });
         }
@@ -9717,6 +9943,21 @@ function exportStatisticsCSV() {
       return '฿' + n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     }
 
+    const PROC_STATUS_TH = {
+      'Planned': 'วางแผนแล้ว',
+      'In Progress': 'อยู่ระหว่างดำเนินการ',
+      'Contract Awarded': 'ได้รับสัญญา',
+      'Cancelled': 'ยกเลิก',
+      'Pending PO': 'รอดำเนินการ',
+      'Awaiting Delivery': 'รอส่งมอบ',
+      'Completed': 'เสร็จสิ้น'
+    };
+
+    function getProcStatusLabel(status) {
+      const s = String(status || '').trim();
+      return PROC_STATUS_TH[s] || s || '-';
+    }
+
     function getProcStatusBadgeHtml(status) {
       const s = String(status || '').trim();
       let cls = 'proc-badge-planned';
@@ -9726,7 +9967,7 @@ function exportStatisticsCSV() {
       else if (s === 'Awaiting Delivery') cls = 'proc-badge-awaiting';
       else if (s === 'Completed') cls = 'proc-badge-completed';
       else if (s === 'Cancelled') cls = 'proc-badge-cancelled';
-      return `<span class="proc-badge ${cls}">${escHtml(s || '-')}</span>`;
+      return `<span class="proc-badge ${cls}">${escHtml(getProcStatusLabel(s))}</span>`;
     }
 
     function getContractExpiryTagHtml(ct) {
@@ -9856,8 +10097,8 @@ function exportStatisticsCSV() {
       // Populate Fiscal Year selector
       const fySelect = document.getElementById('proc-fy-select');
       if (fySelect) {
-        const fyOptions = [`<option value="All"${fy === 'All' ? ' selected' : ''}>All Fiscal Years</option>`]
-          .concat((state.fiscalYearList || []).map(y => `<option value="${escHtml(y)}"${String(y) === String(fy) ? ' selected' : ''}>FY ${escHtml(y)}</option>`));
+        const fyOptions = [`<option value="All"${fy === 'All' ? ' selected' : ''}>ทุกปีงบประมาณ</option>`]
+          .concat((state.fiscalYearList || []).map(y => `<option value="${escHtml(y)}"${String(y) === String(fy) ? ' selected' : ''}>ปีงบประมาณ ${escHtml(y)}</option>`));
         fySelect.innerHTML = fyOptions.join('');
       }
 
@@ -9872,8 +10113,8 @@ function exportStatisticsCSV() {
       const addBtnLabel = document.getElementById('btn-proc-primary-add-label');
       if (addBtnLabel) {
         const labelMap = {
-          ebidding: t('proc_add_ebidding') || 'Add E-Bidding Plan',
-          contracts: t('proc_add_contract') || 'Create Contract',
+          ebidding: t('proc_add_ebidding') || 'เพิ่มแผน E-Bidding',
+          contracts: t('proc_add_contract') || 'เพิ่มรายการที่มีสัญญา',
           contract_po: t('proc_add_po') || 'Create Contract PO (Lot)',
           specific_purchase: t('proc_add_sp') || 'Add Specific Purchase',
           receiving: t('proc_add_receiving') || 'Record Goods Receiving'
@@ -9909,8 +10150,8 @@ function exportStatisticsCSV() {
       const validStatuses = statusOptionsBySub[sub] || [];
       if (stSelect) {
         const keepSt = validStatuses.includes(prevSt) ? prevSt : '';
-        stSelect.innerHTML = `<option value="">All Effective Statuses</option>` +
-          validStatuses.map(s => `<option value="${escHtml(s)}"${s === keepSt ? ' selected' : ''}>${escHtml(s)}</option>`).join('');
+        stSelect.innerHTML = `<option value="">สถานะ</option>` +
+          validStatuses.map(s => `<option value="${escHtml(s)}"${s === keepSt ? ' selected' : ''}>${escHtml(getProcStatusLabel(s))}</option>`).join('');
       }
       const activeStatusFilter = stSelect ? stSelect.value : '';
       const searchQ = (document.getElementById('proc-search-input')?.value || '').trim().toLowerCase();
@@ -9927,23 +10168,24 @@ function exportStatisticsCSV() {
         const plannedCnt = ebFyList.filter(x => x.effectiveStatus === 'Planned').length;
         const inProgCnt = ebFyList.filter(x => x.effectiveStatus === 'In Progress').length;
         const awardedCnt = ebFyList.filter(x => x.effectiveStatus === 'Contract Awarded').length;
+        const fyLabel = fy === 'All' ? 'ทุกปีงบประมาณ' : ('ปีงบ ' + escHtml(fy));
 
         if (kpiStrip) {
           kpiStrip.innerHTML = `
             <div class="proc-kpi-card">
-              <div class="proc-kpi-label">Active E-Bidding Plans (${fy === 'All' ? 'All FY' : 'FY ' + escHtml(fy)})</div>
+              <div class="proc-kpi-label">แผน E-Bidding (${fyLabel})</div>
               <div class="proc-kpi-val">${nonCancelled.length}</div>
-              <div class="proc-kpi-sub">Planned: ${plannedCnt} | In Progress: ${inProgCnt}</div>
+              <div class="proc-kpi-sub">วางแผนแล้ว: ${plannedCnt} | อยู่ระหว่างดำเนินการ: ${inProgCnt}</div>
             </div>
             <div class="proc-kpi-card">
-              <div class="proc-kpi-label">Total Planned Budget Value</div>
-              <div class="proc-kpi-val" style="color:var(--brand-dark);">${formatProcMoney(totalVal)}</div>
-              <div class="proc-kpi-sub">Excludes Cancelled plans</div>
-            </div>
-            <div class="proc-kpi-card">
-              <div class="proc-kpi-label">Contract Awarded</div>
+              <div class="proc-kpi-label">สัญญาจัดซื้อจัดจ้าง</div>
               <div class="proc-kpi-val" style="color:#065f46;">${awardedCnt}</div>
-              <div class="proc-kpi-sub">Automatically updated when Contract is linked</div>
+              <div class="proc-kpi-sub">จำนวนที่ได้รับสัญญา</div>
+            </div>
+            <div class="proc-kpi-card">
+              <div class="proc-kpi-label">มูลค่าแผน E-Bidding (${fyLabel})</div>
+              <div class="proc-kpi-val" style="color:var(--brand-dark);">${formatProcMoney(totalVal)}</div>
+              <div class="proc-kpi-sub">ไม่รวมรายการที่ยกเลิก</div>
             </div>
           `;
         }
@@ -9951,14 +10193,14 @@ function exportStatisticsCSV() {
         thead.innerHTML = `
           <tr>
             <th>E-Bidding ID</th>
-            <th class="center">FY</th>
+            <th class="center">ปีงบประมาณ</th>
             <th>HO Item ID</th>
             <th>Device Name</th>
             <th>Company / Vendor</th>
             <th class="right">Unit Price</th>
             <th class="center">Budget Plan Qty</th>
             <th class="right">Total Value</th>
-            <th class="center">Effective Status</th>
+            <th class="center">สถานะ</th>
             <th>Remarks</th>
             <th class="center no-print">Actions</th>
           </tr>
@@ -9967,7 +10209,7 @@ function exportStatisticsCSV() {
         const filtered = ebFyList.filter(r => {
           if (activeStatusFilter && r.effectiveStatus !== activeStatusFilter) return false;
           if (searchQ) {
-            const hay = `${r.ebiddingId} ${r.hoItemId} ${r.deviceName} ${r.company} ${r.remarks} ${r.effectiveStatus}`.toLowerCase();
+            const hay = `${r.ebiddingId} ${r.hoItemId} ${r.deviceName} ${r.company} ${r.remarks} ${r.effectiveStatus} ${getProcStatusLabel(r.effectiveStatus)}`.toLowerCase();
             if (!hay.includes(searchQ)) return false;
           }
           return true;
@@ -10042,7 +10284,7 @@ function exportStatisticsCSV() {
         thead.innerHTML = `
           <tr>
             <th>Contract ID &amp; No.</th>
-            <th class="center">FY</th>
+            <th class="center">ปีงบประมาณ</th>
             <th>Contract Period</th>
             <th>HO Item ID &amp; Device</th>
             <th>Company</th>
@@ -10050,7 +10292,7 @@ function exportStatisticsCSV() {
             <th class="center">Total Qty</th>
             <th class="center">Ordered Qty</th>
             <th class="center">Remaining Qty</th>
-            <th class="center">Effective Status</th>
+            <th class="center">สถานะ</th>
             <th class="center no-print">Actions</th>
           </tr>
         `;
@@ -10199,7 +10441,7 @@ function exportStatisticsCSV() {
             <th class="center">Ordered Qty</th>
             <th class="right">Order Value</th>
             <th class="center">Contract Rem. Qty</th>
-            <th class="center">Effective Status</th>
+            <th class="center">สถานะ</th>
             <th class="center no-print">Actions</th>
           </tr>
         `;
@@ -10290,7 +10532,7 @@ function exportStatisticsCSV() {
           <tr>
             <th>Specific PO ID</th>
             <th>PO Issue Date</th>
-            <th class="center">FY</th>
+            <th class="center">ปีงบประมาณ</th>
             <th>HO Item ID &amp; Device</th>
             <th>Company</th>
             <th class="right">Unit Price</th>
@@ -10298,7 +10540,7 @@ function exportStatisticsCSV() {
             <th class="center">Ordered Qty</th>
             <th class="right">Order Value</th>
             <th class="center" title="Budget Plan Qty - Total Ordered Qty for same FY + HO Item ID">Remaining Qty</th>
-            <th class="center">Effective Status</th>
+            <th class="center">สถานะ</th>
             <th class="center no-print">Actions</th>
           </tr>
         `;
@@ -10393,7 +10635,7 @@ function exportStatisticsCSV() {
             <th class="right">Total Value</th>
             <th>Allocated Item IDs</th>
             <th>Stock-In Txn ID</th>
-            <th class="center">Effective Status</th>
+            <th class="center">สถานะ</th>
             <th class="center no-print">Actions</th>
           </tr>
         `;
@@ -10455,7 +10697,153 @@ function exportStatisticsCSV() {
     }
 
     // ── Quick Item Picker (Rule 0.5) for E-Bidding & Specific Purchase ──
+    function getEBiddingDeviceCatalog() {
+      const catalog = [];
+      const seenItemIds = new Set();
+      const seenGroupIds = new Set();
+
+      if (typeof getInventoryOrderedStructure === 'function') {
+        const { membersByGroup, topLevelEntries } = getInventoryOrderedStructure();
+        topLevelEntries.forEach(entry => {
+          if (entry.isGroupSummary) {
+            seenGroupIds.add(String(entry.groupId));
+            catalog.push({
+              isGroup: true,
+              id: entry.groupId,
+              deviceName: entry.groupName || entry.groupId,
+              hoItemId: entry.hoItemId || '',
+              company: entry.company || '',
+              buyPrice: Number(entry.buyPrice) || 0
+            });
+            const subs = membersByGroup.get(String(entry.groupId)) || [];
+            subs.forEach(sub => {
+              seenItemIds.add(String(sub.itemId));
+              catalog.push({
+                isGroup: false,
+                isSubItem: true,
+                groupName: entry.groupName || '',
+                id: sub.itemId,
+                deviceName: sub.deviceName || '',
+                hoItemId: sub.hoItemId || entry.hoItemId || '',
+                company: sub.company || entry.company || '',
+                buyPrice: Number(sub.buyPrice) || Number(entry.buyPrice) || 0
+              });
+            });
+          } else {
+            seenItemIds.add(String(entry.itemId));
+            catalog.push({
+              isGroup: false,
+              id: entry.itemId,
+              deviceName: entry.deviceName || '',
+              hoItemId: entry.hoItemId || '',
+              company: entry.company || '',
+              buyPrice: Number(entry.buyPrice) || 0
+            });
+          }
+        });
+      }
+
+      (state.groups || []).forEach(g => {
+        if (!g || !g.groupId || seenGroupIds.has(String(g.groupId))) return;
+        catalog.push({
+          isGroup: true,
+          id: g.groupId,
+          deviceName: g.groupName || g.groupId,
+          hoItemId: g.hoItemId || '',
+          company: g.company || '',
+          buyPrice: Number(g.buyPrice) || 0
+        });
+      });
+
+      (state.inventory || []).forEach(item => {
+        if (!item || !item.itemId || seenItemIds.has(String(item.itemId))) return;
+        catalog.push({
+          isGroup: false,
+          id: item.itemId,
+          deviceName: item.deviceName || '',
+          hoItemId: item.hoItemId || '',
+          company: item.company || '',
+          buyPrice: Number(item.buyPrice) || 0
+        });
+      });
+
+      return catalog;
+    }
+
+    function openEBiddingDevicePicker(query, filterMode) {
+      const resultsEl = document.getElementById('eb-item-picker-results');
+      if (!resultsEl) return;
+      const q = String(query || '').trim().toLowerCase();
+      const catalog = getEBiddingDeviceCatalog();
+      const matches = (filterMode && q)
+        ? catalog.filter(item => {
+            const hay = `${item.deviceName || ''} ${item.hoItemId || ''} ${item.id || ''} ${item.company || ''}`.toLowerCase();
+            return hay.includes(q);
+          }).slice(0, 30)
+        : catalog.slice(0, 50);
+
+      if (matches.length === 0) {
+        resultsEl.innerHTML = `<div class="search-item text-xs text-gray">ไม่พบรายการที่ตรงกับคำค้นหา (สามารถพิมพ์ชื่อใหม่ได้)</div>`;
+        resultsEl.classList.remove('hidden');
+        return;
+      }
+
+      resultsEl.innerHTML = matches.map((item, idx) => {
+        const grpTag = item.isGroup ? `<span class="badge" style="background:#e0e7ff; color:#3730a3; margin-left:4px;">GROUP</span>` : '';
+        const prefixArrow = item.isSubItem ? '↳ ' : '';
+        const highlightStyle = (filterMode && q && idx === 0) ? 'border-color:var(--g-m); background:var(--g-l);' : '';
+        return `
+          <div class="search-item" data-item-id="${escHtml(item.id)}" style="${highlightStyle}" onmousedown="event.preventDefault(); selectProcItemPicker('eb', '${escHtml(item.id)}')">
+            <div>
+              <div class="font-semibold text-sm">${prefixArrow}${escHtml(item.deviceName)}${grpTag}</div>
+              <div class="text-xs text-gray">HO ID: <span class="mono">${escHtml(item.hoItemId || '-')}</span> | ${escHtml(item.company || '-')}</div>
+            </div>
+            <div class="right text-xs font-semibold" style="color:var(--brand-dark);">฿${Number(item.buyPrice || 0).toLocaleString()}</div>
+          </div>
+        `;
+      }).join('');
+      resultsEl.classList.remove('hidden');
+    }
+
+    function onEBiddingDeviceInput(val) {
+      const trimmed = String(val || '').trim();
+      openEBiddingDevicePicker(val, trimmed.length > 0);
+      if (trimmed) {
+        const q = trimmed.toLowerCase();
+        const exact = getEBiddingDeviceCatalog().find(item => String(item.deviceName || '').trim().toLowerCase() === q);
+        if (exact) {
+          const hoidEl = document.getElementById('eb-modal-hoid');
+          if (hoidEl) hoidEl.value = exact.hoItemId || '';
+        }
+      }
+    }
+
+    function toggleEBiddingDevicePicker() {
+      const resultsEl = document.getElementById('eb-item-picker-results');
+      const devEl = document.getElementById('eb-modal-device');
+      if (!resultsEl) return;
+      if (!resultsEl.classList.contains('hidden')) {
+        resultsEl.classList.add('hidden');
+      } else {
+        if (devEl) devEl.focus();
+        openEBiddingDevicePicker('', false);
+      }
+    }
+
+    function selectFirstEBiddingDeviceOption() {
+      const resultsEl = document.getElementById('eb-item-picker-results');
+      if (!resultsEl) return;
+      const firstOpt = resultsEl.querySelector('.search-item[data-item-id]');
+      if (!firstOpt) return;
+      const id = firstOpt.getAttribute('data-item-id');
+      if (id) selectProcItemPicker('eb', id);
+    }
+
     function filterProcItemPicker(prefix, query) {
+      if (prefix === 'eb') {
+        openEBiddingDevicePicker(query, String(query || '').trim().length > 0);
+        return;
+      }
       const resultsEl = document.getElementById(`${prefix}-item-picker-results`);
       if (!resultsEl) return;
       const q = String(query || '').trim().toLowerCase();
@@ -10515,8 +10903,10 @@ function exportStatisticsCSV() {
       const item = grp ? null : (state.inventory || []).find(i => String(i.itemId) === String(itemId));
       const resultsEl = document.getElementById(`${prefix}-item-picker-results`);
       if (resultsEl) resultsEl.classList.add('hidden');
-      const pickerInput = document.getElementById(`${prefix}-item-picker-input`);
-      if (pickerInput) pickerInput.value = '';
+      if (prefix !== 'eb') {
+        const pickerInput = document.getElementById(`${prefix}-item-picker-input`);
+        if (pickerInput) pickerInput.value = '';
+      }
       if (!grp && !item) return;
 
       let hoId = grp ? (grp.hoItemId || '') : (item.hoItemId || '');
@@ -10545,15 +10935,21 @@ function exportStatisticsCSV() {
 
     // Hide item picker dropdowns when clicking outside
     document.addEventListener('click', function(e) {
-      ['eb', 'sp'].forEach(prefix => {
-        const res = document.getElementById(`${prefix}-item-picker-results`);
-        const inp = document.getElementById(`${prefix}-item-picker-input`);
-        if (res && !res.classList.contains('hidden')) {
-          if (!res.contains(e.target) && e.target !== inp) {
-            res.classList.add('hidden');
-          }
+      const ebRes = document.getElementById('eb-item-picker-results');
+      const ebDev = document.getElementById('eb-modal-device');
+      if (ebRes && !ebRes.classList.contains('hidden')) {
+        const inCombo = (e.target === ebDev) || (e.target && e.target.closest && (e.target.closest('.eb-picker-caret') || ebRes.contains(e.target)));
+        if (!inCombo) ebRes.classList.add('hidden');
+      }
+
+      const spRes = document.getElementById('sp-item-picker-results');
+      const spInp = document.getElementById('sp-item-picker-input');
+      if (spRes && !spRes.classList.contains('hidden')) {
+        if (!spRes.contains(e.target) && e.target !== spInp) {
+          spRes.classList.add('hidden');
         }
-      });
+      }
+
       const rcRes = document.getElementById('rc-alloc-search-results');
       const rcInp = document.getElementById('rc-alloc-search-input');
       if (rcRes && !rcRes.classList.contains('hidden')) {
@@ -10570,9 +10966,8 @@ function exportStatisticsCSV() {
       const existing = id ? (state.ebiddings || []).find(x => x.ebiddingId === id) : null;
 
       document.getElementById('eb-modal-id').value = existing ? existing.ebiddingId : '';
-      document.getElementById('eb-modal-title').textContent = existing ? `Edit E-Bidding Plan (${existing.ebiddingId})` : 'Add E-Bidding Plan';
-      document.getElementById('eb-item-picker-input').value = '';
-      document.getElementById('eb-item-picker-results').classList.add('hidden');
+      document.getElementById('eb-modal-title').textContent = existing ? `แก้ไขแผน E-Bidding (${existing.ebiddingId})` : 'เพิ่มแผน E-Bidding';
+      document.getElementById('eb-item-picker-results')?.classList.add('hidden');
 
       const defaultFy = (state.procurementFy && state.procurementFy !== 'All') ? state.procurementFy : getCurrentFiscalYearClient();
       document.getElementById('eb-modal-fy').value = existing ? existing.fiscalYear : defaultFy;
