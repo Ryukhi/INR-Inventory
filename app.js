@@ -47,7 +47,44 @@ window.__INR_MAIN_PARSED = true;
     }
     window.setApiUrl = setApiUrl;
 
-    async function callApi(action, payload = {}) {
+    const READ_ONLY_ACTIONS = new Set([
+      'getAppData',
+      'getAppDataLite',
+      'getModuleData',
+      'getRecentProcedures',
+      'getProcedureDetails',
+      'checkStockMovement',
+      'checkAdjustment',
+      'keepWarm'
+    ]);
+
+    const _inFlightSubmits = new Set();
+
+    function setButtonBusy(btnOrId, busy, busyLabel) {
+      const btn = typeof btnOrId === 'string' ? document.getElementById(btnOrId) : btnOrId;
+      if (!btn) return;
+      if (busy) {
+        if (!btn.dataset.origDisabled) btn.dataset.origDisabled = btn.disabled ? '1' : '0';
+        if (busyLabel) {
+          if (!btn.dataset.origHtml) btn.dataset.origHtml = btn.innerHTML;
+          btn.textContent = busyLabel;
+        }
+        btn.disabled = true;
+        btn.style.opacity = '0.65';
+        btn.style.pointerEvents = 'none';
+      } else {
+        btn.disabled = btn.dataset.origDisabled === '1';
+        if (btn.dataset.origHtml) {
+          btn.innerHTML = btn.dataset.origHtml;
+          delete btn.dataset.origHtml;
+        }
+        delete btn.dataset.origDisabled;
+        btn.style.opacity = '';
+        btn.style.pointerEvents = '';
+      }
+    }
+
+    async function callApi(action, payload = {}, _attempt = 0) {
       const url = getConfiguredApiUrl();
       if (!url || url === 'YOUR_APPS_SCRIPT_DEPLOYMENT_URL') {
         throw new Error('Backend API_URL is not configured in app.js.');
@@ -96,10 +133,20 @@ window.__INR_MAIN_PARSED = true;
         }
         return json;
       } catch (err) {
+        const msg = err && err.message ? String(err.message) : '';
+        const isRetryableNetErr = (err && err.name === 'AbortError') ||
+          msg.includes('Failed to fetch') ||
+          msg.includes('NetworkError') ||
+          /^HTTP Error 5\d\d/.test(msg);
+        if (READ_ONLY_ACTIONS.has(action) && _attempt === 0 && isRetryableNetErr) {
+          if (timeoutId) clearTimeout(timeoutId);
+          await new Promise(r => setTimeout(r, 500));
+          return callApi(action, payload, 1);
+        }
         if (err && err.name === 'AbortError') {
           throw new Error('Request timed out after ' + (API_TIMEOUT_MS / 1000) + 's.');
         }
-        if (err && String(err.message || '').includes('Failed to fetch')) {
+        if (msg.includes('Failed to fetch')) {
           console.error(
             'Failed to fetch Google Apps Script API.\n' +
             'Troubleshooting Checklist:\n' +
@@ -156,6 +203,8 @@ window.__INR_MAIN_PARSED = true;
       activeAssetDetailId: null,
       pendingAssetPhoto: null,
       pendingDamagePhoto: null,
+      pendingMaintAttachment: null,
+      bufferSubView: 'list',
       exchangeSubTab: 'quota',
       cart: [],
       adjBatch: [], // Array of { itemId, loc, count, diff }
@@ -184,7 +233,12 @@ window.__INR_MAIN_PARSED = true;
       companyList: [],
       fiscalYearList: [],
       expandedContracts: {},
-      receivingAllocations: []
+      receivingAllocations: [],
+      loadedModules: { core: false, exchange: false, assets: false, procurement: false, allTransactions: false },
+      _modulePromises: {},
+      hasOlderTransactions: false,
+      txRenderLimit: 250,
+      caseHistRenderLimit: 200
     };
 
     // ===== BILINGUAL TRANSLATION DICTIONARY (TH / EN) =====
@@ -232,8 +286,11 @@ window.__INR_MAIN_PARSED = true;
         sub_items: 'Items',
         sub_movements: 'Movements',
         sub_substitution: 'Substitution',
-        sub_deposits: 'Deposits',
+        sub_deposits: 'Buffer Stock',
         sub_loans: 'Loans',
+        proc_kpi_active_contracts: 'Active Contracts (In Progress)',
+        proc_kpi_expiring_60d: 'Expiring Within 60 Days / Expired',
+        proc_kpi_total_contract_value: 'Total Contract Value',
 
         // Procurement Sub-tabs
         proc_sub_ebidding: 'E-Bidding',
@@ -414,8 +471,11 @@ window.__INR_MAIN_PARSED = true;
         sub_items: 'รายการอุปกรณ์',
         sub_movements: 'ความเคลื่อนไหว',
         sub_substitution: 'ตัดของทดแทน',
-        sub_deposits: 'ของฝาก',
+        sub_deposits: 'คลังสำรอง',
         sub_loans: 'ยืม-คืน',
+        proc_kpi_active_contracts: 'รายการที่มีสัญญา',
+        proc_kpi_expiring_60d: 'หมดอายุ / ใกล้หมดอายุ <60 วัน',
+        proc_kpi_total_contract_value: 'มูลค่ารายการที่มีสัญญาทั้งหมด',
 
         // Procurement Sub-tabs
         proc_sub_ebidding: 'แผน E-Bidding',
@@ -462,7 +522,7 @@ window.__INR_MAIN_PARSED = true;
         btn_default: 'ค่าเริ่มต้น',
         btn_filter: 'กรอง',
         btn_more_actions: 'เพิ่มเติม ▾',
-        btn_record_deposit: 'บันทึกรับฝาก',
+        btn_record_deposit: 'เพิ่มรายการคลังสำรอง',
         btn_new_loan: 'ยืม / ให้ยืมใหม่',
 
         // Stock & Locations
@@ -663,40 +723,29 @@ window.__INR_MAIN_PARSED = true;
       };
     }
 
-    const NAV_GROUPS = [
-      {
-        groupKey: 'g_daily',
-        items: [
-          { id: 'dashboard', labelKey: 'nav_home', label: 'Home', icon: ICONS.home },
-          { id: 'procedure', labelKey: 'nav_cases', label: 'Cases', icon: ICONS.clip },
-          { id: 'inventory', labelKey: 'nav_stock', label: 'Stock', icon: ICONS.box }
-        ]
-      },
-      {
-        groupKey: 'g_track',
-        items: [
-          { id: 'exchange', labelKey: 'nav_swap', label: 'Swap & Loan', icon: ICONS.swap },
-          { id: 'assets', labelKey: 'nav_assets', label: 'Assets', icon: ICONS.monitor }
-        ]
-      },
-      {
-        groupKey: 'g_admin',
-        items: [
-          { id: 'procurement', labelKey: 'nav_buy', label: 'Procurement', icon: ICONS.cart },
-          { id: 'statistic', labelKey: 'nav_reports', label: 'Reports', icon: ICONS.chart },
-          { id: 'settings', labelKey: 'nav_settings', label: 'Settings', icon: ICONS.gear }
-        ]
-      }
+    const debouncedRenderExchangeTab = debounce(() => { if (typeof renderExchangeTab === 'function') renderExchangeTab(); }, 250);
+    const debouncedRenderLoanTab = debounce(() => { if (typeof renderLoanTab === 'function') renderLoanTab(); }, 250);
+    const debouncedRenderAssetsTab = debounce(() => { if (typeof renderAssetsTab === 'function') renderAssetsTab(); }, 250);
+    const debouncedRenderProcurementTab = debounce(() => { if (typeof renderProcurementTab === 'function') renderProcurementTab(); }, 250);
+    const debouncedRenderStatisticTab = debounce(() => { if (typeof renderStatisticTab === 'function') renderStatisticTab(); }, 250);
+
+    const tabs = [
+      { id: 'dashboard', labelKey: 'nav_home', label: 'หน้าแรก', icon: ICONS.home },
+      { id: 'inventory', labelKey: 'nav_stock', label: 'คลังเวชภัณฑ์', icon: ICONS.box },
+      { id: 'procedure', labelKey: 'nav_cases', label: 'บันทึกเคส', icon: ICONS.clip },
+      { id: 'exchange', labelKey: 'nav_swap', label: 'ยืม-แลก-ฝาก', icon: ICONS.swap },
+      { id: 'assets', labelKey: 'nav_assets', label: 'ครุภัณฑ์', icon: ICONS.monitor },
+      { id: 'procurement', labelKey: 'nav_buy', label: 'จัดซื้อ', icon: ICONS.cart },
+      { id: 'statistic', labelKey: 'nav_reports', label: 'รายงาน', icon: ICONS.chart },
+      { id: 'settings', labelKey: 'nav_settings', label: 'ตั้งค่า', icon: ICONS.gear }
     ];
 
     const BNAV_TABS = [
-      { id: 'dashboard', labelKey: 'nav_home', label: 'Home', icon: ICONS.home },
-      { id: 'procedure', labelKey: 'nav_cases', label: 'Cases', icon: ICONS.clip },
-      { id: 'inventory', labelKey: 'nav_stock', label: 'Stock', icon: ICONS.box },
-      { id: 'assets', labelKey: 'nav_assets', label: 'Assets', icon: ICONS.monitor }
+      { id: 'dashboard', labelKey: 'nav_home', label: 'หน้าแรก', icon: ICONS.home },
+      { id: 'inventory', labelKey: 'nav_stock', label: 'คลังเวชภัณฑ์', icon: ICONS.box },
+      { id: 'procedure', labelKey: 'nav_cases', label: 'บันทึกเคส', icon: ICONS.clip },
+      { id: 'exchange', labelKey: 'nav_swap', label: 'ยืม-แลก-ฝาก', icon: ICONS.swap }
     ];
-
-    const tabs = NAV_GROUPS.flatMap(g => g.items);
 
     function getTabLabel(tab) {
       if (!tab) return '';
@@ -1039,17 +1088,15 @@ window.__INR_MAIN_PARSED = true;
     function renderNavShell() {
       const unlocked = isSettingsUnlocked();
 
-      // 1. Desktop Sidebar Navigation (3 Groups)
+      // 1. Desktop Sidebar Navigation (Flat 8-item list)
       const sideNav = document.getElementById('nav-tabs-container');
       if (sideNav) {
-        sideNav.innerHTML = NAV_GROUPS.map(grp => {
-          const visibleItems = grp.items.filter(it => !it.hiddenUntilUnlocked || unlocked);
-          if (visibleItems.length === 0) return '';
-          return `<h6>${t(grp.groupKey)}</h6>` + visibleItems.map(tab => {
+        sideNav.innerHTML = tabs
+          .filter(it => !it.hiddenUntilUnlocked || unlocked)
+          .map(tab => {
             const isActive = state.currentTab === tab.id;
             return `<button type="button" class="nav-tab ${isActive ? 'on active' : ''}" data-tab="${tab.id}" onclick="switchTab('${tab.id}')">${tab.icon}<span>${getTabLabel(tab)}</span></button>`;
           }).join('');
-        }).join('');
       }
 
       // 2. Sidebar Footer & Sheet Discreet Lock/Unlock Admin Buttons
@@ -1140,13 +1187,16 @@ window.__INR_MAIN_PARSED = true;
             break;
           case 'exchange':
             switchExchangeSubTab(state.exchangeSubTab || 'quota', true);
+            if (!state.loadedModules.exchange && isApiConfigured()) ensureModuleLoaded('exchange');
             break;
           case 'loan':
             state.currentTab = 'exchange';
             switchExchangeSubTab('loans', true);
+            if (!state.loadedModules.exchange && isApiConfigured()) ensureModuleLoaded('exchange');
             break;
           case 'procurement':
             renderProcurementTab();
+            if (!state.loadedModules.procurement && isApiConfigured()) ensureModuleLoaded('procurement');
             break;
           case 'transactions':
             state.currentTab = 'inventory';
@@ -1157,9 +1207,11 @@ window.__INR_MAIN_PARSED = true;
             break;
           case 'statistic':
             renderStatisticTab();
+            if (!state.loadedModules.allTransactions && isApiConfigured()) ensureModuleLoaded('allTransactions');
             break;
           case 'assets':
             renderAssetsTab();
+            if (!state.loadedModules.assets && isApiConfigured()) ensureModuleLoaded('assets');
             break;
           case 'settings':
             renderSettingsTab();
@@ -2131,16 +2183,18 @@ window.__INR_MAIN_PARSED = true;
       const devName = inv ? inv.deviceName : itemId;
       verifyPasscodeThen('delete_stock', state.currentLang === 'th' ? `ยืนยันการลบเวชภัณฑ์ "${devName}"?` : `Delete inventory device "${devName}"?`, async () => {
         if (isApiConfigured()) {
-          appLoading.classList.remove('hidden');
-          appContent.classList.add('hidden');
+          setSyncIndicator(true);
           try {
             await callApi('deleteInventoryItem', { itemId });
+            setSyncIndicator(false);
+            state.inventory = (state.inventory || []).filter(i => String(i.itemId) !== String(itemId));
+            recalculateInventoryHierarchy();
+            persistStateToLocalCache();
             showToast('Device removed');
-            fetchDataFromServer();
+            renderCurrentTab();
           } catch (err) {
+            setSyncIndicator(false);
             showToast('Failed: ' + (err.message || err));
-            appLoading.classList.add('hidden');
-            appContent.classList.remove('hidden');
           }
         } else {
           state.inventory = state.inventory.filter(i => String(i.itemId) !== String(itemId));
@@ -2227,19 +2281,30 @@ window.__INR_MAIN_PARSED = true;
       }
 
       if (isApiConfigured()) {
-        appLoading.classList.remove('hidden');
-        appContent.classList.add('hidden');
-
+        setSyncIndicator(true);
         callApi(isEdit ? 'editInventoryItem' : 'addInventoryItem', data)
-          .then(() => {
+          .then(res => {
+            setSyncIndicator(false);
+            if (!Array.isArray(state.inventory)) state.inventory = [];
+            if (isEdit && origItem) {
+              Object.assign(origItem, data);
+            } else {
+              const newItem = Object.assign({}, data, { itemId: (res && res.itemId) || data.itemId });
+              state.inventory.push(newItem);
+            }
+            if (res && Array.isArray(res.transactions)) {
+              applyIncrementalWriteResult(res);
+            } else {
+              recalculateInventoryHierarchy();
+              persistStateToLocalCache();
+              renderCurrentTab();
+            }
             showToast(isEdit ? 'Device updated!' : 'Device added!');
             closeModal();
-            fetchDataFromServer();
           })
           .catch(err => {
+            setSyncIndicator(false);
             showToast('Failed: ' + (err.message || err));
-            appLoading.classList.add('hidden');
-            appContent.classList.remove('hidden');
           });
       } else {
         const todayStr = getToday();
@@ -2420,8 +2485,24 @@ window.__INR_MAIN_PARSED = true;
         callApi('submitHoReconciliation', { user: userNick, date: recDate, items })
           .then(res => {
             setSyncIndicator(false);
+            items.forEach(entry => {
+              if (entry.targetType === 'group') {
+                const grp = (state.groups || []).find(g => String(g.groupId) === String(entry.id));
+                if (grp) {
+                  grp.hoStock = entry.newHoStock;
+                  grp.hoLastChecked = recDate;
+                }
+              } else {
+                const inv = (state.inventory || []).find(i => String(i.itemId) === String(entry.id));
+                if (inv) {
+                  inv.ownHoStock = entry.newHoStock;
+                  inv.hoStock = entry.newHoStock;
+                  inv.hoLastChecked = recDate;
+                }
+              }
+            });
+            applyIncrementalWriteResult(res);
             showToast(`HO Stock reconciled (${res.updatedCount || items.length} item(s))!`);
-            fetchDataFromServer();
           })
           .catch(err => {
             setSyncIndicator(false);
@@ -2566,10 +2647,19 @@ window.__INR_MAIN_PARSED = true;
       if (isApiConfigured()) {
         setSyncIndicator(true);
         callApi('saveAnnouncement', payload)
-          .then(() => {
+          .then(res => {
             setSyncIndicator(false);
+            if (!Array.isArray(state.announcements)) state.announcements = [];
+            const savedAnn = (res && res.announcement) ? res.announcement : Object.assign({}, payload, { id: payload.id || ('ANN-' + Date.now().toString().slice(-6)), updatedAt: getToday() });
+            const existingIdx = state.announcements.findIndex(a => String(a.id) === String(savedAnn.id));
+            if (existingIdx >= 0) {
+              state.announcements[existingIdx] = Object.assign({}, state.announcements[existingIdx], savedAnn);
+            } else {
+              state.announcements.push(savedAnn);
+            }
+            persistStateToLocalCache();
+            renderAnnouncementsBoard();
             showToast(id ? 'Announcement updated!' : 'Announcement created!');
-            fetchDataFromServer();
           })
           .catch(err => {
             setSyncIndicator(false);
@@ -2601,8 +2691,10 @@ window.__INR_MAIN_PARSED = true;
           callApi('deleteAnnouncement', { id: annId })
             .then(() => {
               setSyncIndicator(false);
+              state.announcements = (state.announcements || []).filter(a => String(a.id) !== String(annId));
+              persistStateToLocalCache();
+              renderAnnouncementsBoard();
               showToast('Announcement deleted');
-              fetchDataFromServer();
             })
             .catch(err => {
               setSyncIndicator(false);
@@ -3057,11 +3149,16 @@ window.__INR_MAIN_PARSED = true;
       }).reverse(); // Newest first
 
       if (filtered.length === 0) {
-        body.innerHTML = '<tr><td colspan="7" class="empty-state">ไม่พบประวัติรายการ</td></tr>';
+        const olderBtn = state.hasOlderTransactions
+          ? ` <button type="button" class="btn btn-o btn-sm ml-2" onclick="loadAllTransactionsOnDemand()">โหลดประวัติเก่ากว่า 90 วันทั้งหมด</button>`
+          : '';
+        body.innerHTML = `<tr><td colspan="7" class="empty-state">ไม่พบประวัติรายการ${olderBtn}</td></tr>`;
         return;
       }
 
-      body.innerHTML = filtered.map(tx => {
+      const limit = state.txRenderLimit || 250;
+      const visible = filtered.slice(0, limit);
+      const rowsHtml = visible.map(tx => {
         const typeColor = tx.type === 'Procedure Use' ? 'var(--red)'
           : tx.type === 'Stock In' ? 'var(--brand)'
           : tx.type === 'HO Check' ? '#7c3aed'
@@ -3083,22 +3180,36 @@ window.__INR_MAIN_PARSED = true;
         </tr>
       `;
       }).join('');
+
+      const footerControls = [];
+      if (filtered.length > visible.length) {
+        footerControls.push(`<button type="button" class="btn btn-o btn-sm" onclick="state.txRenderLimit = (state.txRenderLimit || 250) + 250; renderTransactions();">แสดงเพิ่ม (+250 จากทั้งหมด ${filtered.length} รายการ)</button>`);
+      }
+      if (state.hasOlderTransactions) {
+        footerControls.push(`<button type="button" class="btn btn-o btn-sm" onclick="loadAllTransactionsOnDemand()">โหลดประวัติเก่ากว่า 90 วันทั้งหมด</button>`);
+      }
+      const footerRow = footerControls.length > 0
+        ? `<tr><td colspan="7" class="center" style="padding:12px;"><div class="flex gap-2 justify-center flex-wrap items-center">${footerControls.join('')}</div></td></tr>`
+        : '';
+      body.innerHTML = rowsHtml + footerRow;
     }
 
     function handleDeleteTx(txId) {
       verifyPasscodeThen('delete_stock', state.currentLang === 'th' ? `ยืนยันการลบรายการ ${txId}?` : `Delete transaction ${txId}?`, async () => {
-        appLoading.classList.remove('hidden');
-        appContent.classList.add('hidden');
-
         if (isApiConfigured()) {
+          setSyncIndicator(true);
           try {
-            await callApi('deleteTransaction', { transactionId: txId });
+            const res = await callApi('deleteTransaction', { transactionId: txId });
+            setSyncIndicator(false);
+            if (res && Array.isArray(res.deletedTransactionIds)) {
+              applyIncrementalWriteResult(res);
+            } else {
+              applyIncrementalWriteResult({ deletedTransactionIds: [txId], updatedStock: res && res.updatedStock, exchangeQuotas: res && res.exchangeQuotas });
+            }
             showToast('Deleted!');
-            fetchDataFromServer();
           } catch (err) {
+            setSyncIndicator(false);
             showToast('Failed to delete: ' + (err.message || err));
-            appLoading.classList.add('hidden');
-            appContent.classList.remove('hidden');
           }
         } else {
           state.transactions = state.transactions.filter(tx => tx.id !== txId);
@@ -3838,11 +3949,16 @@ window.__INR_MAIN_PARSED = true;
       const groups = getFilteredProcGroups();
 
       if (groups.length === 0) {
-        body.innerHTML = '<tr><td colspan="7" class="empty-state">No procedure records found.</td></tr>';
+        const olderBtn = state.hasOlderTransactions
+          ? ` <button type="button" class="btn btn-o btn-sm ml-2" onclick="loadAllTransactionsOnDemand()">โหลดประวัติเก่ากว่า 90 วันทั้งหมด</button>`
+          : '';
+        body.innerHTML = `<tr><td colspan="7" class="empty-state">No procedure records found.${olderBtn}</td></tr>`;
         return;
       }
 
-      body.innerHTML = groups.map(g => {
+      const limit = state.caseHistRenderLimit || 200;
+      const visible = groups.slice(0, limit);
+      const rowsHtml = visible.map(g => {
         const notes = [g.complication, g.contrast ? `Contrast: ${g.contrast}` : ''].filter(Boolean).join(' | ');
         return `
           <tr>
@@ -3860,6 +3976,18 @@ window.__INR_MAIN_PARSED = true;
           </tr>
         `;
       }).join('');
+
+      const footerControls = [];
+      if (groups.length > visible.length) {
+        footerControls.push(`<button type="button" class="btn btn-o btn-sm" onclick="state.caseHistRenderLimit = (state.caseHistRenderLimit || 200) + 200; renderProcHistory();">แสดงเพิ่ม (+200 จากทั้งหมด ${groups.length} เคส)</button>`);
+      }
+      if (state.hasOlderTransactions) {
+        footerControls.push(`<button type="button" class="btn btn-o btn-sm" onclick="loadAllTransactionsOnDemand()">โหลดประวัติเก่ากว่า 90 วันทั้งหมด</button>`);
+      }
+      const footerRow = footerControls.length > 0
+        ? `<tr><td colspan="7" class="center" style="padding:12px;"><div class="flex gap-2 justify-center flex-wrap items-center">${footerControls.join('')}</div></td></tr>`
+        : '';
+      body.innerHTML = rowsHtml + footerRow;
     }
 
     function buildProcDetailHtml(g) {
@@ -3985,17 +4113,20 @@ window.__INR_MAIN_PARSED = true;
       const label = g ? `HN ${g.hn || '—'} (${formatDate(g.date)})` : txId;
       verifyPasscodeThen('delete_cases', state.currentLang === 'th' ? `ยืนยันการลบข้อมูลเคส ${label}?` : `Delete procedure case ${label}?`, async () => {
         closeModal();
-        appLoading.classList.remove('hidden');
-        appContent.classList.add('hidden');
         if (isApiConfigured()) {
+          setSyncIndicator(true);
           try {
-            await callApi('deleteTransaction', { transactionId: txId });
+            const res = await callApi('deleteTransaction', { transactionId: txId });
+            setSyncIndicator(false);
+            applyIncrementalWriteResult(
+              (res && Array.isArray(res.deletedTransactionIds))
+                ? res
+                : { deletedTransactionIds: [txId], updatedStock: res && res.updatedStock, exchangeQuotas: res && res.exchangeQuotas }
+            );
             showToast(state.currentLang === 'th' ? 'ลบเคสเรียบร้อยแล้ว' : 'Case deleted');
-            fetchDataFromServer();
           } catch (err) {
+            setSyncIndicator(false);
             showToast('Failed to delete: ' + (err.message || err));
-            appLoading.classList.add('hidden');
-            appContent.classList.remove('hidden');
           }
         } else {
           state.transactions = (state.transactions || []).filter(tx => String(tx.id) !== String(txId));
@@ -4360,19 +4491,22 @@ window.__INR_MAIN_PARSED = true;
       };
 
       closeModal();
-      appLoading.classList.remove('hidden');
-      appContent.classList.add('hidden');
 
       if (isApiConfigured()) {
+        setSyncIndicator(true);
         callApi('editProcedure', { transactionId: txId, payload })
-          .then(() => {
+          .then(res => {
+            setSyncIndicator(false);
+            if (res && (Array.isArray(res.deletedTransactionIds) || Array.isArray(res.transactions))) {
+              applyIncrementalWriteResult(res, { replaceMatchingIds: true });
+            } else {
+              fetchDataFromServer();
+            }
             showToast('Procedure updated!');
-            fetchDataFromServer();
           })
           .catch(err => {
+            setSyncIndicator(false);
             showToast('Failed: ' + (err.message || err));
-            appLoading.classList.add('hidden');
-            appContent.classList.remove('hidden');
           });
       } else {
         // Offline mock: revert old items, clean old quota history, push new tx rows
@@ -6169,10 +6303,23 @@ function exportStatisticsCSV() {
             }
           : { name, surname, nickname, position, authorization, phone, dob };
         callApi(action, payload)
-          .then(() => {
+          .then(res => {
             setSyncIndicator(false);
+            if (!Array.isArray(state.settings.users)) state.settings.users = [];
+            if (isEdit && idx >= 0 && idx < state.settings.users.length) {
+              Object.assign(state.settings.users[idx], (res && res.user) || { name, surname, nickname, position, authorization, phone, dob });
+            } else {
+              const created = (res && res.user) || {
+                rowIndex: state.settings.users.length + 2,
+                userId: 'USR-' + (state.settings.users.length + 1),
+                name, surname, nickname, position, authorization, phone, dob
+              };
+              state.settings.users.push(created);
+            }
+            state.settings.techs = state.settings.users;
+            persistStateToLocalCache();
+            renderSettingsTab();
             showToast(isEdit ? 'แก้ไขข้อมูลผู้ใช้สำเร็จ' : 'เพิ่มผู้ใช้สำเร็จ');
-            fetchDataFromServer();
           })
           .catch(err => {
             setSyncIndicator(false);
@@ -6217,8 +6364,11 @@ function exportStatisticsCSV() {
           })
             .then(() => {
               setSyncIndicator(false);
+              state.settings.users.splice(idx, 1);
+              state.settings.techs = state.settings.users;
+              persistStateToLocalCache();
+              renderSettingsTab();
               showToast('ลบข้อมูลผู้ใช้แล้ว');
-              fetchDataFromServer();
             })
             .catch(err => {
               setSyncIndicator(false);
@@ -6452,10 +6602,41 @@ function exportStatisticsCSV() {
         const action = groupId ? 'editGroup' : 'createGroup';
         const payload = { groupId, groupName, hoItemId, buyPrice, sellPrice, hoStock, subItemOrder };
         callApi(action, payload)
-          .then(() => {
+          .then(res => {
             setSyncIndicator(false);
+            if (!Array.isArray(state.groups)) state.groups = [];
+            if (groupId) {
+              const grp = state.groups.find(g => String(g.groupId) === String(groupId));
+              if (grp) {
+                Object.assign(grp, { groupName, hoItemId, buyPrice, sellPrice, hoStock, subItemOrder });
+              }
+              (state.inventory || []).forEach(i => {
+                if (String(i.groupId) === String(groupId)) {
+                  i.buyPrice = buyPrice;
+                  i.sellPrice = sellPrice;
+                }
+              });
+            } else {
+              const newGid = (res && res.groupId) || ('GRP-' + getToday().replace(/-/g, '') + '-' + Date.now().toString().slice(-6));
+              state.groups.push({
+                groupId: newGid,
+                groupName, hoItemId, buyPrice, sellPrice, hoStock, hoLastChecked: '', subItemOrder: []
+              });
+              if (hoItemId) {
+                (state.inventory || []).forEach(i => {
+                  if (!i.groupId && String(i.hoItemId || '').trim() === hoItemId) {
+                    i.groupId = newGid;
+                    i.ungroupedManual = false;
+                    i.buyPrice = buyPrice;
+                    i.sellPrice = sellPrice;
+                  }
+                });
+              }
+            }
+            recalculateInventoryHierarchy();
+            persistStateToLocalCache();
+            renderCurrentTab();
             showToast(groupId ? 'Group updated!' : 'Group created!');
-            fetchDataFromServer();
           })
           .catch(err => {
             setSyncIndicator(false);
@@ -6523,8 +6704,11 @@ function exportStatisticsCSV() {
           callApi('deleteGroup', { groupId })
             .then(() => {
               setSyncIndicator(false);
+              state.groups = (state.groups || []).filter(g => String(g.groupId) !== String(groupId));
+              recalculateInventoryHierarchy();
+              persistStateToLocalCache();
+              renderGroupsSettings();
               showToast('Group deleted!');
-              fetchDataFromServer();
             })
             .catch(err => {
               setSyncIndicator(false);
@@ -6559,8 +6743,18 @@ function exportStatisticsCSV() {
         callApi('assignItemToGroup', { itemId, groupId })
           .then(() => {
             setSyncIndicator(false);
+            const item = (state.inventory || []).find(i => String(i.itemId) === String(itemId));
+            const grp  = (state.groups || []).find(g => String(g.groupId) === String(groupId));
+            if (item && grp) {
+              item.groupId = grp.groupId;
+              item.ungroupedManual = false;
+              item.buyPrice = grp.buyPrice;
+              item.sellPrice = grp.sellPrice;
+            }
+            recalculateInventoryHierarchy();
+            persistStateToLocalCache();
+            renderGroupsSettings();
             showToast('Assigned item to Group!');
-            fetchDataFromServer();
           })
           .catch(err => {
             setSyncIndicator(false);
@@ -6587,8 +6781,15 @@ function exportStatisticsCSV() {
         callApi('removeItemFromGroup', { itemId })
           .then(() => {
             setSyncIndicator(false);
+            const item = (state.inventory || []).find(i => String(i.itemId) === String(itemId));
+            if (item) {
+              item.groupId = '';
+              item.ungroupedManual = true;
+            }
+            recalculateInventoryHierarchy();
+            persistStateToLocalCache();
+            renderGroupsSettings();
             showToast('Removed item from Group (now Standalone)');
-            fetchDataFromServer();
           })
           .catch(err => {
             setSyncIndicator(false);
@@ -6620,8 +6821,12 @@ function exportStatisticsCSV() {
         callApi('setItemFreeStatus', { itemId: item.itemId, isFreeItem: newFree })
           .then(() => {
             setSyncIndicator(false);
+            item.isFreeItem = newFree;
+            if (newFree) item.buyPrice = 0;
+            recalculateInventoryHierarchy();
+            persistStateToLocalCache();
+            renderGroupsSettings();
             showToast(newFree ? `Marked "${item.deviceName}" as Free item` : `Set "${item.deviceName}" as PO item`);
-            fetchDataFromServer();
           })
           .catch(err => {
             setSyncIndicator(false);
@@ -6733,7 +6938,23 @@ function exportStatisticsCSV() {
         }
       }
 
-      // 2. Render Consignment & Vendor Quarantine Hold Table
+      // 2. Render Buffer Stock Management & Live Buffer Summary
+      const liveSumEl = document.getElementById('buffer-live-summary');
+      if (liveSumEl) {
+        const bufItems = (state.inventory || []).filter(i => !i.isGroupHeader && (Number(i.bufferStock) || 0) > 0);
+        if (bufItems.length === 0) {
+          liveSumEl.innerHTML = '<span class="text-xs text-gray">ยังไม่มีอุปกรณ์คงเหลือในคลังสำรอง (Buffer = 0)</span>';
+        } else {
+          liveSumEl.innerHTML = bufItems.map(i => `
+            <div class="badge badge-purple" style="padding:5px 10px; font-size:12px; gap:6px;">
+              <span>${escapeHtml(i.deviceName)}</span>
+              ${i.hoItemId ? `<span class="font-mono text-xs" style="opacity:0.8;">(${escapeHtml(i.hoItemId)})</span>` : ''}
+              <strong>· ${Number(i.bufferStock) || 0}</strong>
+            </div>
+          `).join('');
+        }
+      }
+
       const cBody = document.getElementById('csg-table-body');
       if (cBody) {
         const cStatus = document.getElementById('csg-filter-status')?.value || '';
@@ -6742,9 +6963,12 @@ function exportStatisticsCSV() {
         const filteredCsg = consignments.filter(c => {
           if (cStatus && String(c.status) !== cStatus) return false;
           if (!cSearch) return true;
+          const invItem = state.inventory.find(i => String(i.itemId) === String(c.itemId));
+          const hoStr = invItem ? String(invItem.hoItemId || '').toLowerCase() : '';
           return (
             String(c.vendorName || c.vendor || '').toLowerCase().includes(cSearch) ||
             String(c.itemName || getDeviceName(c.itemId) || '').toLowerCase().includes(cSearch) ||
+            hoStr.includes(cSearch) ||
             String(c.contactPerson || '').toLowerCase().includes(cSearch) ||
             String(c.pickupRep || '').toLowerCase().includes(cSearch) ||
             String(c.holdId || '').toLowerCase().includes(cSearch)
@@ -6752,7 +6976,7 @@ function exportStatisticsCSV() {
         });
 
         if (filteredCsg.length === 0) {
-          cBody.innerHTML = '<tr><td colspan="8" class="empty-state">ไม่พบรายการรับฝาก</td></tr>';
+          cBody.innerHTML = '<tr><td colspan="7" class="empty-state">ไม่พบรายการคลังสำรอง คลิก "+ เพิ่มรายการคลังสำรอง" เพื่อบันทึก</td></tr>';
         } else {
           cBody.innerHTML = filteredCsg.map(c => {
             const isHolding = String(c.status || 'Holding') === 'Holding';
@@ -6761,34 +6985,121 @@ function exportStatisticsCSV() {
               : '';
             const cDate = c.dateDeposited || c.date || '';
             const cQty = c.quantity !== undefined ? c.quantity : (c.qty ?? 0);
+            const invItem = state.inventory.find(i => String(i.itemId) === String(c.itemId));
+            const liveBuf = invItem ? (Number(invItem.bufferStock) || 0) : 0;
+            const devTitle = invItem ? invItem.deviceName : (c.itemName || getDeviceName(c.itemId));
+            const hoIdHtml = invItem && invItem.hoItemId ? `<div class="text-xs font-mono text-gray">HO: ${escapeHtml(invItem.hoItemId)}</div>` : '';
             return `
               <tr>
                 <td class="text-xs text-gray" data-sort="${escapeHtml(String(cDate))}">${formatDate(cDate)}<div class="font-mono">${escapeHtml(c.holdId || '')}</div></td>
-                <td class="font-semibold">${escapeHtml(c.vendorName || c.vendor || '—')}</td>
                 <td>
-                  <div>${escapeHtml(c.contactPerson || '—')}</div>
-                  <div class="text-xs text-gray">${escapeHtml(c.contactPhone || '')}</div>
+                  <div class="font-medium">${escapeHtml(devTitle)}</div>
+                  ${hoIdHtml}
                 </td>
-                <td>
-                  <div class="font-medium">${escapeHtml(c.itemName || getDeviceName(c.itemId))}</div>
-                </td>
-                <td class="center font-bold">${cQty}</td>
                 <td class="center">
-                  <span class="badge ${isHolding ? 'badge-amber' : 'badge-ok'}">${isHolding ? 'รับฝากไว้' : 'คืนแล้ว'}</span>
+                  <div class="font-bold">${cQty} ชิ้น</div>
+                  <div class="text-xs" style="color:var(--pur);">Buffer คงเหลือ: <strong>${liveBuf}</strong></div>
+                </td>
+                <td>
+                  <div class="font-semibold">${escapeHtml(c.vendorName || c.vendor || '—')}</div>
+                  <div class="text-xs text-gray">${escapeHtml(c.contactPerson || '—')} ${c.contactPhone ? '· ' + escapeHtml(c.contactPhone) : ''}</div>
+                </td>
+                <td class="center">
+                  <span class="badge ${isHolding ? 'badge-amber' : 'badge-ok'}">${isHolding ? 'เก็บในคลังสำรอง' : 'คืนบริษัทแล้ว'}</span>
                 </td>
                 <td class="text-sm">
                   <div class="text-gray">${escapeHtml(c.notes || '—')}</div>
                   ${pickupInfo}
                 </td>
                 <td class="center" style="white-space:nowrap;">
-                  ${isHolding ? `<button class="btn btn-brand btn-sm" onclick="openConsignmentReturnModal('${escapeHtml(c.holdId)}')">${ICONS.check} รับคืน</button>` : ''}
-                  <button class="btn-ghost" style="color:var(--red);" onclick="removeConsignmentHold('${escapeHtml(c.holdId)}')" title="ลบ">${ICONS.trash}</button>
+                  <button type="button" class="btn-ghost" onclick="openConsignmentModal('${escapeHtml(c.holdId)}')" title="แก้ไข">${ICONS.edit}</button>
+                  ${isHolding ? `<button type="button" class="btn btn-brand btn-sm" onclick="openConsignmentReturnModal('${escapeHtml(c.holdId)}')">${ICONS.check} คืน</button>` : ''}
+                  <button type="button" class="btn-ghost" style="color:var(--red);" onclick="removeConsignmentHold('${escapeHtml(c.holdId)}')" title="ลบ">${ICONS.trash}</button>
                 </td>
               </tr>
             `;
           }).join('');
         }
       }
+
+      if (state.bufferSubView === 'exchange_history') {
+        renderVendorExchangeHistory();
+      }
+    }
+
+    function switchBufferView(mode) {
+      state.bufferSubView = mode === 'exchange_history' ? 'exchange_history' : 'list';
+      document.querySelectorAll('#buffer-view-toggle .chip').forEach(btn => {
+        const on = btn.getAttribute('data-bview') === state.bufferSubView;
+        btn.classList.toggle('on', on);
+        btn.classList.toggle('active', on);
+      });
+      const listCard = document.getElementById('buffer-entries-card');
+      const histCard = document.getElementById('vexc-history-box');
+      if (listCard) listCard.classList.toggle('hidden', state.bufferSubView !== 'list');
+      if (histCard) histCard.classList.toggle('hidden', state.bufferSubView !== 'exchange_history');
+      if (state.bufferSubView === 'exchange_history') {
+        renderVendorExchangeHistory();
+      }
+    }
+
+    function renderVendorExchangeHistory() {
+      const tbody = document.getElementById('vexc-table-body');
+      if (!tbody) return;
+      const excTxns = (state.transactions || []).filter(t =>
+        String(t.transactionId || '').startsWith('EXC-') ||
+        String(t.complication || '').includes('Vendor Exchange')
+      );
+      const grouped = {};
+      const order = [];
+      excTxns.forEach(tx => {
+        const key = String(tx.transactionId || tx.date || '') + '|' + String(tx.date || '');
+        if (!grouped[key]) {
+          grouped[key] = {
+            txnId: tx.transactionId || '',
+            date: tx.date || '',
+            tech: tx.tech || '',
+            outRows: [],
+            inRows: [],
+            note: ''
+          };
+          order.push(key);
+        }
+        const g = grouped[key];
+        const comp = String(tx.complication || '');
+        if (!g.note && comp) {
+          g.note = comp.replace(/^Vendor Exchange (Out|In):\s*/i, '').trim();
+        }
+        if (String(tx.type) === 'Stock Out' || comp.includes('Vendor Exchange Out')) {
+          g.outRows.push(tx);
+        } else {
+          g.inRows.push(tx);
+        }
+      });
+
+      if (order.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" class="empty-state">ยังไม่มีประวัติการแลกเปลี่ยนสินค้ากับบริษัท</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = order.map(k => {
+        const g = grouped[k];
+        const outHtml = g.outRows.length
+          ? g.outRows.map(r => `<div><strong>${escapeHtml(getDeviceName(r.itemId))}</strong> × <span class="badge badge-low">${r.quantity}</span> <span class="text-xs text-gray">(${escapeHtml(r.fromLoc || 'Buffer')})</span></div>`).join('')
+          : '—';
+        const inHtml = g.inRows.length
+          ? g.inRows.map(r => `<div><strong>${escapeHtml(getDeviceName(r.itemId))}</strong> × <span class="badge badge-ok">${r.quantity}</span> <span class="text-xs text-gray">(${escapeHtml(r.toLoc || 'Buffer')})</span></div>`).join('')
+          : '—';
+        return `
+          <tr>
+            <td class="text-xs text-gray">${formatDate(g.date)}<div class="font-mono">${escapeHtml(g.txnId)}</div></td>
+            <td class="text-sm">${escapeHtml(g.note || '—')}</td>
+            <td class="text-sm">${outHtml}</td>
+            <td class="text-sm">${inHtml}</td>
+            <td class="text-xs font-medium">${escapeHtml(g.tech || '—')}</td>
+          </tr>
+        `;
+      }).join('');
     }
 
     function openExchangeQuotaModal(quotaId) {
@@ -6863,17 +7174,15 @@ function exportStatisticsCSV() {
 
       closeModal();
       if (isApiConfigured()) {
-        appLoading.classList.remove('hidden');
-        appContent.classList.add('hidden');
+        setSyncIndicator(true);
         callApi('saveExchangeQuota', payload)
           .then(() => {
             showToast(quotaId ? 'Quota rule updated!' : 'Quota rule created!');
-            fetchDataFromServer();
+            return ensureModuleLoaded('exchange', true);
           })
           .catch(err => {
+            setSyncIndicator(false);
             showToast('Failed: ' + (err.message || err));
-            appLoading.classList.add('hidden');
-            appContent.classList.remove('hidden');
           });
       } else {
         if (!Array.isArray(state.exchangeQuotas)) state.exchangeQuotas = [];
@@ -7016,17 +7325,15 @@ function exportStatisticsCSV() {
 
       closeModal();
       if (isApiConfigured()) {
-        appLoading.classList.remove('hidden');
-        appContent.classList.add('hidden');
+        setSyncIndicator(true);
         callApi('saveExchangeQuota', payload)
           .then(() => {
             showToast('Substitution record updated!');
-            fetchDataFromServer();
+            return ensureModuleLoaded('exchange', true);
           })
           .catch(err => {
+            setSyncIndicator(false);
             showToast('Failed: ' + (err.message || err));
-            appLoading.classList.add('hidden');
-            appContent.classList.remove('hidden');
           });
       } else {
         Object.assign(q, payload);
@@ -7048,17 +7355,15 @@ function exportStatisticsCSV() {
       closeModal();
       verifyPasscodeThen('delete_swap', state.currentLang === 'th' ? `ยืนยันการลบกฎโควตา ${quotaId}?` : `Remove substitution quota rule ${quotaId}?`, () => {
         if (isApiConfigured()) {
-          appLoading.classList.remove('hidden');
-          appContent.classList.add('hidden');
+          setSyncIndicator(true);
           callApi('deleteExchangeQuota', { quotaId })
             .then(() => {
               showToast('Quota rule removed');
-              fetchDataFromServer();
+              return ensureModuleLoaded('exchange', true);
             })
             .catch(err => {
+              setSyncIndicator(false);
               showToast('Failed: ' + (err.message || err));
-              appLoading.classList.add('hidden');
-              appContent.classList.remove('hidden');
             });
         } else {
           state.exchangeQuotas = (state.exchangeQuotas || []).filter(x => String(x.quotaId) !== String(quotaId));
@@ -7068,82 +7373,157 @@ function exportStatisticsCSV() {
       });
     }
 
-    function openConsignmentModal() {
-      document.getElementById('csg-modal-vendor').value   = '';
-      document.getElementById('csg-modal-date').value     = getToday();
-      document.getElementById('csg-modal-contact').value  = '';
-      document.getElementById('csg-modal-phone').value    = '';
-      document.getElementById('csg-modal-itemname').value = '';
-      document.getElementById('csg-modal-qty').value      = '1';
-      document.getElementById('csg-modal-notes').value    = '';
+    function populateVendorDatalist() {
+      const dl = document.getElementById('vexc-vendor-datalist');
+      if (!dl) return;
+      const set = new Set();
+      (state.companyList || []).forEach(c => { if (c) set.add(String(c).trim()); });
+      (state.inventory || []).forEach(i => { if (i && i.company) set.add(String(i.company).trim()); });
+      (state.consignments || []).forEach(c => { if (c && c.vendorName) set.add(String(c.vendorName).trim()); });
+      dl.innerHTML = Array.from(set).filter(Boolean).sort().map(v => `<option value="${escapeHtml(v)}">`).join('');
+    }
 
-      const itemSel = document.getElementById('csg-modal-itemid');
-      itemSel.innerHTML = '<option value="">— Custom / Non-Inventory Vendor Item —</option>' +
-        getTransactableInventory().map(i => `<option value="${escapeHtml(String(i.itemId))}">${i.deviceName}${i.isFreeItem ? ' [FREE]' : ''} (${i.category || '—'})</option>`).join('');
-      itemSel.value = '';
+    function buildBufferInventoryOptionsHtml(query, selectedId) {
+      const q = String(query || '').toLowerCase().trim();
+      const items = getTransactableInventory().filter(i => {
+        if (!q) return true;
+        return String(i.deviceName || '').toLowerCase().includes(q) ||
+          String(i.hoItemId || '').toLowerCase().includes(q) ||
+          String(i.itemId || '').toLowerCase().includes(q);
+      });
+      return '<option value="">— เลือกรายการอุปกรณ์ในคลัง —</option>' + items.map(i => {
+        const hoTag = i.hoItemId ? `[${escapeHtml(i.hoItemId)}] ` : '';
+        const sel = String(selectedId || '') === String(i.itemId) ? ' selected' : '';
+        return `<option value="${escapeHtml(String(i.itemId))}"${sel}>${hoTag}${escapeHtml(i.deviceName)}${i.isFreeItem ? ' [FREE]' : ''} (Buffer: ${i.bufferStock || 0} | Main: ${i.mainStock || 0} | Retail: ${i.retailStock || 0})</option>`;
+      }).join('');
+    }
+
+    function filterConsignmentItems() {
+      const searchEl = document.getElementById('csg-item-search');
+      const selEl = document.getElementById('csg-modal-itemid');
+      if (!selEl) return;
+      const currentVal = selEl.value;
+      selEl.innerHTML = buildBufferInventoryOptionsHtml(searchEl ? searchEl.value : '', currentVal);
+    }
+
+    function openConsignmentModal(holdId) {
+      const isEdit = Boolean(holdId);
+      const existing = isEdit ? (state.consignments || []).find(x => String(x.holdId) === String(holdId)) : null;
+
+      populateVendorDatalist();
+      populateUserNicknameSelect('csg-modal-user');
+
+      document.getElementById('csg-modal-holdid').value = existing ? existing.holdId : '';
+      document.getElementById('csg-modal-title').innerText = existing
+        ? `แก้ไขรายการคลังสำรอง (${existing.holdId})`
+        : 'เพิ่มรายการคลังสำรอง (Buffer Stock)';
+
+      const searchEl = document.getElementById('csg-item-search');
+      const itemSel  = document.getElementById('csg-modal-itemid');
+      if (searchEl) {
+        searchEl.value = '';
+        searchEl.disabled = Boolean(existing);
+      }
+      if (itemSel) {
+        itemSel.innerHTML = buildBufferInventoryOptionsHtml('', existing ? existing.itemId : '');
+        itemSel.value = existing ? String(existing.itemId || '') : '';
+        itemSel.disabled = Boolean(existing);
+      }
+
+      document.getElementById('csg-modal-date').value    = existing ? (existing.dateDeposited || getToday()) : getToday();
+      document.getElementById('csg-modal-vendor').value  = existing ? (existing.vendorName || '') : '';
+      document.getElementById('csg-modal-contact').value = existing ? (existing.contactPerson || '') : '';
+      document.getElementById('csg-modal-phone').value   = existing ? (existing.contactPhone || '') : '';
+      document.getElementById('csg-modal-qty').value     = existing ? String(existing.quantity || 1) : '1';
+      document.getElementById('csg-modal-notes').value   = existing ? (existing.notes || '') : '';
       openModal('modal-consignment-new');
     }
 
     function onConsignmentItemSelect() {
-      const itemId = document.getElementById('csg-modal-itemid').value;
-      const nameInput = document.getElementById('csg-modal-itemname');
-      if (itemId) {
+      const itemId = document.getElementById('csg-modal-itemid')?.value;
+      const vendorInput = document.getElementById('csg-modal-vendor');
+      if (itemId && vendorInput) {
         const inv = state.inventory.find(i => String(i.itemId) === String(itemId));
-        if (inv && nameInput) nameInput.value = inv.deviceName;
+        if (inv && inv.company) vendorInput.value = inv.company;
       }
     }
 
     function saveConsignmentModal() {
+      const holdId        = document.getElementById('csg-modal-holdid')?.value.trim() || '';
       const vendorName    = document.getElementById('csg-modal-vendor').value.trim();
       const dateDeposited = document.getElementById('csg-modal-date').value || getToday();
       const contactPerson = document.getElementById('csg-modal-contact').value.trim();
       const contactPhone  = document.getElementById('csg-modal-phone').value.trim();
       const itemId        = document.getElementById('csg-modal-itemid').value;
-      const itemName      = document.getElementById('csg-modal-itemname').value.trim() || (itemId ? getDeviceName(itemId) : '');
+      const user          = document.getElementById('csg-modal-user')?.value.trim() || '';
+      const itemName      = itemId ? getDeviceName(itemId) : '';
       const quantity      = parseInt(document.getElementById('csg-modal-qty').value) || 0;
       const notes         = document.getElementById('csg-modal-notes').value.trim();
 
-      if (!vendorName || !itemName) {
-        showToast('Vendor Name and Item Name are required');
+      if (!itemId) {
+        showToast('กรุณาเลือกอุปกรณ์จากคลังเวชภัณฑ์ (Inventory)');
+        return;
+      }
+      if (!vendorName) {
+        showToast('กรุณาระบุชื่อบริษัท / ตัวแทน');
+        return;
+      }
+      if (!user) {
+        showToast('กรุณาเลือกผู้บันทึก');
         return;
       }
       if (quantity <= 0) {
-        showToast('Quantity must be greater than 0');
+        showToast('จำนวนต้องมากกว่า 0');
         return;
       }
 
-      const payload = {
-        vendorName, dateDeposited, contactPerson, contactPhone,
-        itemId, itemName, quantity, notes
-      };
+      const isEdit = Boolean(holdId);
+      const payload = isEdit
+        ? { holdId, vendorName, dateDeposited, contactPerson, contactPhone, quantity, notes, user }
+        : { vendorName, dateDeposited, contactPerson, contactPhone, itemId, itemName, quantity, notes, user };
 
       closeModal();
       if (isApiConfigured()) {
-        appLoading.classList.remove('hidden');
-        appContent.classList.add('hidden');
-        callApi('addConsignmentHold', payload)
-          .then(() => {
-            showToast('Consignment hold recorded in Buffer!');
-            fetchDataFromServer();
+        setSyncIndicator(true);
+        callApi(isEdit ? 'updateConsignmentHold' : 'addConsignmentHold', payload)
+          .then(res => {
+            showToast(isEdit ? 'แก้ไขรายการคลังสำรองเรียบร้อยแล้ว' : 'บันทึกรายการคลังสำรองเรียบร้อยแล้ว');
+            applyIncrementalWriteResult(res);
+            return ensureModuleLoaded('exchange', true);
           })
           .catch(err => {
-            showToast('Failed: ' + (err.message || err));
-            appLoading.classList.add('hidden');
-            appContent.classList.remove('hidden');
+            setSyncIndicator(false);
+            showToast('บันทึกล้มเหลว: ' + (err.message || err));
           });
       } else {
-        const holdId = 'CSG-' + Date.now().toString().slice(-6);
         if (!Array.isArray(state.consignments)) state.consignments = [];
-        state.consignments.unshift({
-          holdId, dateDeposited, vendorName, contactPerson, contactPhone,
-          itemId, itemName, quantity, status: 'Holding', notes, pickupDate: '', pickupRep: ''
-        });
-        if (itemId) {
-          const inv = state.inventory.find(i => String(i.itemId) === String(itemId));
+        const inv = state.inventory.find(i => String(i.itemId) === String(itemId));
+        if (isEdit) {
+          const existing = state.consignments.find(x => String(x.holdId) === String(holdId));
+          if (existing) {
+            const oldQty = Number(existing.quantity) || 0;
+            existing.vendorName    = vendorName;
+            existing.dateDeposited = dateDeposited;
+            existing.contactPerson = contactPerson;
+            existing.contactPhone  = contactPhone;
+            existing.quantity      = quantity;
+            existing.notes         = notes;
+            if (existing.status === 'Holding' && inv) {
+              inv.bufferStock = (Number(inv.bufferStock) || 0) + (quantity - oldQty);
+            }
+          }
+          showToast('แก้ไขรายการคลังสำรองเรียบร้อย (mock)');
+        } else {
+          const newId = 'CSG-' + Date.now().toString().slice(-6);
+          state.consignments.unshift({
+            holdId: newId, dateDeposited, vendorName, contactPerson, contactPhone,
+            itemId, itemName, quantity, status: 'Holding', notes, pickupDate: '', pickupRep: ''
+          });
           if (inv) inv.bufferStock = (Number(inv.bufferStock) || 0) + quantity;
+          showToast('บันทึกรายการคลังสำรองเรียบร้อย (mock)');
         }
-        showToast('Consignment hold recorded in Buffer (mock)');
         switchExchangeSubTab('consignment');
+        renderInventoryTab();
       }
     }
 
@@ -7154,9 +7534,9 @@ function exportStatisticsCSV() {
       document.getElementById('csg-ret-date').value    = getToday();
       document.getElementById('csg-ret-rep').value     = c.contactPerson || '';
       document.getElementById('csg-ret-summary').innerHTML = `
-        <div><strong>Vendor:</strong> ${c.vendorName}</div>
-        <div><strong>Item (Buffer):</strong> ${c.itemName || getDeviceName(c.itemId)} &times; <strong>${c.quantity}</strong></div>
-        <div class="text-xs text-gray mt-2">Confirming pickup will transition status to <strong>Returned</strong> and deduct ${c.quantity} unit(s) from Buffer stock.</div>
+        <div><strong>บริษัท:</strong> ${escapeHtml(c.vendorName)}</div>
+        <div><strong>รายการ (Buffer):</strong> ${escapeHtml(c.itemName || getDeviceName(c.itemId))} &times; <strong>${c.quantity}</strong></div>
+        <div class="text-xs text-gray mt-2">การยืนยันคืนบริษัทจะเปลี่ยนสถานะเป็น <strong>คืนบริษัทแล้ว</strong> และตัดยอดออกจากคลังสำรอง (Buffer) จำนวน ${c.quantity} ชิ้น</div>
       `;
       openModal('modal-consignment-return');
     }
@@ -7173,17 +7553,16 @@ function exportStatisticsCSV() {
 
       closeModal();
       if (isApiConfigured()) {
-        appLoading.classList.remove('hidden');
-        appContent.classList.add('hidden');
+        setSyncIndicator(true);
         callApi('returnConsignmentHold', { holdId, pickupDate, pickupRep })
-          .then(() => {
-            showToast('Marked as Returned / Picked Up!');
-            fetchDataFromServer();
+          .then(res => {
+            showToast('บันทึกการคืนบริษัทเรียบร้อยแล้ว');
+            applyIncrementalWriteResult(res);
+            return ensureModuleLoaded('exchange', true);
           })
           .catch(err => {
+            setSyncIndicator(false);
             showToast('Failed: ' + (err.message || err));
-            appLoading.classList.add('hidden');
-            appContent.classList.remove('hidden');
           });
       } else {
         const c = (state.consignments || []).find(x => String(x.holdId) === String(holdId));
@@ -7196,32 +7575,164 @@ function exportStatisticsCSV() {
             if (inv) inv.bufferStock = Math.max(0, (Number(inv.bufferStock) || 0) - (Number(c.quantity) || 0));
           }
         }
-        showToast('Marked as Returned / Picked Up (mock)');
+        showToast('บันทึกการคืนบริษัทเรียบร้อย (mock)');
         renderExchangeTab();
+        renderInventoryTab();
       }
     }
 
     function removeConsignmentHold(holdId) {
-      verifyPasscodeThen('delete_swap', state.currentLang === 'th' ? `ต้องการลบรายการฝากของ ${holdId} หรือไม่?` : `Delete consignment hold record ${holdId}?`, () => {
+      verifyPasscodeThen('delete_swap', `ต้องการลบรายการคลังสำรอง ${holdId} และปรับยอด Buffer คืนหรือไม่?`, () => {
+        const uList = getUsersList();
+        const userNick = uList[0] ? String(uList[0].nickname || uList[0].name || '') : '';
         if (isApiConfigured()) {
-          appLoading.classList.remove('hidden');
-          appContent.classList.add('hidden');
-          callApi('deleteConsignmentHold', { holdId })
-            .then(() => {
-              showToast('Consignment hold deleted');
-              fetchDataFromServer();
+          setSyncIndicator(true);
+          callApi('deleteConsignmentHold', { holdId, user: userNick })
+            .then(res => {
+              showToast('ลบรายการคลังสำรองเรียบร้อยแล้ว');
+              applyIncrementalWriteResult(res);
+              return ensureModuleLoaded('exchange', true);
             })
             .catch(err => {
+              setSyncIndicator(false);
               showToast('Failed: ' + (err.message || err));
-              appLoading.classList.add('hidden');
-              appContent.classList.remove('hidden');
             });
         } else {
+          const target = (state.consignments || []).find(x => String(x.holdId) === String(holdId));
+          if (target && String(target.status || 'Holding') === 'Holding' && target.itemId) {
+            const inv = state.inventory.find(i => String(i.itemId) === String(target.itemId));
+            if (inv) inv.bufferStock = Math.max(0, (Number(inv.bufferStock) || 0) - (Number(target.quantity) || 0));
+          }
           state.consignments = (state.consignments || []).filter(x => String(x.holdId) !== String(holdId));
-          showToast('Consignment hold deleted (mock)');
+          showToast('ลบรายการคลังสำรองเรียบร้อย (mock)');
           renderExchangeTab();
+          renderInventoryTab();
         }
       });
+    }
+
+    // ── Vendor Exchange Modal (การแลกเปลี่ยนสินค้ากับบริษัท) ──
+    function openVendorExchangeModal() {
+      populateVendorDatalist();
+      populateUserNicknameSelect('vexc-user');
+      document.getElementById('vexc-date').value = getToday();
+      document.getElementById('vexc-vendor').value = '';
+      document.getElementById('vexc-notes').value = '';
+      document.getElementById('vexc-out-search').value = '';
+      document.getElementById('vexc-in-search').value = '';
+      document.getElementById('vexc-out-loc').value = 'Buffer';
+      document.getElementById('vexc-in-loc').value = 'Buffer';
+      document.getElementById('vexc-out-qty').value = '1';
+      document.getElementById('vexc-in-qty').value = '1';
+      filterVendorExchangeItems('out');
+      filterVendorExchangeItems('in');
+      updateVendorExchangeStockBadge();
+      openModal('modal-vendor-exchange');
+    }
+
+    function filterVendorExchangeItems(side) {
+      const searchEl = document.getElementById(side === 'out' ? 'vexc-out-search' : 'vexc-in-search');
+      const selEl = document.getElementById(side === 'out' ? 'vexc-out-item' : 'vexc-in-item');
+      if (!selEl) return;
+      const cur = selEl.value;
+      selEl.innerHTML = buildBufferInventoryOptionsHtml(searchEl ? searchEl.value : '', cur);
+      if (side === 'out') updateVendorExchangeStockBadge();
+    }
+
+    function onVendorExchangeItemSelect(side) {
+      const selEl = document.getElementById(side === 'out' ? 'vexc-out-item' : 'vexc-in-item');
+      const vendorEl = document.getElementById('vexc-vendor');
+      const itemId = selEl ? selEl.value : '';
+      if (itemId && vendorEl && !vendorEl.value.trim()) {
+        const inv = state.inventory.find(i => String(i.itemId) === String(itemId));
+        if (inv && inv.company) vendorEl.value = inv.company;
+      }
+      if (side === 'out') updateVendorExchangeStockBadge();
+    }
+
+    function updateVendorExchangeStockBadge() {
+      const badgeEl = document.getElementById('vexc-out-stock-badge');
+      const itemId  = document.getElementById('vexc-out-item')?.value || '';
+      const loc     = document.getElementById('vexc-out-loc')?.value || 'Buffer';
+      const outQty  = parseInt(document.getElementById('vexc-out-qty')?.value) || 0;
+      if (!badgeEl) return;
+      if (!itemId) {
+        badgeEl.innerText = 'คงเหลือคลังต้นทาง: —';
+        badgeEl.style.color = '#7f1d1d';
+        return;
+      }
+      const inv = state.inventory.find(i => String(i.itemId) === String(itemId));
+      const avail = inv
+        ? (loc === 'Main' ? (Number(inv.mainStock) || 0) : loc === 'Retail' ? (Number(inv.retailStock) || 0) : (Number(inv.bufferStock) || 0))
+        : 0;
+      const willNegative = (avail - outQty) < 0;
+      badgeEl.innerText = `คงเหลือคลัง ${loc}: ${avail} ชิ้น${willNegative ? ' (คำเตือน: ส่งออกมากกว่าคงเหลือ ยอดจะติดลบ)' : ''}`;
+      badgeEl.style.color = willNegative ? '#dc2626' : '#065f46';
+    }
+
+    function submitVendorExchangeModal() {
+      const date        = document.getElementById('vexc-date').value || getToday();
+      const user        = document.getElementById('vexc-user').value.trim();
+      const vendor      = document.getElementById('vexc-vendor').value.trim();
+      const notes       = document.getElementById('vexc-notes').value.trim();
+      const outItemId   = document.getElementById('vexc-out-item').value;
+      const outLocation = document.getElementById('vexc-out-loc').value || 'Buffer';
+      const outQty      = parseInt(document.getElementById('vexc-out-qty').value) || 0;
+      const inItemId    = document.getElementById('vexc-in-item').value;
+      const inLocation  = document.getElementById('vexc-in-loc').value || 'Buffer';
+      const inQty       = parseInt(document.getElementById('vexc-in-qty').value) || 0;
+
+      if (!user) { showToast('กรุณาเลือกผู้บันทึก'); return; }
+      if (!outItemId || !inItemId) { showToast('กรุณาเลือกทั้งอุปกรณ์ส่งออกและอุปกรณ์รับเข้า'); return; }
+      if (outQty <= 0 || inQty <= 0) { showToast('จำนวนต้องมากกว่า 0'); return; }
+
+      const outInv = state.inventory.find(i => String(i.itemId) === String(outItemId));
+      const avail = outInv
+        ? (outLocation === 'Main' ? (Number(outInv.mainStock) || 0) : outLocation === 'Retail' ? (Number(outInv.retailStock) || 0) : (Number(outInv.bufferStock) || 0))
+        : 0;
+      if ((avail - outQty) < 0) {
+        const msg = `รายการ "${getDeviceName(outItemId)}" ในคลัง ${outLocation} มีคงเหลือ ${avail} ชิ้น\nหากส่งออก ${outQty} ชิ้น ยอดคงเหลือจะติดลบ (${avail - outQty}) ต้องการยืนยันหรือไม่?`;
+        if (!window.confirm(msg)) return;
+      }
+
+      const payload = { date, user, vendor, notes, outItemId, outLocation, outQty, inItemId, inLocation, inQty };
+      closeModal();
+
+      if (isApiConfigured()) {
+        setSyncIndicator(true);
+        callApi('submitVendorExchange', payload)
+          .then(res => {
+            setSyncIndicator(false);
+            showToast('บันทึกการแลกเปลี่ยนสินค้ากับบริษัทเรียบร้อยแล้ว');
+            applyIncrementalWriteResult(res);
+          })
+          .catch(err => {
+            setSyncIndicator(false);
+            showToast('บันทึกล้มเหลว: ' + (err.message || err));
+          });
+      } else {
+        const txnId = 'EXC-' + Date.now().toString().slice(-8);
+        const detailText = (vendor || 'Vendor') + (notes ? ' | ' + notes : '');
+        if (outInv) {
+          if (outLocation === 'Main') outInv.mainStock = (Number(outInv.mainStock) || 0) - outQty;
+          else if (outLocation === 'Retail') outInv.retailStock = (Number(outInv.retailStock) || 0) - outQty;
+          else outInv.bufferStock = (Number(outInv.bufferStock) || 0) - outQty;
+        }
+        const inInv = state.inventory.find(i => String(i.itemId) === String(inItemId));
+        if (inInv) {
+          if (inLocation === 'Main') inInv.mainStock = (Number(inInv.mainStock) || 0) + inQty;
+          else if (inLocation === 'Retail') inInv.retailStock = (Number(inInv.retailStock) || 0) + inQty;
+          else inInv.bufferStock = (Number(inInv.bufferStock) || 0) + inQty;
+        }
+        if (!Array.isArray(state.transactions)) state.transactions = [];
+        state.transactions.unshift(
+          { date, transactionId: txnId, type: 'Stock In', itemId: inItemId, quantity: inQty, fromLoc: '', toLoc: inLocation, tech: user, complication: 'Vendor Exchange In: ' + detailText },
+          { date, transactionId: txnId, type: 'Stock Out', itemId: outItemId, quantity: outQty, fromLoc: outLocation, toLoc: '', tech: user, complication: 'Vendor Exchange Out: ' + detailText }
+        );
+        showToast('บันทึกการแลกเปลี่ยนสินค้ากับบริษัทเรียบร้อย (mock)');
+        renderExchangeTab();
+        renderInventoryTab();
+      }
     }
 
     // ════════════════════════════════════════════════════════════════
@@ -7378,8 +7889,6 @@ function exportStatisticsCSV() {
       document.getElementById('loan-modal-date').value      = getToday();
       document.getElementById('loan-modal-tech').value      = '';
       document.getElementById('loan-modal-notes').value     = '';
-      const regCheck = document.getElementById('loan-register-inv-check');
-      if (regCheck) regCheck.checked = false;
 
       onLoanScopeChange();
 
@@ -7415,38 +7924,6 @@ function exportStatisticsCSV() {
       if (totalQty <= 0) { showToast('จำนวนต้องมากกว่า 0'); return; }
 
       const itemName = getDeviceName(itemId);
-      const shouldRegisterInv = document.getElementById('loan-register-inv-check')?.checked;
-      if (shouldRegisterInv) {
-        let regName = itemName;
-        if (!regName.includes('(Borrow)') && !regName.includes('(ยืม)')) {
-          regName = `${regName} (ยืม)`;
-        }
-        const existingInv = state.inventory.find(i => String(i.itemId) === String(itemId));
-        const newDevPayload = {
-          deviceName: regName,
-          category: existingInv ? existingInv.category : 'Other',
-          hoItemId: docNo ? `BRW-${docNo}` : `BRW-${itemId}`,
-          buyPrice: existingInv ? existingInv.buyPrice : 0,
-          sellPrice: existingInv ? existingInv.sellPrice : 0,
-          mainStock: totalQty,
-          retailStock: 0,
-          bufferStock: 0,
-          totalStock: totalQty,
-          hoStock: 0,
-          stockDiff: totalQty,
-          stockMonth: 0,
-          exceedPercent: 0,
-          orderEstimate: 0,
-          buyPoint: 0,
-          safetyStock: 0
-        };
-        if (isApiConfigured()) {
-          callApi('addInventoryItem', newDevPayload).catch(e => console.error('Auto register borrowed item failed:', e));
-        } else {
-          newDevPayload.itemId = 'BRW-' + Date.now().toString().slice(-6);
-          state.inventory.push(newDevPayload);
-        }
-      }
 
       const payload = {
         scope, direction, department, docNo,
@@ -7455,17 +7932,16 @@ function exportStatisticsCSV() {
 
       closeModal();
       if (isApiConfigured()) {
-        appLoading.classList.remove('hidden');
-        appContent.classList.add('hidden');
+        setSyncIndicator(true);
         callApi('addLoanTransfer', payload)
-          .then(() => {
+          .then(res => {
             showToast('บันทึกการยืม / ให้ยืมเรียบร้อยแล้ว');
-            fetchDataFromServer();
+            applyIncrementalWriteResult(res);
+            return ensureModuleLoaded('exchange', true);
           })
           .catch(err => {
+            setSyncIndicator(false);
             showToast('บันทึกล้มเหลว: ' + (err.message || err));
-            appLoading.classList.add('hidden');
-            appContent.classList.remove('hidden');
           });
       } else {
         const loanId = 'LN-' + Date.now().toString().slice(-6);
@@ -7598,17 +8074,16 @@ function exportStatisticsCSV() {
 
       closeModal();
       if (isApiConfigured()) {
-        appLoading.classList.remove('hidden');
-        appContent.classList.add('hidden');
+        setSyncIndicator(true);
         callApi('recordLoanReturn', { loanId, returnDate, returnQty, returnedBy, notes, location: l.location })
           .then(res => {
             showToast(`บันทึกการคืนเรียบร้อย (${res.newStatus || 'อัปเดตแล้ว'})`);
-            fetchDataFromServer();
+            applyIncrementalWriteResult(res);
+            return ensureModuleLoaded('exchange', true);
           })
           .catch(err => {
+            setSyncIndicator(false);
             showToast('บันทึกล้มเหลว: ' + (err.message || err));
-            appLoading.classList.add('hidden');
-            appContent.classList.remove('hidden');
           });
       } else {
         l.returnedQty = (Number(l.returnedQty) || 0) + returnQty;
@@ -7635,17 +8110,15 @@ function exportStatisticsCSV() {
     function removeLoanTransfer(loanId) {
       verifyPasscodeThen('delete_swap', state.currentLang === 'th' ? `ต้องการลบรายการยืม/โอนย้าย ${loanId} หรือไม่?` : `Delete loan/transfer record ${loanId}?`, () => {
         if (isApiConfigured()) {
-          appLoading.classList.remove('hidden');
-          appContent.classList.add('hidden');
+          setSyncIndicator(true);
           callApi('deleteLoanTransfer', { loanId })
             .then(() => {
               showToast('Loan record deleted');
-              fetchDataFromServer();
+              return ensureModuleLoaded('exchange', true);
             })
             .catch(err => {
+              setSyncIndicator(false);
               showToast('Failed: ' + (err.message || err));
-              appLoading.classList.add('hidden');
-              appContent.classList.remove('hidden');
             });
         } else {
           state.loans = (state.loans || []).filter(x => String(x.loanId) !== String(loanId));
@@ -8243,7 +8716,7 @@ function exportStatisticsCSV() {
       if (!tbody) return;
 
       if (filtered.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="8" class="empty-state">${isArchive ? 'No condemned or damaged assets in archive.' : 'No equipment records match the current filters.'}</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="7" class="empty-state">${isArchive ? 'No condemned or damaged assets in archive.' : 'No equipment records match the current filters.'}</td></tr>`;
         return;
       }
 
@@ -8273,10 +8746,6 @@ function exportStatisticsCSV() {
             '</div>';
         }
 
-        const condemnBtnHtml = !isArchive
-          ? '<button class="btn-ghost" style="color:var(--red);" onclick="openAssetDamageModal(\'' + escapeHtml(a.assetId) + '\')" title="Mark as Damaged / Condemn"><span>Condemn</span></button>'
-          : '';
-
         return `
           <tr style="cursor:pointer;" onclick="openAssetDetailModal('${escapeHtml(a.assetId)}')">
             <td>${thumbHtml}</td>
@@ -8292,12 +8761,6 @@ function exportStatisticsCSV() {
             <td class="font-medium">${escapeHtml(a.room || '—')}</td>
             <td class="center">${getAssetStatusBadge(a.status)}</td>
             <td>${maintSummaryHtml}</td>
-            <td class="center no-print" style="white-space:nowrap;" onclick="event.stopPropagation()">
-              <button class="btn-ghost" onclick="openAssetQrModal('${escapeHtml(a.assetId)}')" title="View & Print QR Code"><svg width="15" height="15" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 4a1 1 0 011-1h3a1 1 0 011 1v3a1 1 0 01-1 1H4a1 1 0 01-1-1V4zm2 2V5h1v1H5zM3 13a1 1 0 011-1h3a1 1 0 011 1v3a1 1 0 01-1 1H4a1 1 0 01-1-1v-3zm2 2v-1h1v1H5zM13 3a1 1 0 00-1 1v3a1 1 0 001 1h3a1 1 0 001-1V4a1 1 0 00-1-1h-3zm1 2v1h1V5h-1z" clip-rule="evenodd"/></svg><span>QR</span></button>
-              <button class="btn-ghost" onclick="openAssetDetailModal('${escapeHtml(a.assetId)}')" title="View Profile & Maintenance History">${ICONS.eye}<span>Profile</span></button>
-              <button class="btn-ghost" onclick="openAssetFormModal('${escapeHtml(a.assetId)}')" title="Edit Asset">${ICONS.edit}<span>Edit</span></button>
-              ${condemnBtnHtml}
-            </td>
           </tr>
         `;
       }).join('');
@@ -8426,9 +8889,8 @@ function exportStatisticsCSV() {
       if (isApiConfigured()) {
         callApi('saveAssetItem', payload)
           .then(res => {
-            setSyncIndicator(false);
             showToast(assetId ? ('Asset ' + res.assetId + ' updated!') : ('Asset ' + res.assetId + ' registered!'));
-            fetchDataFromServer();
+            return ensureModuleLoaded('assets', true);
           })
           .catch(err => {
             setSyncIndicator(false);
@@ -8562,7 +9024,7 @@ function exportStatisticsCSV() {
       if (!tbody) return;
       const hist = Array.isArray(asset.maintenanceHistory) ? asset.maintenanceHistory : [];
       if (hist.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="7" class="empty-state">No maintenance, calibration, or radiation survey events recorded yet.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="8" class="empty-state">No maintenance, calibration, or radiation survey events recorded yet.</td></tr>`;
         return;
       }
       tbody.innerHTML = hist.map(h => {
@@ -8570,6 +9032,13 @@ function exportStatisticsCSV() {
         const resBadge = isPass
           ? `<span class="badge badge-ok">Passed</span>`
           : `<span class="badge badge-low">Action Required</span>`;
+        const att = h.attachment && (h.attachment.fileId || h.attachment.viewUrl || h.attachment.downloadUrl || h.attachment.previewUrl) ? h.attachment : null;
+        const attHtml = att
+          ? `<div class="flex items-center justify-center gap-1" style="white-space:nowrap;">
+               <button type="button" class="btn btn-outline btn-sm" style="padding:3px 8px; font-size:11px;" onclick="openMaintAttachmentPreview('${escapeHtml(asset.assetId)}', '${escapeHtml(h.logId || '')}')">ดู</button>
+               <a href="${escapeHtml(att.downloadUrl || att.viewUrl || '#')}" target="_blank" rel="noopener noreferrer" download="${escapeHtml(att.fileName || 'report')}" class="btn btn-brand btn-sm" style="padding:3px 8px; font-size:11px;">ดาวน์โหลด</a>
+             </div>`
+          : '<span class="text-xs text-gray">—</span>';
         return `
           <tr>
             <td class="font-medium">${formatDate(h.date)}</td>
@@ -8578,12 +9047,156 @@ function exportStatisticsCSV() {
             <td class="center">${resBadge}</td>
             <td class="font-mono text-xs">${h.nextDueDate ? formatDate(h.nextDueDate) : '—'}</td>
             <td class="text-xs">${escapeHtml(h.notes || '—')}</td>
+            <td class="center">${attHtml}</td>
             <td class="center">
               <button type="button" class="btn-ghost" style="color:var(--red);" onclick="removeAssetMaintenanceLog('${escapeHtml(asset.assetId)}', '${escapeHtml(h.logId || '')}')" title="Delete log">${ICONS.trash}</button>
             </td>
           </tr>
         `;
       }).join('');
+    }
+
+    function clearMaintAttachment() {
+      state.pendingMaintAttachment = null;
+      const inp = document.getElementById('maint-form-file');
+      if (inp) inp.value = '';
+      const st = document.getElementById('maint-form-file-status');
+      if (st) st.innerText = 'ยังไม่ได้เลือกไฟล์';
+      const clr = document.getElementById('maint-form-file-clear');
+      if (clr) clr.classList.add('hidden');
+    }
+
+    function handleMaintAttachmentSelect(inputEl) {
+      const file = inputEl && inputEl.files && inputEl.files[0];
+      if (!file) {
+        clearMaintAttachment();
+        return;
+      }
+      const maxBytes = 10 * 1024 * 1024;
+      if (file.size > maxBytes) {
+        showToast('ไฟล์มีขนาดเกิน 10 MB กรุณาเลือกไฟล์ขนาดเล็กลง');
+        clearMaintAttachment();
+        return;
+      }
+      const st = document.getElementById('maint-form-file-status');
+      const clr = document.getElementById('maint-form-file-clear');
+      const isPdf = String(file.type || '').toLowerCase() === 'application/pdf' || String(file.name || '').toLowerCase().endsWith('.pdf');
+      const isImg = String(file.type || '').toLowerCase().startsWith('image/');
+      if (!isPdf && !isImg) {
+        showToast('รองรับเฉพาะไฟล์รูปภาพ (Image) หรือ PDF เท่านั้น');
+        clearMaintAttachment();
+        return;
+      }
+      if (st) st.innerText = 'กำลังเตรียมไฟล์...';
+
+      const reader = new FileReader();
+      reader.onerror = function() {
+        showToast('ไม่สามารถอ่านไฟล์ได้');
+        clearMaintAttachment();
+      };
+      reader.onload = function(evt) {
+        const dataUrl = evt.target.result;
+        if (isPdf) {
+          state.pendingMaintAttachment = {
+            fileBase64: dataUrl,
+            fileName  : file.name || 'inspection-report.pdf',
+            mimeType  : 'application/pdf'
+          };
+          if (st) st.innerText = `พร้อมอัปโหลด PDF: ${file.name} (${Math.round(file.size / 1024)} KB)`;
+          if (clr) clr.classList.remove('hidden');
+          return;
+        }
+        const img = new Image();
+        img.onerror = function() {
+          state.pendingMaintAttachment = {
+            fileBase64: dataUrl,
+            fileName  : file.name || 'inspection-image.jpg',
+            mimeType  : file.type || 'image/jpeg'
+          };
+          if (st) st.innerText = `พร้อมอัปโหลดรูปภาพ: ${file.name}`;
+          if (clr) clr.classList.remove('hidden');
+        };
+        img.onload = function() {
+          const maxDim = 1200;
+          let w = img.width;
+          let h = img.height;
+          if (w > maxDim || h > maxDim) {
+            if (w >= h) { h = Math.round(h * (maxDim / w)); w = maxDim; }
+            else { w = Math.round(w * (maxDim / h)); h = maxDim; }
+          }
+          const canvas = document.createElement('canvas');
+          canvas.width = w;
+          canvas.height = h;
+          const ctx = canvas.getContext('2d');
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(0, 0, w, h);
+          ctx.drawImage(img, 0, 0, w, h);
+          const compressed = canvas.toDataURL('image/jpeg', 0.8);
+          const outName = (file.name || 'inspection').replace(/\.[^.]+$/, '') + '.jpg';
+          state.pendingMaintAttachment = {
+            fileBase64: compressed,
+            fileName  : outName,
+            mimeType  : 'image/jpeg'
+          };
+          if (st) st.innerText = `พร้อมอัปโหลดรูปภาพ (บีบอัดแล้ว): ${outName}`;
+          if (clr) clr.classList.remove('hidden');
+        };
+        img.src = dataUrl;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function openMaintAttachmentPreview(assetId, logId) {
+      const a = (state.assets || []).find(x => String(x.assetId) === String(assetId));
+      const hist = a && Array.isArray(a.maintenanceHistory) ? a.maintenanceHistory : [];
+      const log = hist.find(h => String(h.logId) === String(logId));
+      const att = log && log.attachment;
+      if (!att) {
+        showToast('ไม่พบไฟล์แนบในรายการนี้');
+        return;
+      }
+      state._returnAssetDetailAfterPreview = assetId;
+      const titleEl = document.getElementById('file-preview-title');
+      const bodyEl  = document.getElementById('file-preview-body');
+      const tabBtn  = document.getElementById('file-preview-open-tab');
+      const dlBtn   = document.getElementById('file-preview-download');
+
+      const fname = att.fileName || 'Inspection Report';
+      const mime  = String(att.mimeType || '').toLowerCase();
+      const isImg = mime.startsWith('image/') || Boolean(att.previewUrl && !mime.includes('pdf'));
+      const openUrl = att.viewUrl || att.previewUrl || '#';
+      const dlUrl   = att.downloadUrl || att.viewUrl || att.previewUrl || '#';
+
+      if (titleEl) titleEl.innerText = `ใบตรวจ / เอกสารแนบ: ${fname}`;
+      if (tabBtn) tabBtn.href = openUrl;
+      if (dlBtn) {
+        dlBtn.href = dlUrl;
+        dlBtn.setAttribute('download', fname);
+      }
+
+      if (bodyEl) {
+        if (isImg && (att.previewUrl || att.viewUrl)) {
+          bodyEl.innerHTML = `<img src="${escapeHtml(att.previewUrl || att.viewUrl)}" alt="${escapeHtml(fname)}" style="max-width:100%; max-height:66vh; object-fit:contain; border-radius:6px;">`;
+        } else {
+          const embedUrl = att.fileId
+            ? `https://drive.google.com/file/d/${encodeURIComponent(att.fileId)}/preview`
+            : openUrl;
+          bodyEl.innerHTML = `<iframe src="${escapeHtml(embedUrl)}" title="${escapeHtml(fname)}" style="width:100%; height:64vh; border:0; border-radius:6px; background:#fff;"></iframe>`;
+        }
+      }
+      openModal('modal-file-preview');
+    }
+
+    function closeFilePreviewModal() {
+      const bodyEl = document.getElementById('file-preview-body');
+      if (bodyEl) bodyEl.innerHTML = '';
+      const retAssetId = state._returnAssetDetailAfterPreview;
+      state._returnAssetDetailAfterPreview = null;
+      if (retAssetId) {
+        openAssetDetailModal(retAssetId);
+      } else {
+        closeModal();
+      }
     }
 
     function toggleAddMaintForm(forceState) {
@@ -8599,6 +9212,7 @@ function exportStatisticsCSV() {
         document.getElementById('maint-form-nextdue').value   = '';
         document.getElementById('maint-form-newstatus').value = '';
         document.getElementById('maint-form-notes').value     = '';
+        clearMaintAttachment();
       }
     }
 
@@ -8619,12 +9233,18 @@ function exportStatisticsCSV() {
       }
 
       const payload = { assetId, date, type, provider, result, nextDueDate, newStatus, notes };
+      if (state.pendingMaintAttachment) {
+        payload.fileBase64 = state.pendingMaintAttachment.fileBase64;
+        payload.fileName   = state.pendingMaintAttachment.fileName;
+        payload.mimeType   = state.pendingMaintAttachment.mimeType;
+      }
       setSyncIndicator(true);
 
       if (isApiConfigured()) {
         callApi('addAssetMaintenanceLog', payload)
           .then(res => {
             setSyncIndicator(false);
+            clearMaintAttachment();
             const a = (state.assets || []).find(x => String(x.assetId) === String(assetId));
             if (a) {
               if (!Array.isArray(a.maintenanceHistory)) a.maintenanceHistory = [];
@@ -8644,9 +9264,22 @@ function exportStatisticsCSV() {
         const a = (state.assets || []).find(x => String(x.assetId) === String(assetId));
         if (a) {
           if (!Array.isArray(a.maintenanceHistory)) a.maintenanceHistory = [];
+          let mockAtt = null;
+          if (state.pendingMaintAttachment) {
+            const isImg = String(state.pendingMaintAttachment.mimeType || '').startsWith('image/');
+            mockAtt = {
+              fileId     : 'MOCK-' + Date.now(),
+              fileName   : state.pendingMaintAttachment.fileName,
+              mimeType   : state.pendingMaintAttachment.mimeType,
+              viewUrl    : state.pendingMaintAttachment.fileBase64,
+              previewUrl : isImg ? state.pendingMaintAttachment.fileBase64 : '',
+              downloadUrl: state.pendingMaintAttachment.fileBase64
+            };
+          }
+          clearMaintAttachment();
           a.maintenanceHistory.unshift({
             logId: 'MNT-' + Date.now().toString().slice(-6),
-            date, type, provider, result, nextDueDate, notes
+            date, type, provider, result, nextDueDate, notes, attachment: mockAtt
           });
           if (newStatus) a.status = newStatus;
           openAssetDetailModal(assetId);
@@ -8741,9 +9374,8 @@ function exportStatisticsCSV() {
         if (isApiConfigured()) {
           callApi('markAssetDamaged', payload)
             .then(res => {
-              setSyncIndicator(false);
               showToast(`Asset ${assetId} marked as ${res.status} and moved to archive.`);
-              fetchDataFromServer();
+              return ensureModuleLoaded('assets', true);
             })
             .catch(err => {
               setSyncIndicator(false);
@@ -8776,9 +9408,8 @@ function exportStatisticsCSV() {
         if (isApiConfigured()) {
           callApi('deleteAssetItem', { assetId })
             .then(() => {
-              setSyncIndicator(false);
               showToast('Asset deleted');
-              fetchDataFromServer();
+              return ensureModuleLoaded('assets', true);
             })
             .catch(err => {
               setSyncIndicator(false);
@@ -9172,29 +9803,222 @@ function exportStatisticsCSV() {
       if (ind) ind.classList.toggle('hidden', !active);
     }
 
+    function persistStateToLocalCache() {
+      try {
+        const snapshot = {
+          inventory: state.inventory || [],
+          groups: state.groups || [],
+          transactions: state.transactions || [],
+          settings: state.settings || {},
+          exchangeQuotas: state.exchangeQuotas || [],
+          consignments: state.consignments || [],
+          loans: state.loans || [],
+          assets: state.assets || [],
+          announcements: state.announcements || [],
+          ebiddings: state.ebiddings || [],
+          contracts: state.contracts || [],
+          contractPOs: state.contractPOs || [],
+          specificPurchases: state.specificPurchases || [],
+          receivings: state.receivings || [],
+          companyList: state.companyList || [],
+          fiscalYearList: state.fiscalYearList || [],
+          hasOlderTransactions: Boolean(state.hasOlderTransactions),
+          loadedModules: state.loadedModules || {}
+        };
+        const serialized = JSON.stringify(snapshot);
+        sessionStorage.setItem(APP_CACHE_KEY, serialized);
+        localStorage.setItem(APP_CACHE_KEY, serialized);
+      } catch (e) {}
+    }
+
     function applyServerPayload(res) {
-      state.inventory = res.inventory || [];
-      state.groups = Array.isArray(res.groups) ? res.groups : [];
-      state.transactions = res.transactions || [];
-      state.settings = normalizeSettings(res.settings);
-      state.exchangeQuotas = Array.isArray(res.exchangeQuotas) ? res.exchangeQuotas : [];
-      state.consignments = Array.isArray(res.consignments) ? res.consignments : [];
-      state.loans = Array.isArray(res.loans) ? res.loans : [];
-      state.assets = Array.isArray(res.assets) ? res.assets : [];
-      state.announcements = Array.isArray(res.announcements) ? res.announcements : [];
-      state.ebiddings = Array.isArray(res.ebiddings) ? res.ebiddings : [];
-      state.contracts = Array.isArray(res.contracts) ? res.contracts : [];
-      state.contractPOs = Array.isArray(res.contractPOs) ? res.contractPOs : [];
-      state.specificPurchases = Array.isArray(res.specificPurchases) ? res.specificPurchases : [];
-      state.receivings = Array.isArray(res.receivings) ? res.receivings : [];
-      state.companyList = Array.isArray(res.companyList) ? res.companyList : [];
-      state.fiscalYearList = Array.isArray(res.fiscalYearList) ? res.fiscalYearList : [];
+      if (!res || typeof res !== 'object') return;
+      const isLite = Boolean(res.isLite);
+
+      if (Array.isArray(res.inventory)) state.inventory = res.inventory;
+      if (Array.isArray(res.groups)) state.groups = res.groups;
+      if (Array.isArray(res.transactions)) {
+        if (!isLite || !state.loadedModules.allTransactions) {
+          state.transactions = res.transactions;
+        }
+      }
+      if (res.settings) state.settings = normalizeSettings(res.settings);
+      if (Array.isArray(res.exchangeQuotas)) state.exchangeQuotas = res.exchangeQuotas;
+      if (Array.isArray(res.consignments)) state.consignments = res.consignments;
+      if (Array.isArray(res.loans)) state.loans = res.loans;
+      if (Array.isArray(res.assets)) state.assets = res.assets;
+      if (Array.isArray(res.announcements)) state.announcements = res.announcements;
+      if (Array.isArray(res.ebiddings)) state.ebiddings = res.ebiddings;
+      if (Array.isArray(res.contracts)) state.contracts = res.contracts;
+      if (Array.isArray(res.contractPOs)) state.contractPOs = res.contractPOs;
+      if (Array.isArray(res.specificPurchases)) state.specificPurchases = res.specificPurchases;
+      if (Array.isArray(res.receivings)) state.receivings = res.receivings;
+      if (Array.isArray(res.companyList)) state.companyList = res.companyList;
+      if (Array.isArray(res.fiscalYearList)) state.fiscalYearList = res.fiscalYearList;
+
       state.settingsDirty = { diseases: false, procedures: false, shifts: false, categories: false, departments: false, users: false };
+
+      if (!state.loadedModules || typeof state.loadedModules !== 'object') {
+        state.loadedModules = { core: true, exchange: false, assets: false, procurement: false, allTransactions: false };
+      }
+      state.loadedModules.core = true;
+      if (Array.isArray(res.exchangeQuotas) || Array.isArray(res.consignments) || Array.isArray(res.loans)) {
+        state.loadedModules.exchange = true;
+      }
+      if (Array.isArray(res.assets) && !isLite) state.loadedModules.assets = true;
+      if (Array.isArray(res.ebiddings) && !isLite) state.loadedModules.procurement = true;
+
+      if (isLite) {
+        state.hasOlderTransactions = Boolean(res.hasOlderTransactions);
+        if (!res.hasOlderTransactions) state.loadedModules.allTransactions = true;
+      } else {
+        state.hasOlderTransactions = Boolean(res.hasOlderTransactions);
+        if (!state.hasOlderTransactions) state.loadedModules.allTransactions = true;
+      }
+
       recalculateInventoryHierarchy();
       if (typeof recalculateProcurementState === 'function') recalculateProcurementState();
     }
 
-    function fetchDataFromServer() {
+    function applyIncrementalWriteResult(res, opts = {}) {
+      if (!res || typeof res !== 'object') return;
+
+      if (Array.isArray(res.deletedTransactionIds) && res.deletedTransactionIds.length > 0) {
+        const delSet = new Set(res.deletedTransactionIds.map(x => String(x)));
+        state.transactions = (state.transactions || []).filter(tx => !delSet.has(String(tx.id || tx.transactionId || '')));
+      }
+
+      if (Array.isArray(res.transactions) && res.transactions.length > 0) {
+        if (!Array.isArray(state.transactions)) state.transactions = [];
+        const incomingIds = new Set(res.transactions.map(t => String(t.id || t.transactionId || '')).filter(Boolean));
+        if (opts.replaceMatchingIds && incomingIds.size > 0) {
+          state.transactions = state.transactions.filter(tx => !incomingIds.has(String(tx.id || tx.transactionId || '')));
+        }
+        // Raw_data sheet rows are oldest-first; push newest transactions at the end
+        res.transactions.forEach(t => state.transactions.push(t));
+      }
+
+      if (res.updatedStock && typeof res.updatedStock === 'object') {
+        const invById = new Map((state.inventory || []).map(i => [String(i.itemId), i]));
+        const entries = Array.isArray(res.updatedStock)
+          ? res.updatedStock.map(u => [String(u.itemId), u])
+          : Object.keys(res.updatedStock).map(k => [String(k), res.updatedStock[k]]);
+        entries.forEach(([idKey, u]) => {
+          const item = invById.get(idKey);
+          if (item && u) {
+            if (u.main !== undefined || u.mainStock !== undefined) {
+              item.mainStock = Number(u.main !== undefined ? u.main : u.mainStock) || 0;
+            }
+            if (u.retail !== undefined || u.retailStock !== undefined) {
+              item.retailStock = Number(u.retail !== undefined ? u.retail : u.retailStock) || 0;
+            }
+            if (u.buffer !== undefined || u.bufferStock !== undefined) {
+              item.bufferStock = Number(u.buffer !== undefined ? u.buffer : u.bufferStock) || 0;
+            }
+            item.totalStock = u.totalStock !== undefined ? (Number(u.totalStock) || 0) : (item.mainStock + item.retailStock);
+            if (u.hoStock !== undefined) item.hoStock = Number(u.hoStock) || 0;
+            item.stockDiff = u.stockDiff !== undefined ? (Number(u.stockDiff) || 0) : (item.totalStock - (Number(item.hoStock) || 0));
+          }
+        });
+      }
+
+      if (Array.isArray(res.exchangeQuotas)) {
+        state.exchangeQuotas = res.exchangeQuotas;
+      }
+      if (Array.isArray(res.groups)) {
+        state.groups = res.groups;
+      }
+
+      recalculateInventoryHierarchy();
+      if (typeof recalculateProcurementState === 'function' && state.loadedModules.procurement) {
+        recalculateProcurementState();
+      }
+      persistStateToLocalCache();
+      renderCurrentTab();
+    }
+
+    function ensureModuleLoaded(moduleName, force = false) {
+      const mod = String(moduleName || '').trim();
+      if (!mod) return Promise.resolve();
+      if (!isApiConfigured()) {
+        state.loadedModules[mod] = true;
+        return Promise.resolve();
+      }
+      if (!force && state.loadedModules && state.loadedModules[mod]) {
+        return Promise.resolve();
+      }
+      if (!state._modulePromises) state._modulePromises = {};
+      if (!force && state._modulePromises[mod]) {
+        return state._modulePromises[mod];
+      }
+
+      setSyncIndicator(true);
+      const p = callApi('getModuleData', { module: mod })
+        .then(res => {
+          setSyncIndicator(false);
+          if (mod === 'procurement') {
+            if (Array.isArray(res.ebiddings)) state.ebiddings = res.ebiddings;
+            if (Array.isArray(res.contracts)) state.contracts = res.contracts;
+            if (Array.isArray(res.contractPOs)) state.contractPOs = res.contractPOs;
+            if (Array.isArray(res.specificPurchases)) state.specificPurchases = res.specificPurchases;
+            if (Array.isArray(res.receivings)) state.receivings = res.receivings;
+            if (Array.isArray(res.companyList)) state.companyList = res.companyList;
+            if (Array.isArray(res.fiscalYearList)) state.fiscalYearList = res.fiscalYearList;
+            state.loadedModules.procurement = true;
+            if (typeof recalculateProcurementState === 'function') recalculateProcurementState();
+          } else if (mod === 'assets') {
+            if (Array.isArray(res.assets)) state.assets = res.assets;
+            state.loadedModules.assets = true;
+          } else if (mod === 'exchange' || mod === 'loans') {
+            if (Array.isArray(res.exchangeQuotas)) state.exchangeQuotas = res.exchangeQuotas;
+            if (Array.isArray(res.consignments)) state.consignments = res.consignments;
+            if (Array.isArray(res.loans)) state.loans = res.loans;
+            state.loadedModules.exchange = true;
+          } else if (mod === 'allTransactions' || mod === 'olderTransactions') {
+            if (Array.isArray(res.transactions)) state.transactions = res.transactions;
+            state.hasOlderTransactions = false;
+            state.loadedModules.allTransactions = true;
+          }
+          persistStateToLocalCache();
+          renderCurrentTab();
+          return res;
+        })
+        .catch(err => {
+          setSyncIndicator(false);
+          const msg = err && err.message ? String(err.message) : '';
+          if (msg.includes('Unknown API action')) {
+            return fetchDataFromServer({ full: true });
+          }
+          console.error('Module load failed (' + mod + '):', err);
+          showToast('โหลดข้อมูลไม่สำเร็จ: ' + (msg || 'Unknown'));
+        })
+        .finally(() => {
+          if (state._modulePromises) delete state._modulePromises[mod];
+        });
+
+      state._modulePromises[mod] = p;
+      return p;
+    }
+
+    function loadAllTransactionsOnDemand() {
+      ensureModuleLoaded('allTransactions', true).then(() => {
+        showToast('โหลดประวัติทั้งหมดเรียบร้อยแล้ว');
+      });
+    }
+
+    function manualRefreshFromServer() {
+      const btn = document.getElementById('btn-manual-refresh');
+      setButtonBusy(btn, true);
+      const tasks = [fetchDataFromServer({ force: true })];
+      if (state.currentTab === 'procurement') tasks.push(ensureModuleLoaded('procurement', true));
+      else if (state.currentTab === 'assets') tasks.push(ensureModuleLoaded('assets', true));
+      else if (state.currentTab === 'statistic' || state.loadedModules.allTransactions) tasks.push(ensureModuleLoaded('allTransactions', true));
+      return Promise.all(tasks)
+        .then(() => showToast('รีเฟรชข้อมูลล่าสุดแล้ว'))
+        .finally(() => setButtonBusy(btn, false));
+    }
+
+    function fetchDataFromServer(opts = {}) {
       const hasExistingData = state.inventory && state.inventory.length > 0;
       let loadedFromCache = false;
       if (!hasExistingData) {
@@ -9237,23 +10061,29 @@ function exportStatisticsCSV() {
           }
         }, 30000);
 
-        callApi('getAppData', {})
+        const action = opts && opts.full ? 'getAppData' : 'getAppDataLite';
+        const payload = opts && opts.full ? {} : { days: 90 };
+
+        return callApi(action, payload)
+          .catch(err => {
+            if (action === 'getAppDataLite' && err && String(err.message || '').includes('Unknown API action')) {
+              return callApi('getAppData', {});
+            }
+            throw err;
+          })
           .then(res => {
             completed = true;
             clearTimeout(fetchTimer);
             setSyncIndicator(false);
             applyServerPayload(res);
-            try {
-              const serialized = JSON.stringify(res);
-              sessionStorage.setItem(APP_CACHE_KEY, serialized);
-              localStorage.setItem(APP_CACHE_KEY, serialized);
-            } catch (e) {}
+            persistStateToLocalCache();
             if (appLoading) appLoading.classList.add('hidden');
             if (appContent) appContent.classList.remove('hidden');
             renderCurrentTab();
             if (timedOut) {
               showToast('Connected — live data synced!');
             }
+            return res;
           })
           .catch(err => {
             completed = true;
@@ -9271,6 +10101,7 @@ function exportStatisticsCSV() {
       } else {
         setSyncIndicator(false);
         loadOfflineMock();
+        return Promise.resolve();
       }
     }
 
@@ -10264,17 +11095,17 @@ function exportStatisticsCSV() {
         if (kpiStrip) {
           kpiStrip.innerHTML = `
             <div class="proc-kpi-card">
-              <div class="proc-kpi-label">Active Contracts (In Progress)</div>
+              <div class="proc-kpi-label">${t('proc_kpi_active_contracts', 'รายการที่มีสัญญา')}</div>
               <div class="proc-kpi-val">${activeCts.length}</div>
               <div class="proc-kpi-sub">Total non-cancelled: ${nonCancelled.length}</div>
             </div>
             <div class="proc-kpi-card">
-              <div class="proc-kpi-label">Total Contract Value</div>
+              <div class="proc-kpi-label">${t('proc_kpi_total_contract_value', 'มูลค่ารายการที่มีสัญญาทั้งหมด')}</div>
               <div class="proc-kpi-val" style="color:var(--brand-dark);">${formatProcMoney(totalContractVal)}</div>
               <div class="proc-kpi-sub">Remaining Value: ${formatProcMoney(totalRemVal)}</div>
             </div>
             <div class="proc-kpi-card">
-              <div class="proc-kpi-label">Expiring Within 60 Days / Expired</div>
+              <div class="proc-kpi-label">${t('proc_kpi_expiring_60d', 'หมดอายุ / ใกล้หมดอายุ <60 วัน')}</div>
               <div class="proc-kpi-val" style="color:${expiringSoonCnt > 0 ? '#d97706' : 'var(--gray-700)'};">${expiringSoonCnt}</div>
               <div class="proc-kpi-sub">Active contracts requiring attention</div>
             </div>
@@ -11031,9 +11862,8 @@ function exportStatisticsCSV() {
       if (isApiConfigured()) {
         callApi(action, payload)
           .then(() => {
-            setSyncIndicator(false);
             showToast(ebiddingId ? 'E-Bidding updated!' : 'E-Bidding added!');
-            fetchDataFromServer();
+            return ensureModuleLoaded('procurement', true);
           })
           .catch(err => {
             setSyncIndicator(false);
@@ -11065,9 +11895,8 @@ function exportStatisticsCSV() {
         if (isApiConfigured()) {
           callApi('deleteEBidding', { ebiddingId })
             .then(() => {
-              setSyncIndicator(false);
               showToast('E-Bidding deleted');
-              fetchDataFromServer();
+              return ensureModuleLoaded('procurement', true);
             })
             .catch(err => {
               setSyncIndicator(false);
@@ -11199,9 +12028,8 @@ function exportStatisticsCSV() {
       if (isApiConfigured()) {
         callApi(action, payload)
           .then(() => {
-            setSyncIndicator(false);
             showToast(contractId ? 'Contract updated!' : 'Contract created!');
-            fetchDataFromServer();
+            return ensureModuleLoaded('procurement', true);
           })
           .catch(err => {
             setSyncIndicator(false);
@@ -11233,9 +12061,8 @@ function exportStatisticsCSV() {
         if (isApiConfigured()) {
           callApi('deleteContract', { contractId })
             .then(() => {
-              setSyncIndicator(false);
               showToast('Contract deleted');
-              fetchDataFromServer();
+              return ensureModuleLoaded('procurement', true);
             })
             .catch(err => {
               setSyncIndicator(false);
@@ -11397,9 +12224,8 @@ function exportStatisticsCSV() {
       if (isApiConfigured()) {
         callApi(action, payload)
           .then(() => {
-            setSyncIndicator(false);
             showToast(poId ? 'Contract PO updated!' : 'Contract PO created!');
-            fetchDataFromServer();
+            return ensureModuleLoaded('procurement', true);
           })
           .catch(err => {
             setSyncIndicator(false);
@@ -11431,9 +12257,8 @@ function exportStatisticsCSV() {
         if (isApiConfigured()) {
           callApi('deleteContractPO', { poId })
             .then(() => {
-              setSyncIndicator(false);
               showToast('Contract PO deleted');
-              fetchDataFromServer();
+              return ensureModuleLoaded('procurement', true);
             })
             .catch(err => {
               setSyncIndicator(false);
@@ -11585,9 +12410,8 @@ function exportStatisticsCSV() {
       if (isApiConfigured()) {
         callApi(action, payload)
           .then(() => {
-            setSyncIndicator(false);
             showToast(spId ? 'Specific Purchase updated!' : 'Specific Purchase created!');
-            fetchDataFromServer();
+            return ensureModuleLoaded('procurement', true);
           })
           .catch(err => {
             setSyncIndicator(false);
@@ -11619,9 +12443,8 @@ function exportStatisticsCSV() {
         if (isApiConfigured()) {
           callApi('deleteSpecificPurchase', { spId })
             .then(() => {
-              setSyncIndicator(false);
               showToast('Specific Purchase deleted');
-              fetchDataFromServer();
+              return ensureModuleLoaded('procurement', true);
             })
             .catch(err => {
               setSyncIndicator(false);
@@ -12065,9 +12888,9 @@ function exportStatisticsCSV() {
           if (receivingId) {
             callApi('completeReceiving', { receivingId, allocations, payload })
               .then(res => {
-                setSyncIndicator(false);
                 showToast(`Receiving Completed! Stock-In posted (${res.stockInTxnId || 'OK'})`);
-                fetchDataFromServer();
+                applyIncrementalWriteResult(res);
+                return ensureModuleLoaded('procurement', true);
               })
               .catch(err => {
                 setSyncIndicator(false);
@@ -12080,23 +12903,22 @@ function exportStatisticsCSV() {
                 return callApi('completeReceiving', { receivingId: newRecId, allocations, payload });
               })
               .then(compRes => {
-                setSyncIndicator(false);
                 showToast(`Receiving Created & Completed! Stock-In posted (${compRes.stockInTxnId || 'OK'})`);
-                fetchDataFromServer();
+                applyIncrementalWriteResult(compRes);
+                return ensureModuleLoaded('procurement', true);
               })
               .catch(err => {
                 setSyncIndicator(false);
                 showToast('Failed: ' + (err.message || err));
-                fetchDataFromServer();
+                return ensureModuleLoaded('procurement', true);
               });
           }
         } else {
           const action = receivingId ? 'editReceiving' : 'addReceiving';
           callApi(action, payload)
             .then(() => {
-              setSyncIndicator(false);
               showToast(receivingId ? 'Receiving updated!' : 'Receiving saved (Awaiting Delivery)!');
-              fetchDataFromServer();
+              return ensureModuleLoaded('procurement', true);
             })
             .catch(err => {
               setSyncIndicator(false);
@@ -12170,9 +12992,8 @@ function exportStatisticsCSV() {
         if (isApiConfigured()) {
           callApi('deleteReceiving', { receivingId })
             .then(() => {
-              setSyncIndicator(false);
               showToast('Receiving deleted');
-              fetchDataFromServer();
+              return ensureModuleLoaded('procurement', true);
             })
             .catch(err => {
               setSyncIndicator(false);
@@ -12230,9 +13051,8 @@ function exportStatisticsCSV() {
         if (isApiConfigured()) {
           callApi('cancelRecord', { entity: ent, id })
             .then(() => {
-              setSyncIndicator(false);
               showToast('Record marked as Cancelled');
-              fetchDataFromServer();
+              return ensureModuleLoaded('procurement', true);
             })
             .catch(err => {
               setSyncIndicator(false);
@@ -12285,7 +13105,7 @@ function exportStatisticsCSV() {
       try {
         // Inventory Listeners (debounced search for snappy typing)
         const invSearch = document.getElementById('inv-tab-search-input');
-        if (invSearch) invSearch.addEventListener('input', debounce(renderInventoryTab, 120));
+        if (invSearch) invSearch.addEventListener('input', debounce(renderInventoryTab, 250));
         const invCat = document.getElementById('inv-tab-cat-filter');
         if (invCat) invCat.addEventListener('change', renderInventoryTab);
         invCols.forEach(col => {
@@ -12294,13 +13114,13 @@ function exportStatisticsCSV() {
         });
 
         // Transactions Filter
-        safeAddListener('tx-filter-type', 'change', renderTransactions);
-        safeAddListener('tx-filter-search', 'input', debounce(renderTransactions, 120));
+        safeAddListener('tx-filter-type', 'change', () => { state.txRenderLimit = 250; renderTransactions(); });
+        safeAddListener('tx-filter-search', 'input', debounce(() => { state.txRenderLimit = 250; renderTransactions(); }, 250));
 
         // Procedure Tab Events
-        safeAddListener('proc-device-search', 'input', debounce(renderProcDeviceResults, 120));
+        safeAddListener('proc-device-search', 'input', debounce(renderProcDeviceResults, 250));
         safeAddListener('proc-device-cat', 'change', renderProcDeviceResults);
-        safeAddListener('proc-hist-search', 'input', debounce(renderProcHistory, 120));
+        safeAddListener('proc-hist-search', 'input', debounce(() => { state.caseHistRenderLimit = 200; renderProcHistory(); }, 250));
 
         safeAddListener('btn-submit-procedure', 'click', () => {
           const hn = document.getElementById('proc-hn').value.trim();
@@ -12398,11 +13218,16 @@ function exportStatisticsCSV() {
           });
 
           function doSubmitProc() {
+            const submitKey = 'submitProcedureUse';
+            if (_inFlightSubmits.has(submitKey)) return;
+            const submitBtn = document.getElementById('btn-submit-procedure');
+            _inFlightSubmits.add(submitKey);
+            setButtonBusy(submitBtn, true);
             setSyncIndicator(true);
 
             if (isApiConfigured()) {
               callApi('submitProcedureUse', payload)
-                .then(() => {
+                .then(res => {
                   setSyncIndicator(false);
                   showToast('บันทึกเคสเรียบร้อยแล้ว');
                   state.cart = [];
@@ -12412,11 +13237,15 @@ function exportStatisticsCSV() {
                   document.querySelectorAll('#proc-techs input[type="checkbox"]').forEach(cb => cb.checked = false);
                   const compEl = document.getElementById('proc-complications');
                   if (compEl) compEl.value = '';
-                  fetchDataFromServer();
+                  applyIncrementalWriteResult(res);
                 })
                 .catch(err => {
                   setSyncIndicator(false);
                   showToast('Failed: ' + (err.message || err));
+                })
+                .finally(() => {
+                  _inFlightSubmits.delete(submitKey);
+                  setButtonBusy(submitBtn, false);
                 });
             } else {
               // Offline Mock Mode
@@ -12578,21 +13407,29 @@ function exportStatisticsCSV() {
         });
 
         function doSubmitStock() {
+          const submitKey = 'submitStockMovementBatch';
+          if (_inFlightSubmits.has(submitKey)) return;
+          const submitBtn = document.getElementById('btn-submit-stock');
+          _inFlightSubmits.add(submitKey);
+          setButtonBusy(submitBtn, true);
           closeModal();
           setSyncIndicator(true);
 
           if (isApiConfigured()) {
             callApi('submitStockMovementBatch', { items: payloads })
-              .then(() => {
+              .then(res => {
                 setSyncIndicator(false);
                 showToast('Stock movement saved successfully!');
                 state.stockLines = [{ itemId: '', qty: 1, loc: 'Main', notes: '' }];
-                fetchDataFromServer();
+                applyIncrementalWriteResult(res);
               })
               .catch(err => {
                 setSyncIndicator(false);
                 showToast('Error: ' + (err.message || err));
-                fetchDataFromServer();
+              })
+              .finally(() => {
+                _inFlightSubmits.delete(submitKey);
+                setButtonBusy(submitBtn, false);
               });
           } else {
             // Mock
@@ -12649,7 +13486,7 @@ function exportStatisticsCSV() {
       });
 
       // Adjustment Tab Events
-      safeAddListener('adj-search-input', 'input', debounce(renderAdjustmentTab, 120));
+      safeAddListener('adj-search-input', 'input', debounce(renderAdjustmentTab, 250));
       safeAddListener('btn-submit-adjustments', 'click', () => {
         if (state.adjBatch.length === 0) return;
         const userNick = (document.getElementById('adj-modal-user')?.value || '').trim();
@@ -12677,21 +13514,29 @@ function exportStatisticsCSV() {
         });
 
         function doSubmitAdj() {
+          const submitKey = 'submitAdjustmentBatch';
+          if (_inFlightSubmits.has(submitKey)) return;
+          const submitBtn = document.getElementById('btn-submit-adjustments');
+          _inFlightSubmits.add(submitKey);
+          setButtonBusy(submitBtn, true);
           closeModal();
           setSyncIndicator(true);
 
           if (isApiConfigured()) {
             callApi('submitAdjustmentBatch', { items: payloads })
-              .then(() => {
+              .then(res => {
                 setSyncIndicator(false);
                 showToast('Adjustments saved successfully!');
                 state.adjBatch = [];
-                fetchDataFromServer();
+                applyIncrementalWriteResult(res);
               })
               .catch(err => {
                 setSyncIndicator(false);
                 showToast('Error: ' + (err.message || err));
-                fetchDataFromServer();
+              })
+              .finally(() => {
+                _inFlightSubmits.delete(submitKey);
+                setButtonBusy(submitBtn, false);
               });
           } else {
             // Mock
