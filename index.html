@@ -16,7 +16,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@300;400;500;600;700&family=Noto+Sans+Thai:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=20261122b">
+  <link rel="stylesheet" href="styles.css?v=20261127b">
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 </head>
 <body>
@@ -52,6 +52,10 @@
             <span class="sync-dot"></span>
             <span id="sync-indicator-text">กำลังซิงก์...</span>
           </div>
+          <button type="button" id="btn-manual-refresh" class="btn btn-o btn-sm" onclick="manualRefreshFromServer()" title="รีเฟรชข้อมูลล่าสุดจากเซิร์ฟเวอร์" aria-label="Refresh">
+            <svg class="ic sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/><path d="M8 16H3v5"/></svg>
+            <span class="hide-sm">รีเฟรช</span>
+          </button>
         </div>
       </header>
 
@@ -541,7 +545,7 @@
               </button>
               <button type="button" data-ex="consignment" onclick="switchExchangeSubTab('consignment')">
                 <svg class="ic sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg>
-                <span data-i18n="sub_deposits">Deposits</span>
+                <span data-i18n="sub_deposits">คลังสำรอง</span>
                 <em id="ex-csg-holding-count">0</em>
               </button>
               <button type="button" data-ex="loans" onclick="switchExchangeSubTab('loans')">
@@ -557,7 +561,7 @@
                 <div class="bar">
                   <div class="search">
                     <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
-                    <input type="text" id="ex-quota-search" class="in" placeholder="ค้นหารายการหรือหมายเหตุ..." data-i18n-placeholder="btn_search" oninput="renderExchangeTab()">
+                    <input type="text" id="ex-quota-search" class="in" placeholder="ค้นหารายการหรือหมายเหตุ..." data-i18n-placeholder="btn_search" oninput="debouncedRenderExchangeTab()">
                   </div>
                   <select id="ex-quota-filter-status" class="sel" style="min-width:150px;" onchange="renderExchangeTab()">
                     <option value="">ทุกสถานะ</option>
@@ -588,23 +592,43 @@
               </div>
             </div>
 
-            <!-- Sub-panel B: Deposits (Consignment & Buffer Hold) -->
+            <!-- Sub-panel B: Buffer Stock Management & Vendor Exchange -->
             <div id="ex-panel-consignment" class="stack hidden">
+              <!-- Live Buffer Stock Items Summary -->
               <div class="card">
+                <div class="card-h">
+                  <div>
+                    <strong>ยอดคงเหลือคลังสำรองปัจจุบัน (Buffer Stock)</strong>
+                    <div class="text-xs text-gray">แสดงรายการอุปกรณ์จากคลังเวชภัณฑ์ที่มียอดคงเหลือใน Buffer ณ ปัจจุบัน</div>
+                  </div>
+                  <div class="chips" id="buffer-view-toggle">
+                    <button type="button" class="chip on active" data-bview="list" onclick="switchBufferView('list')">รายการคลังสำรอง</button>
+                    <button type="button" class="chip" data-bview="exchange_history" onclick="switchBufferView('exchange_history')">ประวัติการแลกเปลี่ยนกับบริษัท</button>
+                  </div>
+                </div>
+                <div id="buffer-live-summary" class="p-3 flex flex-wrap gap-2"></div>
+              </div>
+
+              <!-- Buffer Entries List -->
+              <div id="buffer-entries-card" class="card">
                 <div class="bar">
                   <div class="search">
                     <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
-                    <input type="text" id="csg-search" class="in" placeholder="ค้นหาบริษัท, รายการอุปกรณ์, ผู้ติดต่อ..." oninput="renderExchangeTab()">
+                    <input type="text" id="csg-search" class="in" placeholder="ค้นหาอุปกรณ์, HO ID, บริษัท, ผู้ติดต่อ..." oninput="debouncedRenderExchangeTab()">
                   </div>
-                  <select id="csg-filter-status" class="sel" style="min-width:170px;" onchange="renderExchangeTab()">
+                  <select id="csg-filter-status" class="sel" style="min-width:160px;" onchange="renderExchangeTab()">
                     <option value="">ทุกสถานะ</option>
-                    <option value="Holding">รับฝากไว้</option>
-                    <option value="Returned">คืนแล้ว</option>
+                    <option value="Holding">เก็บในคลังสำรอง</option>
+                    <option value="Returned">คืนบริษัทแล้ว</option>
                   </select>
-                  <div class="sp no-print">
+                  <div class="sp no-print flex gap-2 flex-wrap">
+                    <button type="button" class="btn btn-o" onclick="openVendorExchangeModal()">
+                      <svg class="ic sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m16 3 4 4-4 4"/><path d="M20 7H4"/><path d="m8 21-4-4 4-4"/><path d="M4 17h16"/></svg>
+                      <span>+ แลกเปลี่ยนสินค้ากับบริษัท</span>
+                    </button>
                     <button type="button" class="btn btn-p" onclick="openConsignmentModal()">
                       <svg class="ic sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
-                      <span data-i18n="btn_record_deposit">เพิ่มบันทึกรับฝาก</span>
+                      <span data-i18n="btn_record_deposit">เพิ่มรายการคลังสำรอง</span>
                     </button>
                   </div>
                 </div>
@@ -612,17 +636,41 @@
                   <table class="tbl">
                     <thead>
                       <tr>
-                        <th>วันที่รับฝาก</th>
-                        <th>บริษัท / ตัวแทน</th>
-                        <th>ผู้ติดต่อ / โทร</th>
-                        <th>รายการอุปกรณ์</th>
-                        <th class="c center">จำนวน</th>
+                        <th>วันที่ / รหัส</th>
+                        <th>รายการอุปกรณ์ (Inventory)</th>
+                        <th class="c center">จำนวน / Buffer คงเหลือ</th>
+                        <th>บริษัท / ผู้ติดต่อ</th>
                         <th class="c center">สถานะ</th>
                         <th>หมายเหตุ / การรับคืน</th>
                         <th class="c center no-print">จัดการ</th>
                       </tr>
                     </thead>
                     <tbody id="csg-table-body"></tbody>
+                  </table>
+                </div>
+              </div>
+
+              <!-- Vendor Exchange History -->
+              <div id="vexc-history-box" class="card hidden">
+                <div class="card-h">
+                  <div>
+                    <strong>ประวัติการแลกเปลี่ยนสินค้ากับบริษัท (Vendor Exchange History)</strong>
+                    <div class="text-xs text-gray">แสดงคู่รายการส่งคืนให้บริษัทและรับเข้าคลังใหม่ (EXC)</div>
+                  </div>
+                  <button type="button" class="btn btn-p btn-sm no-print" onclick="openVendorExchangeModal()">+ แลกเปลี่ยนสินค้ากับบริษัท</button>
+                </div>
+                <div class="tw">
+                  <table class="tbl">
+                    <thead>
+                      <tr>
+                        <th>วันที่ / รหัสอ้างอิง</th>
+                        <th>บริษัท / หมายเหตุ</th>
+                        <th>ส่งออกให้บริษัท (คลังต้นทาง)</th>
+                        <th>รับกลับเข้าคลัง (คลังปลายทาง)</th>
+                        <th>ผู้บันทึก</th>
+                      </tr>
+                    </thead>
+                    <tbody id="vexc-table-body"></tbody>
                   </table>
                 </div>
               </div>
@@ -657,7 +705,7 @@
                 <div class="bar">
                   <div class="search">
                     <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
-                    <input type="text" id="loan-search" class="in" placeholder="ค้นหาชื่ออุปกรณ์, หน่วยงาน, เลขที่การโอน..." oninput="renderLoanTab()">
+                    <input type="text" id="loan-search" class="in" placeholder="ค้นหาชื่ออุปกรณ์, หน่วยงาน, เลขที่การโอน..." oninput="debouncedRenderLoanTab()">
                   </div>
                   <select id="loan-filter-direction" class="sel" onchange="renderLoanTab()">
                     <option value="">การยืมทั้งหมด</option>
@@ -771,7 +819,7 @@
               <div class="bar no-print">
                 <div class="search">
                   <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
-                  <input type="text" id="asset-search-input" class="in" placeholder="Search by Asset Code, Name, S/N, or Room..." oninput="renderAssetsTab()">
+                  <input type="text" id="asset-search-input" class="in" placeholder="Search by Asset Code, Name, S/N, or Room..." oninput="debouncedRenderAssetsTab()">
                 </div>
                 <select id="asset-filter-room" class="sel" onchange="renderAssetsTab()">
                   <option value="">ทุกห้อง / สถานที่</option>
@@ -826,7 +874,6 @@
                       <th>Room</th>
                       <th class="c center">Status</th>
                       <th>Latest PM / Calibration / QC</th>
-                      <th class="c center no-print">Actions</th>
                     </tr>
                   </thead>
                   <tbody id="asset-table-body"></tbody>
@@ -875,7 +922,7 @@
                 </select>
                 <div class="search">
                   <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
-                  <input type="text" id="proc-search-input" class="in" placeholder="Search Device Name, HO Item ID, Contract No, Company..." oninput="renderProcurementTab()">
+                  <input type="text" id="proc-search-input" class="in" placeholder="Search Device Name, HO Item ID, Contract No, Company..." oninput="debouncedRenderProcurementTab()">
                 </div>
                 <button type="button" class="btn btn-o" onclick="resetProcurementFilters()" data-i18n="btn_default">Default</button>
                 <div class="sp">
@@ -912,7 +959,7 @@
               <div class="bar no-print">
                 <div class="search">
                   <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
-                  <input type="text" id="stat-search-input" class="in" placeholder="Filter rows..." oninput="renderStatisticTab()">
+                  <input type="text" id="stat-search-input" class="in" placeholder="Filter rows..." oninput="debouncedRenderStatisticTab()">
                 </div>
                 <span id="stat-from-label" class="text-xs text-gray font-semibold">From</span>
                 <select id="stat-from-month" class="sel" onchange="renderStatisticTab()">
@@ -1630,55 +1677,147 @@
       </div>
     </div>
 
-    <!-- Add Consignment Modal -->
-    <div id="modal-consignment-new" class="modal hidden" style="max-width:620px;">
+    <!-- Add / Edit Buffer Stock Modal -->
+    <div id="modal-consignment-new" class="modal hidden" style="max-width:640px;">
       <div class="modal-header">
-        <div class="modal-title">Record Consignment / Vendor Quarantine Hold</div>
+        <div class="modal-title" id="csg-modal-title">เพิ่มรายการคลังสำรอง (Buffer Stock)</div>
         <button type="button" class="modal-close" onclick="closeModal()">✕</button>
       </div>
       <div class="modal-body space-y">
+        <input type="hidden" id="csg-modal-holdid" value="">
         <div class="p-3 text-xs rounded" style="background:var(--pur-l); border:1px solid #ddd6fe; color:var(--pur);">
-          Location: Buffer (Locked from Procedure Use) — Excluded from clinical available stock.
+          รายการทั้งหมดเชื่อมโยงกับอุปกรณ์ในคลังเวชภัณฑ์ (Inventory) โดยบันทึกเข้าสู่ <strong>Buffer</strong> (ไม่รวมในยอดพร้อมใช้ Main/Retail)
         </div>
         <div class="form-grid">
-          <div class="form-group">
-            <label class="form-label"><span>Vendor / Company Name</span> <span class="req">*</span></label>
-            <input type="text" id="csg-modal-vendor" class="form-input" placeholder="e.g. Medtronic, Terumo, Stryker...">
-          </div>
-          <div class="form-group">
-            <label class="form-label"><span>Date Deposited</span> <span class="req">*</span></label>
-            <input type="date" id="csg-modal-date" class="form-input">
-          </div>
-          <div class="form-group">
-            <label class="form-label">Contact Person</label>
-            <input type="text" id="csg-modal-contact" class="form-input" placeholder="Representative name...">
-          </div>
-          <div class="form-group">
-            <label class="form-label">Contact Phone</label>
-            <input type="text" id="csg-modal-phone" class="form-input" placeholder="08x-xxx-xxxx">
-          </div>
           <div class="form-group col-span-2">
-            <label class="form-label">Select Inventory Item (Optional — links to Buffer Stock)</label>
+            <label class="form-label"><span>ค้นหาและเลือกอุปกรณ์ในคลัง (Inventory)</span> <span class="req">*</span></label>
+            <input type="text" id="csg-item-search" class="form-input mb-1" placeholder="พิมพ์ชื่ออุปกรณ์ หรือ HO Item ID เพื่อกรอง..." oninput="filterConsignmentItems()">
             <select id="csg-modal-itemid" class="form-select" onchange="onConsignmentItemSelect()">
-              <option value="">— Custom / Non-Inventory Vendor Item —</option>
+              <option value="">— เลือกรายการอุปกรณ์ในคลัง —</option>
             </select>
           </div>
           <div class="form-group">
-            <label class="form-label"><span>Item Name / Description</span> <span class="req">*</span></label>
-            <input type="text" id="csg-modal-itemname" class="form-input" placeholder="Device name / model / lot...">
-          </div>
-          <div class="form-group">
-            <label class="form-label"><span>Quantity</span> <span class="req">*</span></label>
+            <label class="form-label"><span>จำนวน (Buffer Stock)</span> <span class="req">*</span></label>
             <input type="number" id="csg-modal-qty" class="form-input" min="1" value="1">
           </div>
+          <div class="form-group">
+            <label class="form-label"><span>วันที่บันทึก</span> <span class="req">*</span></label>
+            <input type="date" id="csg-modal-date" class="form-input">
+          </div>
+          <div class="form-group">
+            <label class="form-label"><span>บริษัท / ตัวแทน</span> <span class="req">*</span></label>
+            <input type="text" id="csg-modal-vendor" class="form-input" list="vexc-vendor-datalist" placeholder="ระบุบริษัท / ตัวแทน...">
+          </div>
+          <div class="form-group">
+            <label class="form-label"><span>ผู้บันทึก</span> <span class="req">*</span></label>
+            <select id="csg-modal-user" class="form-select"></select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">ผู้ติดต่อ (บริษัท)</label>
+            <input type="text" id="csg-modal-contact" class="form-input" placeholder="ชื่อผู้แทนบริษัท...">
+          </div>
+          <div class="form-group">
+            <label class="form-label">เบอร์ติดต่อ</label>
+            <input type="text" id="csg-modal-phone" class="form-input" placeholder="08x-xxx-xxxx">
+          </div>
           <div class="form-group col-span-2">
-            <label class="form-label">Notes (Lot No., Expiry, Reason for Hold)</label>
-            <textarea id="csg-modal-notes" class="form-textarea" placeholder="Lot / Exp / Reason..."></textarea>
+            <label class="form-label">หมายเหตุ (Lot / Exp / รายละเอียด)</label>
+            <textarea id="csg-modal-notes" class="form-textarea" placeholder="Lot / Exp / รายละเอียดเพิ่มเติม..."></textarea>
           </div>
         </div>
         <div class="flex gap-2 justify-end mt-4">
-          <button type="button" class="btn btn-outline" onclick="closeModal()">Cancel</button>
-          <button type="button" class="btn btn-brand" onclick="saveConsignmentModal()">Save</button>
+          <button type="button" class="btn btn-outline" onclick="closeModal()">ยกเลิก</button>
+          <button type="button" class="btn btn-brand" onclick="saveConsignmentModal()">บันทึก</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Vendor Exchange Modal (การแลกเปลี่ยนสินค้ากับบริษัท) -->
+    <div id="modal-vendor-exchange" class="modal hidden" style="max-width:700px;">
+      <div class="modal-header">
+        <div class="modal-title">แลกเปลี่ยนสินค้ากับบริษัท (Vendor Exchange)</div>
+        <button type="button" class="modal-close" onclick="closeModal()">✕</button>
+      </div>
+      <div class="modal-body space-y">
+        <datalist id="vexc-vendor-datalist"></datalist>
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="form-label"><span>วันที่แลกเปลี่ยน</span> <span class="req">*</span></label>
+            <input type="date" id="vexc-date" class="form-input">
+          </div>
+          <div class="form-group">
+            <label class="form-label"><span>ผู้บันทึก</span> <span class="req">*</span></label>
+            <select id="vexc-user" class="form-select"></select>
+          </div>
+          <div class="form-group">
+            <label class="form-label"><span>บริษัท / ตัวแทน</span> <span class="req">*</span></label>
+            <input type="text" id="vexc-vendor" class="form-input" list="vexc-vendor-datalist" placeholder="ระบุบริษัท...">
+          </div>
+          <div class="form-group">
+            <label class="form-label">เลขที่เอกสาร / หมายเหตุ</label>
+            <input type="text" id="vexc-notes" class="form-input" placeholder="เลขที่เอกสารอ้างอิง / Lot / หมายเหตุ...">
+          </div>
+        </div>
+
+        <div class="grid-2" style="gap:12px;">
+          <div class="p-3 rounded border space-y-sm" style="background:#fef2f2; border-color:#fecaca;">
+            <div class="font-bold text-sm" style="color:#991b1b;">1. รายการส่งคืน / แลกออกให้บริษัท</div>
+            <div class="form-group">
+              <label class="form-label">ค้นหาอุปกรณ์ส่งออก</label>
+              <input type="text" id="vexc-out-search" class="form-input form-input-sm" placeholder="พิมพ์ชื่อ หรือ HO ID..." oninput="filterVendorExchangeItems('out')">
+            </div>
+            <div class="form-group">
+              <label class="form-label"><span>เลือกอุปกรณ์ (Inventory)</span> <span class="req">*</span></label>
+              <select id="vexc-out-item" class="form-select form-input-sm" onchange="onVendorExchangeItemSelect('out')"></select>
+            </div>
+            <div class="grid-2" style="gap:8px;">
+              <div class="form-group">
+                <label class="form-label"><span>คลังต้นทาง</span> <span class="req">*</span></label>
+                <select id="vexc-out-loc" class="form-select form-input-sm" onchange="updateVendorExchangeStockBadge()">
+                  <option value="Buffer">Buffer</option>
+                  <option value="Main">Main</option>
+                  <option value="Retail">Retail</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label"><span>จำนวนที่ส่งออก</span> <span class="req">*</span></label>
+                <input type="number" id="vexc-out-qty" class="form-input form-input-sm" min="1" value="1" oninput="updateVendorExchangeStockBadge()">
+              </div>
+            </div>
+            <div id="vexc-out-stock-badge" class="text-xs font-semibold" style="color:#7f1d1d;">คงเหลือคลังต้นทาง: —</div>
+          </div>
+
+          <div class="p-3 rounded border space-y-sm" style="background:#ecfdf5; border-color:#a7f3d0;">
+            <div class="font-bold text-sm" style="color:#065f46;">2. รายการรับกลับเข้าคลังจากบริษัท</div>
+            <div class="form-group">
+              <label class="form-label">ค้นหาอุปกรณ์รับเข้า</label>
+              <input type="text" id="vexc-in-search" class="form-input form-input-sm" placeholder="พิมพ์ชื่อ หรือ HO ID..." oninput="filterVendorExchangeItems('in')">
+            </div>
+            <div class="form-group">
+              <label class="form-label"><span>เลือกอุปกรณ์ (Inventory)</span> <span class="req">*</span></label>
+              <select id="vexc-in-item" class="form-select form-input-sm" onchange="onVendorExchangeItemSelect('in')"></select>
+            </div>
+            <div class="grid-2" style="gap:8px;">
+              <div class="form-group">
+                <label class="form-label"><span>คลังปลายทาง</span> <span class="req">*</span></label>
+                <select id="vexc-in-loc" class="form-select form-input-sm">
+                  <option value="Buffer">Buffer</option>
+                  <option value="Main">Main</option>
+                  <option value="Retail">Retail</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label"><span>จำนวนที่รับเข้า</span> <span class="req">*</span></label>
+                <input type="number" id="vexc-in-qty" class="form-input form-input-sm" min="1" value="1">
+              </div>
+            </div>
+            <div class="text-xs" style="color:#047857;">รับจากบริษัทโดยตรง (ไม่หักจากคลัง Main)</div>
+          </div>
+        </div>
+
+        <div class="flex gap-2 justify-end mt-4">
+          <button type="button" class="btn btn-outline" onclick="closeModal()">ยกเลิก</button>
+          <button type="button" class="btn btn-brand" onclick="submitVendorExchangeModal()">ยืนยันแลกเปลี่ยนสินค้า</button>
         </div>
       </div>
     </div>
@@ -1757,12 +1896,6 @@
             <label class="form-label">ผู้บันทึก</label>
             <input type="text" id="loan-modal-tech" class="form-input" list="loan-user-datalist" placeholder="ระบุชื่อผู้บันทึก...">
             <datalist id="loan-user-datalist"></datalist>
-          </div>
-          <div class="form-group col-span-2" id="loan-register-inv-row">
-            <label class="flex items-center gap-2 text-sm p-2 rounded border" style="cursor:pointer; background:var(--gray-50);">
-              <input type="checkbox" id="loan-register-inv-check">
-              <span>ลงทะเบียนอุปกรณ์ที่รับเข้าคลังพร้อมระบุ <strong>(ยืม)</strong></span>
-            </label>
           </div>
           <div class="form-group col-span-2">
             <label class="form-label">หมายเหตุ</label>
@@ -1959,6 +2092,14 @@
                 <label class="form-label">Notes / Certificate Reference No.</label>
                 <input type="text" id="maint-form-notes" class="form-input form-input-sm" placeholder="Certificate ref no., findings...">
               </div>
+              <div class="form-group col-span-2">
+                <label class="form-label">แนบใบตรวจ / เอกสารรับรอง (Image หรือ PDF สูงสุด 10 MB)</label>
+                <div class="flex items-center gap-2 flex-wrap">
+                  <input type="file" id="maint-form-file" accept="image/*,application/pdf,.pdf" class="form-input form-input-sm" style="flex:1; min-width:220px;" onchange="handleMaintAttachmentSelect(this)">
+                  <span id="maint-form-file-status" class="text-xs text-gray">ยังไม่ได้เลือกไฟล์</span>
+                  <button type="button" class="btn btn-outline btn-sm hidden" id="maint-form-file-clear" onclick="clearMaintAttachment()">ล้างไฟล์</button>
+                </div>
+              </div>
             </div>
             <div class="flex gap-2 justify-end mt-2">
               <button type="button" class="btn btn-outline btn-sm" onclick="toggleAddMaintForm(false)">Cancel</button>
@@ -1975,6 +2116,7 @@
                   <th class="c center">Result</th>
                   <th>Next Due Date</th>
                   <th>Notes / Cert Ref</th>
+                  <th class="c center">ไฟล์แนบ / ใบตรวจ</th>
                   <th class="c center">Action</th>
                 </tr>
               </thead>
@@ -2119,6 +2261,24 @@
         <div class="flex justify-between items-center pt-2">
           <button type="button" class="btn btn-outline btn-sm" onclick="closeModal()">ปิด</button>
           <button type="button" class="btn btn-brand btn-sm" onclick="printAssetQrLabel()">พิมพ์สติกเกอร์ 75×35 มม.</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- File / Inspection Report Preview Modal -->
+    <div id="modal-file-preview" class="modal hidden" style="max-width:860px;">
+      <div class="modal-header">
+        <div class="modal-title" id="file-preview-title">ดูเอกสารแนบ / ใบตรวจ</div>
+        <button type="button" class="modal-close" onclick="closeFilePreviewModal()">✕</button>
+      </div>
+      <div class="modal-body space-y">
+        <div id="file-preview-body" style="min-height:240px; max-height:70vh; overflow:auto; display:flex; align-items:center; justify-content:center; background:var(--gray-50); border:1px solid var(--line); border-radius:8px; padding:10px;"></div>
+        <div class="flex justify-between items-center flex-wrap gap-2">
+          <div class="flex gap-2 flex-wrap">
+            <a id="file-preview-open-tab" href="#" target="_blank" rel="noopener noreferrer" class="btn btn-outline btn-sm">เปิดในแท็บใหม่</a>
+            <a id="file-preview-download" href="#" target="_blank" rel="noopener noreferrer" class="btn btn-brand btn-sm">ดาวน์โหลด</a>
+          </div>
+          <button type="button" class="btn btn-outline btn-sm" onclick="closeFilePreviewModal()">ปิดหน้าต่าง</button>
         </div>
       </div>
     </div>
@@ -2599,6 +2759,6 @@
     }, 4000);
   </script>
 
-  <script src="app.js?v=20261122b"></script>
+  <script src="app.js?v=20261127b"></script>
 </body>
 </html>
